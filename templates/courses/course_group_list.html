@@ -1,0 +1,220 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}กลุ่มรายวิชา{% endblock %}
+{% block breadcrumb_topbar %}การจัดการข้อมูลพื้นฐาน › กลุ่มรายวิชา{% endblock %}
+
+{% block content %}
+<div class="page-breadcrumb">
+  <a href="#">การจัดการข้อมูลพื้นฐาน</a>
+  <span class="sep"><i class="bi bi-chevron-right" style="font-size:10px;"></i></span>
+  <span class="current">กลุ่มรายวิชา</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>กลุ่มรายวิชา</h1>
+    <p>การจัดการกลุ่มรายวิชาสำหรับการค้นหาและการจัดหมวดหมู่</p>
+  </div>
+  <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addModal">
+    <i class="bi bi-plus-lg"></i> เพิ่มกลุ่มรายวิชา
+  </button>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-auto">
+    <div class="summary-card">
+      <div class="summary-icon"><i class="bi bi-collection"></i></div>
+      <div>
+        <div class="val">{{ total }}</div>
+        <div class="lbl">จำนวนกลุ่มรายวิชาทั้งหมด</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card-panel">
+  <div class="card-toolbar">
+    <form method="get" style="display:contents;">
+      <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" name="q" value="{{ q }}" placeholder="ค้นหาชื่อกลุ่มรายวิชา" />
+      </div>
+      <button type="submit" class="btn-primary-custom" style="padding:7px 14px;">
+        <i class="bi bi-funnel"></i> กรองข้อมูล
+      </button>
+      {% if q %}
+      <a href="{% url 'courses:course_group_list' %}" class="btn btn-sm btn-outline-secondary">ล้างการค้นหา</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width:120px;">รหัสกลุ่ม</th>
+        <th>ชื่อกลุ่มรายวิชา</th>
+        <th>รายละเอียด</th>
+        <th style="width:120px;">จำนวนรายวิชา</th>
+        <th style="width:100px;">การปฏิบัติ</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for obj in page_obj %}
+      <tr>
+        <td><code style="font-size:13px;color:#6B7280;">CG{{ obj.cg_id|stringformat:"03d" }}</code></td>
+        <td><strong>{{ obj.cg_name }}</strong></td>
+        <td style="font-size:13px;color:#6B7280;">{{ obj.cg_desc|default:"—"|truncatechars:80 }}</td>
+        <td><span class="badge-count">{{ obj.course_count }}</span></td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-action btn-edit"
+                    onclick="openEditCG({{ obj.cg_id }}, '{{ obj.cg_name|escapejs }}', '{{ obj.cg_desc|default:''|escapejs }}')"
+                    title="แก้ไข">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn-action btn-del"
+                    onclick="openDeleteCG({{ obj.cg_id }}, '{{ obj.cg_name|escapejs }}')"
+                    title="ลบ">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5">
+          <div class="empty-state">
+            <i class="bi bi-collection d-block"></i>
+            <p>ยังไม่มีข้อมูลกลุ่มรายวิชา{% if q %} ที่ตรงกับ "{{ q }}"{% endif %}</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="pagination-wrap">
+    <div class="pagination-info">
+      แสดง {{ page_obj.start_index }}–{{ page_obj.end_index }} จาก {{ page_obj.paginator.count }} กลุ่มรายวิชา
+    </div>
+    <ul class="pagination">
+      <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+        <a class="page-link" href="{% if page_obj.has_previous %}?page={{ page_obj.previous_page_number }}&q={{ q }}{% else %}#{% endif %}">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      </li>
+      {% for num in page_obj.paginator.page_range %}
+      <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+        <a class="page-link" href="?page={{ num }}&q={{ q }}">{{ num }}</a>
+      </li>
+      {% endfor %}
+      <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{% if page_obj.has_next %}?page={{ page_obj.next_page_number }}&q={{ q }}{% else %}#{% endif %}">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ─── Add Modal ─────────────────────────────────────── -->
+<div class="modal fade" id="addModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'courses:course_group_create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2 text-primary"></i>เพิ่มกลุ่มรายวิชา</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">ชื่อกลุ่มรายวิชา <span class="text-danger">*</span></label>
+            {{ form.cg_name }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">รายละเอียด</label>
+            {{ form.cg_desc }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn-primary-custom" style="padding:7px 18px; font-size:13px;">
+            <i class="bi bi-check2"></i> บันทึก
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Edit Modal ─────────────────────────────────────── -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="editForm" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil me-2 text-primary"></i>แก้ไขกลุ่มรายวิชา</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">ชื่อกลุ่มรายวิชา <span class="text-danger">*</span></label>
+            <input type="text" name="cg_name" id="edit_cg_name" class="form-control" required />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">รายละเอียด</label>
+            <textarea name="cg_desc" id="edit_cg_desc" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn-primary-custom" style="padding:7px 18px; font-size:13px;">
+            <i class="bi bi-check2"></i> บันทึกการแก้ไข
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Delete Modal ─────────────────────────────────────── -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <form method="post" id="deleteForm" action="">
+        {% csrf_token %}
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>ยืนยันการลบ</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body pt-2">
+          <p style="font-size:14px;">คุณต้องการลบกลุ่มรายวิชา <strong id="delete_name"></strong> ใช่หรือไม่?</p>
+          <p style="font-size:12px;color:#EF4444;margin:0;">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash3"></i> ลบ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openEditCG(pk, name, desc) {
+  document.getElementById('edit_cg_name').value = name;
+  document.getElementById('edit_cg_desc').value  = desc;
+  document.getElementById('editForm').action = `/courses/course-group/${pk}/edit/`;
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+function openDeleteCG(pk, name) {
+  document.getElementById('delete_name').textContent = name;
+  document.getElementById('deleteForm').action = `/courses/course-group/${pk}/delete/`;
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

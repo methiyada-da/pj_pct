@@ -1,0 +1,200 @@
+/* =============================================================
+   Puean Chuay Tiw — auth.css  (login & register pages)
+   ============================================================= */
+
+/* --------- Auth page body --------- */
+.auth-body {
+  background: #F0F5FF;
+  min-height: 100vh;
+}
+
+/* --------- Tab links --------- */
+.auth-tab {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #94A3B8;
+  text-decoration: none;
+  padding-bottom: .6rem;
+  border-bottom: 3px solid transparent;
+  transition: color .2s, border-color .2s;
+}
+.auth-tab.active {
+  color: var(--pct-primary, #2563EB);
+  border-bottom-color: var(--pct-primary, #2563EB);
+}
+.auth-tab:hover { color: var(--pct-primary, #2563EB); }
+
+/* --------- Card --------- */
+.auth-card {
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* --------- Form panel --------- */
+.auth-form-panel {
+  padding: 3rem 2.5rem;
+}
+.auth-heading {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #1E293B;
+  margin-bottom: .35rem;
+}
+.auth-subheading {
+  font-size: .875rem;
+  color: #64748B;
+  margin-bottom: 1.75rem;
+}
+
+/* --------- Inputs --------- */
+.pct-input {
+  border: 1.5px solid #CBD5E1;
+  border-radius: 8px;
+  font-size: .9rem;
+  padding: .65rem .9rem;
+  color: #1E293B;
+  background: #F8FAFC;
+  transition: border-color .2s, box-shadow .2s;
+}
+.pct-input:focus {
+  border-color: #2563EB;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  outline: none;
+}
+.pct-input.is-invalid { border-color: #EF4444; }
+
+/* Email prefix+suffix layout */
+.input-email-wrap {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #F8FAFC;
+  transition: border-color .2s, box-shadow .2s;
+}
+.input-email-wrap:focus-within {
+  border-color: #2563EB;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+.email-prefix {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  flex: 1;
+  min-width: 0;
+}
+.email-prefix:focus { outline: none; box-shadow: none !important; }
+.email-suffix {
+  padding: 0 .9rem;
+  font-size: .9rem;
+  font-weight: 600;
+  color: #2563EB;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Input with icon */
+.input-icon-wrap {
+  position: relative;
+}
+.input-icon {
+  position: absolute;
+  left: .9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94A3B8;
+  font-size: .85rem;
+  pointer-events: none;
+  z-index: 1;
+}
+.input-icon-wrap .pct-input { padding-left: 2.4rem; }
+
+/* Toggle password button */
+.btn-toggle-pass {
+  position: absolute;
+  right: .7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94A3B8;
+  font-size: .85rem;
+  cursor: pointer;
+  padding: 0 .3rem;
+  z-index: 1;
+}
+.btn-toggle-pass:hover { color: #2563EB; }
+
+/* Form hint */
+.form-hint {
+  font-size: .78rem;
+  color: #64748B;
+  margin-top: .3rem;
+}
+
+/* Submit button */
+.btn-submit {
+  padding: .75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+/* Soft info alert */
+.alert-info-soft {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 8px;
+  color: #1E40AF;
+  font-size: .875rem;
+  padding: .85rem 1rem;
+}
+
+/* --------- Promo panel --------- */
+.auth-promo-panel {
+  position: relative;
+  min-height: 420px;
+  overflow: hidden;
+}
+.auth-promo-img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+}
+.auth-promo-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(15,23,42,.35) 0%, rgba(37,99,235,.75) 100%);
+}
+.auth-promo-content {
+  position: absolute;
+  bottom: 2rem;
+  left: 0; right: 0;
+  padding: 1.5rem;
+  color: #fff;
+  text-align: center;
+}
+.auth-promo-content h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: .6rem;
+}
+.auth-promo-content p {
+  font-size: .88rem;
+  opacity: .9;
+  line-height: 1.6;
+  margin-bottom: .6rem;
+}
+
+/* --------- Responsive --------- */
+@media (max-width: 991px) {
+  .auth-promo-panel { min-height: 200px; }
+  .auth-form-panel { padding: 2rem 1.5rem; }
+}

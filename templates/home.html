@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}หน้าแรก — Puean Chuay Tu{% endblock %}
+
+{% block content %}
+
+<!-- ===== HERO SECTION ===== -->
+<section class="hero-section">
+  <div class="hero-inner">
+    <img src="{% static 'images/home.jpg' %}" alt="Students studying together" class="home-img">
+    <div class="hero-overlay"></div>
+    <div class="hero-content container">
+      <h1 class="hero-title">
+        ค้นหาเพื่อนร่วมเรียน<br>ที่ใช่สำหรับคุณ
+      </h1>
+      <p class="hero-sub">
+        เลือกเรียนกับนักเรียนนักศึกษาที่เรียนรู้วิชาเดียวกัน และความสำเร็จทางวิชา<br>
+        การ เข้าร่วมชุมชนผู้เรียนที่กำลังเติบโตของเราได้แล้ววันนี้
+      </p>
+      <div class="d-flex gap-3 flex-wrap">
+        {% if user.is_authenticated %}
+          <a href="#" class="btn btn-primary btn-hero">ค้นหาติวเตอร์</a>
+        {% else %}
+          <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-hero">เริ่มต้นใช้งาน</a>
+        {% endif %}
+        <a href="#" class="btn btn-outline-light btn-hero">ดูตัวอย่าง</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== WHY SECTION ===== -->
+<section class="why-section py-5">
+  <div class="container text-center">
+    <h2 class="section-title">ทำไมต้องเลือก Puean Chuay Tu?</h2>
+    <p class="section-sub">
+      เราจัดเตรียมแพลตฟอร์มที่กันสอนซึ่งทำให้การเรียนรู้เป็นไปอย่างมีปฏิสัมพันธ์<br>
+      มีประสิทธิภาพ และเข้าถึงได้สำหรับทุกคน
+    </p>
+
+    <div class="row g-4 mt-2">
+      <div class="col-md-4">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-graduation-cap"></i>
+          </div>
+          <h5 class="feature-title">ติวเตอร์ผู้เชี่ยวชาญ</h5>
+          <p class="feature-desc">
+            เรียนรู้จากนักศึกษาที่มีความถนัดในสาขาของตนอย่างแท้จริง
+            และตรวจสอบคุณสมบัติด้านวิชาการร่วมกับเพื่อนของคุณ
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-calendar-alt"></i>
+          </div>
+          <h5 class="feature-title">การจัดตารางเวลาที่ยืดหยุ่น</h5>
+          <p class="feature-desc">
+            จองเวลาเรียนกับผู้เรียนที่เหมาะสมกับตารางเวลาของคุณได้ง่ายๆ
+            ตลอด 24 ชั่วโมง 7 วัน<br>มีบริการรับรองความต้องการการเรียนรู้ที่ยืดหยุ่น
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <h5 class="feature-title">การเรียนรู้แบบร่วมมือ</h5>
+          <p class="feature-desc">
+            เรียนกับเพื่อนร่วมเรียนเพื่อแลกเปลี่ยนเรียนรู้ส่งเสริมการมีส่วน
+            ร่วมที่ดีและการแลกเปลี่ยนแบบเปิดกว้าง
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA SECTION ===== -->
+<section class="cta-section">
+  <div class="container text-center text-white">
+    <h2 class="cta-title">พร้อมที่จะประสบความสำเร็จในการเรียนแล้วหรือยัง?</h2>
+    <p class="cta-sub">
+      เข้าร่วมกับนักเรียนหลายพันคนที่ได้พบติวเตอร์ที่เหมาะสมกั้นสุดและพัฒนาผลการเรียนของ<br>
+      ตนเองแล้ว เริ่มต้นเดินทางของคุณได้เลยวันนี้
+    </p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+      <a href="#" class="btn btn-white btn-lg px-5">ค้นหาติวเตอร์ได้เลยตอนนี้</a>
+      <a href="{% url 'accounts:register' %}" class="btn btn-outline-white btn-lg px-5">สมัครสมาชิกกับเรา</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

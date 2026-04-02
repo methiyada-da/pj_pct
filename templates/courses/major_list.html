@@ -1,0 +1,259 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}สาขา{% endblock %}
+{% block breadcrumb_topbar %}การจัดการข้อมูลพื้นฐาน › สาขา{% endblock %}
+
+{% block content %}
+<div class="page-breadcrumb">
+  <a href="#">การจัดการข้อมูลพื้นฐาน</a>
+  <span class="sep"><i class="bi bi-chevron-right" style="font-size:10px;"></i></span>
+  <span class="current">สาขา</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>สาขา</h1>
+    <p>การจัดการข้อมูลสาขาวิชาของมหาวิทยาลัย</p>
+  </div>
+  <button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addModal">
+    <i class="bi bi-plus-lg"></i> เพิ่มสาขา
+  </button>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-auto">
+    <div class="summary-card">
+      <div class="summary-icon"><i class="bi bi-diagram-3"></i></div>
+      <div>
+        <div class="val">{{ total }}</div>
+        <div class="lbl">จำนวนสาขาทั้งหมด</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card-panel">
+  <div class="card-toolbar">
+    <form method="get" style="display:contents;">
+      <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" name="q" value="{{ q }}" placeholder="ค้นหา ชื่อสาขา, ชื่อย่อ" />
+      </div>
+      <select name="fac" class="filter-select" onchange="this.form.submit()">
+        <option value="">— ทุกคณะ —</option>
+        {% for fac in faculties %}
+        <option value="{{ fac.fac_id }}" {% if fac_filter == fac.fac_id|stringformat:"s" %}selected{% endif %}>
+          {{ fac.fac_name }}
+        </option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn-primary-custom" style="padding:7px 14px;">
+        <i class="bi bi-funnel"></i> กรองข้อมูล
+      </button>
+      {% if q or fac_filter %}
+      <a href="{% url 'courses:major_list' %}" class="btn btn-sm btn-outline-secondary">ล้างการค้นหา</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width:100px;">รหัสสาขา</th>
+        <th>ชื่อสาขา</th>
+        <th style="width:100px;">ชื่อย่อ</th>
+        <th>คณะ</th>
+        <th style="width:100px;">การปฏิบัติ</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for obj in page_obj %}
+      <tr>
+        <td><code style="font-size:13px;color:#6B7280;">MJ{{ obj.mj_id|stringformat:"03d" }}</code></td>
+        <td>
+          <strong>{{ obj.mj_name }}</strong>
+          {% if obj.mj_desc %}
+          <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">{{ obj.mj_desc|truncatechars:60 }}</div>
+          {% endif %}
+        </td>
+        <td><span class="badge-count" style="background:#F0FDF4;color:#16A34A;">{{ obj.mj_abbr }}</span></td>
+        <td style="font-size:13px;color:#6B7280;">{{ obj.fac_id.fac_name }}</td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-action btn-edit"
+                    onclick="openEditMajor({{ obj.mj_id }}, '{{ obj.mj_name|escapejs }}', '{{ obj.mj_abbr|escapejs }}', '{{ obj.mj_desc|default:''|escapejs }}', {{ obj.fac_id_id }})"
+                    title="แก้ไข">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn-action btn-del"
+                    onclick="openDeleteMajor({{ obj.mj_id }}, '{{ obj.mj_name|escapejs }}')"
+                    title="ลบ">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5">
+          <div class="empty-state">
+            <i class="bi bi-diagram-3 d-block"></i>
+            <p>ยังไม่มีข้อมูลสาขา{% if q %} ที่ตรงกับ "{{ q }}"{% endif %}</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="pagination-wrap">
+    <div class="pagination-info">
+      แสดง {{ page_obj.start_index }}–{{ page_obj.end_index }} จาก {{ page_obj.paginator.count }} สาขา
+    </div>
+    <ul class="pagination">
+      <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+        <a class="page-link" href="{% if page_obj.has_previous %}?page={{ page_obj.previous_page_number }}&q={{ q }}&fac={{ fac_filter }}{% else %}#{% endif %}">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      </li>
+      {% for num in page_obj.paginator.page_range %}
+      <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+        <a class="page-link" href="?page={{ num }}&q={{ q }}&fac={{ fac_filter }}">{{ num }}</a>
+      </li>
+      {% endfor %}
+      <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+        <a class="page-link" href="{% if page_obj.has_next %}?page={{ page_obj.next_page_number }}&q={{ q }}&fac={{ fac_filter }}{% else %}#{% endif %}">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ─── Add Modal ─────────────────────────────────────── -->
+<div class="modal fade" id="addModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'courses:major_create' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2 text-primary"></i>เพิ่มสาขา</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">ชื่อสาขา <span class="text-danger">*</span></label>
+            {{ form.mj_name }}
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">ชื่อย่อสาขา <span class="text-danger">*</span></label>
+              {{ form.mj_abbr }}
+            </div>
+            <div class="col-6">
+              <label class="form-label">คณะ <span class="text-danger">*</span></label>
+              {{ form.fac_id }}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">รายละเอียด</label>
+            {{ form.mj_desc }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn-primary-custom" style="padding:7px 18px; font-size:13px;">
+            <i class="bi bi-check2"></i> บันทึก
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Edit Modal ─────────────────────────────────────── -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="editForm" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil me-2 text-primary"></i>แก้ไขสาขา</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">ชื่อสาขา <span class="text-danger">*</span></label>
+            <input type="text" name="mj_name" id="edit_mj_name" class="form-control" required />
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">ชื่อย่อสาขา <span class="text-danger">*</span></label>
+              <input type="text" name="mj_abbr" id="edit_mj_abbr" class="form-control" required />
+            </div>
+            <div class="col-6">
+              <label class="form-label">คณะ <span class="text-danger">*</span></label>
+              <select name="fac_id" id="edit_fac_id" class="form-select">
+                {% for fac in faculties %}
+                <option value="{{ fac.fac_id }}">{{ fac.fac_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">รายละเอียด</label>
+            <textarea name="mj_desc" id="edit_mj_desc" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn-primary-custom" style="padding:7px 18px; font-size:13px;">
+            <i class="bi bi-check2"></i> บันทึกการแก้ไข
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Delete Modal ─────────────────────────────────────── -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <form method="post" id="deleteForm" action="">
+        {% csrf_token %}
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>ยืนยันการลบ</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body pt-2">
+          <p style="font-size:14px;">คุณต้องการลบสาขา <strong id="delete_name"></strong> ใช่หรือไม่?</p>
+          <p style="font-size:12px;color:#EF4444;margin:0;">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash3"></i> ลบ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openEditMajor(pk, name, abbr, desc, facId) {
+  document.getElementById('edit_mj_name').value = name;
+  document.getElementById('edit_mj_abbr').value = abbr;
+  document.getElementById('edit_mj_desc').value  = desc;
+  document.getElementById('edit_fac_id').value   = facId;
+  document.getElementById('editForm').action = `/courses/major/${pk}/edit/`;
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+function openDeleteMajor(pk, name) {
+  document.getElementById('delete_name').textContent = name;
+  document.getElementById('deleteForm').action = `/courses/major/${pk}/delete/`;
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

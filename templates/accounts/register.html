@@ -1,0 +1,253 @@
+{% extends 'accounts/auth_base.html' %}
+{% load static %}
+
+{% block auth_card %}
+<div class="auth-card row g-0 shadow-lg">
+
+  <!-- LEFT: Promo panel -->
+  <div class="col-lg-5 auth-promo-panel order-lg-0 order-1">
+    <img src="{% static 'images/register.jpg' %}" alt="Students" class="auth-promo-img">
+    <div class="auth-promo-overlay"></div>
+    <div class="auth-promo-content">
+      <h3>มีบัญชีอยู่แล้วใช่ไหม?</h3>
+      <p>
+        มาเริ่มแบ่งปันความรู้และพัฒนาทักษะไป<br>
+        ด้วยกันกับเพื่อนช่วยติว<br>
+        กดเข้าสู่ระบบเลย!
+      </p>
+      <a href="{% url 'accounts:login' %}" class="btn btn-light btn-sm px-4 mt-2">เข้าสู่ระบบ</a>
+    </div>
+  </div>
+
+  <!-- RIGHT: Register Form -->
+  <div class="col-lg-7 auth-form-panel order-lg-1 order-0">
+    <h4 class="auth-heading">สร้างบัญชีของคุณ</h4>
+
+    <div class="alert alert-info-soft d-flex gap-2 align-items-start mb-4">
+      <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
+      <span>การลงทะเบียนเปิดให้เฉพาะนักศึกษาและบุคลากรของ RMUTI
+        โดยใช้ที่อยู่อีเมล @rmuti.ac.th ของคุณ</span>
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'accounts:register' %}" onsubmit="return validateForm()">
+      {% csrf_token %}
+
+      <!-- First & Last name -->
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <label class="form-label">ชื่อ</label>
+          <input
+            type="text"
+            name="first_name"
+            class="form-control pct-input {% if form.first_name.errors %}is-invalid{% endif %}"
+            placeholder="ชื่อ"
+            value="{{ form.first_name.value|default:'' }}"
+          >
+          {% if form.first_name.errors %}
+            <div class="invalid-feedback">{{ form.first_name.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <div class="col-6">
+          <label class="form-label">นามสกุล</label>
+          <input
+            type="text"
+            name="last_name"
+            class="form-control pct-input {% if form.last_name.errors %}is-invalid{% endif %}"
+            placeholder="นามสกุล"
+            value="{{ form.last_name.value|default:'' }}"
+          >
+          {% if form.last_name.errors %}
+            <div class="invalid-feedback">{{ form.last_name.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Faculty (คณะ) & Major (สาขา) — Faculty via JS filter -->
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <label class="form-label">คณะ</label>
+          <select id="facultySelect" class="form-select pct-input">
+            <option value="">เลือกคณะ</option>
+            {% for faculty in faculties %}
+              <option value="{{ faculty.fac_id }}">{{ faculty.fac_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label">สาขา</label>
+          <select
+            name="mj_id"
+            id="majorSelect"
+            class="form-select pct-input {% if form.mj_id.errors %}is-invalid{% endif %}"
+          >
+            <option value="">เลือกสาขา</option>
+            {% for major in form.mj_id.field.queryset %}
+              <option
+                value="{{ major.pk }}"
+                data-faculty="{{ major.fac_id_id }}"
+                {% if form.mj_id.value == major.pk|stringformat:'s' %}selected{% endif %}
+              >{{ major.mj_name }}</option>
+            {% endfor %}
+          </select>
+          {% if form.mj_id.errors %}
+            <div class="invalid-feedback">{{ form.mj_id.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="mb-3">
+        <label class="form-label">อีเมล</label>
+        <div class="input-email-wrap">
+          <input
+            type="text"
+            name="mb_email_prefix"
+            id="emailPrefix"
+            class="form-control pct-input email-prefix {% if form.mb_email.errors %}is-invalid{% endif %}"
+            placeholder="your.name"
+            value="{% if form.mb_email.value %}{{ form.mb_email.value|cut:'@rmuti.ac.th' }}{% endif %}"
+            oninput="syncEmail()"
+          >
+          <span class="email-suffix">@rmuti.ac.th</span>
+          <input type="hidden" name="mb_email" id="hiddenEmail"
+                 value="{{ form.mb_email.value|default:'' }}">
+        </div>
+        {% if form.mb_email.errors %}
+          <div class="text-danger small mt-1">{{ form.mb_email.errors.0 }}</div>
+        {% endif %}
+        <div class="form-hint">
+          <i class="fas fa-info-circle me-1"></i>
+          โดยอีเมลต้องได้รับการรองรับจากมหาวิทยาลัยของคุณ
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <label class="form-label">รหัสผ่าน</label>
+          <div class="input-icon-wrap">
+            <input
+              type="password"
+              name="password1"
+              id="pass1"
+              class="form-control pct-input {% if form.password1.errors %}is-invalid{% endif %}"
+              placeholder="********"
+              autocomplete="new-password"
+            >
+            <button type="button" class="btn-toggle-pass" onclick="togglePass('pass1', this)">
+              <i class="far fa-eye"></i>
+            </button>
+          </div>
+          {% if form.password1.errors %}
+            <div class="invalid-feedback d-block">{{ form.password1.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <div class="col-6">
+          <label class="form-label">ยืนยันรหัสผ่าน</label>
+          <div class="input-icon-wrap">
+            <input
+              type="password"
+              name="password2"
+              id="pass2"
+              class="form-control pct-input {% if form.password2.errors %}is-invalid{% endif %}"
+              placeholder="********"
+              autocomplete="new-password"
+            >
+            <button type="button" class="btn-toggle-pass" onclick="togglePass('pass2', this)">
+              <i class="far fa-eye"></i>
+            </button>
+          </div>
+          {% if form.password2.errors %}
+            <div class="invalid-feedback d-block">{{ form.password2.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+
+      <!-- Terms checkbox -->
+      <div class="form-check mb-4">
+        <input class="form-check-input" type="checkbox" id="termsCheck" required>
+        <label class="form-check-label small" for="termsCheck">
+          ฉันยอมรับข้อกำหนดในการให้บริการและนโยบายความเป็นส่วนตัว
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 btn-submit">
+        สร้างบัญชี
+      </button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Sync hidden email field
+function syncEmail() {
+  const prefix = document.getElementById('emailPrefix').value.trim();
+  document.getElementById('hiddenEmail').value = prefix ? prefix + '@rmuti.ac.th' : '';
+}
+
+// Toggle password visibility
+function togglePass(id, btn) {
+  const inp = document.getElementById(id);
+  const icon = btn.querySelector('i');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.classList.replace('fa-eye', 'fa-eye-slash');
+  } else {
+    inp.type = 'password';
+    icon.classList.replace('fa-eye-slash', 'fa-eye');
+  }
+}
+
+function validateForm() {
+  let valid = true;
+
+  const fields = [
+    { el: document.querySelector('[name="first_name"]'), msg: 'กรุณากรอกชื่อ' },
+    { el: document.querySelector('[name="last_name"]'),  msg: 'กรุณากรอกนามสกุล' },
+    { el: document.getElementById('facultySelect'),      msg: 'กรุณาเลือกคณะ' },
+    { el: document.getElementById('majorSelect'),        msg: 'กรุณาเลือกสาขา' },
+  ];
+
+  fields.forEach(({ el, msg }) => {
+    const err = el.parentElement.querySelector('.val-error')
+              || el.closest('.col-6, .mb-3')?.querySelector('.val-error');
+    if (!el.value) {
+      el.classList.add('is-invalid');
+      if (!el.parentElement.querySelector('.val-error')) {
+        const div = document.createElement('div');
+        div.className = 'invalid-feedback val-error';
+        div.textContent = msg;
+        el.after(div);
+      }
+      valid = false;
+    } else {
+      el.classList.remove('is-invalid');
+      el.parentElement.querySelectorAll('.val-error').forEach(e => e.remove());
+    }
+  });
+
+  return valid;
+}
+
+// Filter majors by faculty
+document.getElementById('facultySelect').addEventListener('change', function () {
+  const fcId = this.value;
+  const majorSel = document.getElementById('majorSelect');
+  Array.from(majorSel.options).forEach(opt => {
+    if (!opt.value) return; // keep placeholder
+    opt.hidden = fcId && opt.dataset.faculty !== fcId;
+  });
+  majorSel.value = '';
+});
+</script>
+{% endblock %}
