@@ -1,0 +1,53 @@
+from django.db import models
+from apps.accounts.models import Member
+
+
+# 4.3.1.14 ตารางข้อมูลกล่องข้อความ
+class Inbox(models.Model):
+    ib_id   = models.AutoField(primary_key=True, verbose_name="รหัสกล่องข้อความ")
+    member1 = models.ForeignKey(
+        Member,
+        on_delete=models.CASCADE,
+        related_name='inbox_as_member1',
+        verbose_name="รหัสสมาชิกคนที่ 1"
+    )
+    member2 = models.ForeignKey(
+        Member,
+        on_delete=models.CASCADE,
+        related_name='inbox_as_member2',
+        verbose_name="รหัสสมาชิกคนที่ 2"
+    )
+
+    class Meta:
+        db_table      = 'inbox'
+        verbose_name  = "ข้อมูลกล่องข้อความ"
+        unique_together = [['member1', 'member2']]
+
+    def __str__(self):
+        return f"Inbox | {self.member1.mb_full_name} ↔ {self.member2.mb_full_name}"
+
+
+# 4.3.1.15 ตารางข้อมูลรายการข้อความ
+class Message(models.Model):
+    msg_id        = models.AutoField(primary_key=True, verbose_name="ลำดับข้อความ")
+    msg_sent_time = models.DateTimeField(verbose_name="วันเวลาที่ส่ง")
+    msg           = models.TextField(verbose_name="ข้อความ")
+    msg_is_read   = models.IntegerField(default=0, verbose_name="สถานะการอ่าน (0=ยังไม่อ่าน, 1=อ่านแล้ว)")
+    sender        = models.ForeignKey(
+        Member,
+        on_delete=models.CASCADE,
+        verbose_name="รหัสผู้ส่ง"
+    )
+    inbox         = models.ForeignKey(
+        Inbox,
+        on_delete=models.CASCADE,
+        verbose_name="รหัสกล่องข้อความ"
+    )
+
+    class Meta:
+        db_table     = 'message'
+        verbose_name = "ข้อมูลรายการข้อความ"
+        ordering     = ['msg_sent_time']
+
+    def __str__(self):
+        return f"MSG{self.msg_id} | {self.sender.mb_full_name}: {self.msg[:30]}"

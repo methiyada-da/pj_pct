@@ -1,0 +1,109 @@
+{% extends 'accounts/auth_base.html' %}
+{% load static %}
+
+{% block auth_card %}
+<div class="auth-card row g-0 shadow-lg">
+
+  <!-- LEFT: Login Form -->
+  <div class="col-lg-6 auth-form-panel">
+    <h4 class="auth-heading">ยินดีต้อนท่านสมาชิก</h4>
+    <p class="auth-subheading">เข้าสู่ระบบบัญชีนักศึกษา RMUTI ของคุณ</p>
+
+    {% if login_error %}
+        <div class="alert alert-danger">{{ login_error }}</div>
+    {% endif %}
+
+    <form method="post" action="{% url 'accounts:login' %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <div class="mb-3">
+        <label class="form-label">อีเมล</label>
+        <div class="input-icon-wrap">
+          <i class="fas fa-at input-icon"></i>
+          <input
+            type="email"
+            name="username"
+            class="form-control pct-input ps-5 {% if form.username.errors %}is-invalid{% endif %}"
+            placeholder="Example@rmuti.ac.th"
+            value="{{ form.username.value|default:'' }}"
+            autocomplete="email"
+          >
+        </div>
+        {% if form.username.errors %}
+          <div class="invalid-feedback d-block">{{ form.username.errors.0 }}</div>
+        {% endif %}
+        <div class="form-hint">
+          <i class="fas fa-info-circle me-1"></i>
+          รองรับเฉพาะบัญชีที่ได้รับการรองรับจากมหาวิทยาลัยการส่งลงในนามของ @rmuti.ac.th เท่านั้น
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">รหัสผ่าน</label>
+        <div class="input-icon-wrap">
+          <i class="fas fa-lock input-icon"></i>
+          <input
+            type="password"
+            name="password"
+            id="loginPassword"
+            class="form-control pct-input ps-5 {% if form.password.errors %}is-invalid{% endif %}"
+            placeholder="ป้อนรหัสผ่านของคุณ"
+            autocomplete="current-password"
+          >
+          <button type="button" class="btn-toggle-pass" onclick="togglePass('loginPassword', this)">
+            <i class="far fa-eye"></i>
+          </button>
+        </div>
+        {% if form.password.errors %}
+          <div class="invalid-feedback d-block">{{ form.password.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="remember_me" id="rememberMe">
+          <label class="form-check-label small" for="rememberMe">จดจำฉันไว้</label>
+        </div>
+        <a href="{% url 'accounts:password_reset' %}" class="link-primary small">ลืมรหัสผ่าน?</a>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 btn-submit">
+        เข้าสู่ระบบ
+      </button>
+    </form>
+  </div>
+
+  <!-- RIGHT: CTA panel -->
+  <div class="col-lg-6 auth-promo-panel">
+    <img src="{% static 'images/login.jpg' %}" alt="Students" class="auth-promo-img">
+    <div class="auth-promo-overlay"></div>
+    <div class="auth-promo-content">
+      <h3>ยังไม่มีบัญชีใช่ไหม?</h3>
+      <p>
+        มาเริ่มแบ่งปันความรู้และพัฒนาทักษะไป<br>
+        ด้วยกันกับเพื่อนช่วยติว<br>
+        สมัครสมาชิกเลย!
+      </p>
+      <a href="{% url 'accounts:register' %}" class="btn btn-light btn-sm px-4 mt-2">สมัครสมาชิกที่นี่</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePass(id, btn) {
+  const inp = document.getElementById(id);
+  const icon = btn.querySelector('i');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.classList.replace('fa-eye', 'fa-eye-slash');
+  } else {
+    inp.type = 'password';
+    icon.classList.replace('fa-eye-slash', 'fa-eye');
+  }
+}
+</script>
+{% endblock %}
