@@ -34,6 +34,12 @@ class Refill(models.Model):
 
 # 4.3.1.19 ตารางข้อมูลการขอถอนเครดิต
 class Withdrawals(models.Model):
+    # ประเภทเครดิตที่ขอถอน (D19 — เพิ่มใหม่ตาม Data Dictionary)
+    TYPE_CHOICES = [
+        (0, 'นำฝาก'),   # เครดิตที่เติมเข้ามา (mb_deposit_crd)
+        (1, 'รายได้'),  # เครดิตที่ได้จากการสอน (mb_income_crd)
+    ]
+
     STATUS_CHOICES = [
         (0, 'รอดำเนินการ'),
         (1, 'จ่ายแล้ว'),
@@ -42,12 +48,16 @@ class Withdrawals(models.Model):
 
     wd_id        = models.AutoField(primary_key=True, verbose_name="รหัสการขอถอนเครดิต")
     wd_req_date  = models.DateTimeField(verbose_name="วันเวลาที่ขอถอนเครดิต")
+    # [เพิ่มใหม่] ระบุว่าถอนจากเครดิตประเภทใด: 0 = นำฝาก, 1 = รายได้
+    wd_type      = models.IntegerField(choices=TYPE_CHOICES, default=0, verbose_name="ประเภทเครดิตที่ถอน")
     wd_credit    = models.IntegerField(verbose_name="จำนวนเครดิตที่ถอน")
     wd_cash      = models.DecimalField(max_digits=7, decimal_places=2, verbose_name="จำนวนเงิน (บาท)")
     wd_bank_name = models.CharField(max_length=100, verbose_name="ชื่อธนาคาร")
     wd_acc_name  = models.CharField(max_length=100, verbose_name="ชื่อบัญชี")
     wd_acc_no    = models.CharField(max_length=20,  verbose_name="เลขที่บัญชีธนาคาร")
     wd_fee       = models.DecimalField(max_digits=7, decimal_places=2, verbose_name="ค่าธรรมเนียมการถอน")
+    # [เพิ่มใหม่] ยอดสุทธิที่จ่ายจริง = wd_cash - wd_fee (คำนวณก่อน save ใน view/serializer)
+    wd_net_cash  = models.DecimalField(max_digits=7, decimal_places=2, default=0, verbose_name="ยอดสุทธิที่จ่ายจริง")
     wd_paid_date = models.DateTimeField(blank=True, null=True, verbose_name="วันเวลาที่จ่าย")
     wd_status    = models.IntegerField(choices=STATUS_CHOICES, default=0, verbose_name="สถานะการจ่าย")
     wd_cmt       = models.TextField(blank=True, null=True, verbose_name="หมายเหตุ")
