@@ -16,7 +16,7 @@ class System(models.Model):
     bank_name                = models.CharField(max_length=100, verbose_name="ชื่อธนาคาร")
     acc_name                 = models.CharField(max_length=100, verbose_name="ชื่อบัญชี")
     acc_no                   = models.CharField(max_length=20,  verbose_name="เลขที่บัญชีธนาคาร")
-    crd_val                  = models.DecimalField(max_digits=3,  decimal_places=2, verbose_name="มูลค่าเครดิต")
+    crd_val                  = models.DecimalField(max_digits=5,  decimal_places=2, verbose_name="มูลค่าเครดิต")
     deposit_withdraw_fee_pct = models.DecimalField(max_digits=5,  decimal_places=2, verbose_name="อัตราร้อยละค่าธรรมเนียมการถอนยอดเครดิตนำฝาก")
     income_withdraw_fee_pct  = models.DecimalField(max_digits=5,  decimal_places=2, verbose_name="อัตราร้อยละค่าธรรมเนียมการถอนยอดเครดิตรายได้")
 
