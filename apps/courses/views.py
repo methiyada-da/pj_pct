@@ -21,7 +21,8 @@ def faculty_list(request):
     qs = Faculty.objects.annotate(major_count=Count('major')).order_by('fac_id')
     q = request.GET.get('q', '').strip()
     if q:
-        qs = qs.filter(Q(fac_name__icontains=q))
+        matched_ids = [f.fac_id for f in Faculty.objects.all() if q.lower() in f'f{f.fac_id:03d}'.lower()]
+        qs = qs.filter(Q(fac_name__icontains=q) | Q(fac_id__in=matched_ids))
     paginator = Paginator(qs, 10)
     page = paginator.get_page(request.GET.get('page', 1))
     form = FacultyForm()
@@ -67,11 +68,14 @@ def faculty_edit(request, pk):
 def faculty_delete(request, pk):
     obj = get_object_or_404(Faculty, pk=pk)
     if request.method == 'POST':
-        try:
-            obj.delete()
-            messages.success(request, f'ลบคณะ "{obj.fac_name}" เรียบร้อยแล้ว')
-        except Exception:
-            messages.error(request, 'ไม่สามารถลบได้ เนื่องจากมีข้อมูลที่เกี่ยวข้อง')
+        if obj.major_set.exists():
+            messages.error(request, f'ไม่สามารถลบคณะ "{obj.fac_name}" ได้ เนื่องจากยังมีสาขาที่สังกัดอยู่ ({obj.major_set.count()} สาขา) กรุณาลบสาขาออกก่อน')
+        else:
+            try:
+                obj.delete()
+                messages.success(request, f'ลบคณะ "{obj.fac_name}" เรียบร้อยแล้ว')
+            except Exception:
+                messages.error(request, 'ไม่สามารถลบได้ เนื่องจากมีข้อมูลที่เกี่ยวข้อง')
     return redirect('courses:faculty_list')
 
 
@@ -89,7 +93,9 @@ def major_list(request):
     q          = request.GET.get('q',   '').strip()
     fac_filter = request.GET.get('fac', '')
     if q:
-        qs = qs.filter(Q(mj_name__icontains=q) | Q(mj_abbr__icontains=q))
+        from .models import Major as _M
+        matched_ids = [m.mj_id for m in _M.objects.all() if q.lower() in f'mj{m.mj_id:03d}'.lower()]
+        qs = qs.filter(Q(mj_name__icontains=q) | Q(mj_abbr__icontains=q) | Q(mj_id__in=matched_ids))
     if fac_filter:
         qs = qs.filter(fac_id=fac_filter)
     paginator = Paginator(qs, 10)
@@ -167,7 +173,9 @@ def course_group_list(request):
     qs = CourseGroup.objects.annotate(course_count=Count('course')).order_by('cg_id')
     q  = request.GET.get('q', '').strip()
     if q:
-        qs = qs.filter(Q(cg_name__icontains=q))
+        from .models import CourseGroup as _CG
+        matched_ids = [c.cg_id for c in _CG.objects.all() if q.lower() in f'cg{c.cg_id:03d}'.lower()]
+        qs = qs.filter(Q(cg_name__icontains=q) | Q(cg_id__in=matched_ids))
     paginator = Paginator(qs, 10)
     page      = paginator.get_page(request.GET.get('page', 1))
     form      = CourseGroupForm()
@@ -213,11 +221,14 @@ def course_group_edit(request, pk):
 def course_group_delete(request, pk):
     obj = get_object_or_404(CourseGroup, pk=pk)
     if request.method == 'POST':
-        try:
-            obj.delete()
-            messages.success(request, f'ลบกลุ่มรายวิชา "{obj.cg_name}" เรียบร้อยแล้ว')
-        except Exception:
-            messages.error(request, 'ไม่สามารถลบได้ เนื่องจากมีข้อมูลที่เกี่ยวข้อง')
+        if obj.course_set.exists():
+            messages.error(request, f'ไม่สามารถลบกลุ่มรายวิชา "{obj.cg_name}" ได้ เนื่องจากยังมีรายวิชาในกลุ่มนี้อยู่ ({obj.course_set.count()} รายวิชา) กรุณาลบรายวิชาออกก่อน')
+        else:
+            try:
+                obj.delete()
+                messages.success(request, f'ลบกลุ่มรายวิชา "{obj.cg_name}" เรียบร้อยแล้ว')
+            except Exception:
+                messages.error(request, 'ไม่สามารถลบได้ เนื่องจากมีข้อมูลที่เกี่ยวข้อง')
     return redirect('courses:course_group_list')
 
 

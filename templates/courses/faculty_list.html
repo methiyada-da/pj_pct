@@ -39,11 +39,8 @@
     <form method="get" style="display:contents;">
       <div class="search-box">
         <i class="bi bi-search"></i>
-        <input type="text" name="q" value="{{ q }}" placeholder="ค้นหาจาก รหัสคณะ, ชื่อคณะ" />
+        <input type="text" name="q" value="{{ q }}" placeholder="ค้นหาจาก รหัสคณะ, ชื่อคณะ" onchange="this.form.submit()" />
       </div>
-      <button type="submit" class="btn-primary-custom" style="padding:7px 14px;">
-        <i class="bi bi-funnel"></i> กรองข้อมูล
-      </button>
       {% if q %}
       <a href="{% url 'courses:faculty_list' %}" class="btn btn-sm btn-outline-secondary">ล้างการค้นหา</a>
       {% endif %}
