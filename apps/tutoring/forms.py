@@ -2,6 +2,29 @@ from django import forms
 from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 
 
+class TutorRegisterForm(forms.Form):
+    """ฟอร์มขั้นตอนที่ 2 — ข้อมูลวิชาการและประสบการณ์"""
+    gpa = forms.DecimalField(
+        label='เกรดเฉลี่ยสะสม',
+        max_digits=3, decimal_places=2, min_value=0, max_value=4,
+        widget=forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01'}),
+    )
+    teaching_skills = forms.CharField(
+        label='ทักษะการสอน',
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'ระบุสาขาวิชาที่คุณเชี่ยวชาญ...'}),
+    )
+    has_experience = forms.ChoiceField(
+        label='ประสบการณ์การสอน',
+        choices=[('0', 'ไม่มีประสบการณ์'), ('1', 'มีประสบการณ์')],
+        widget=forms.RadioSelect,
+    )
+    experience_detail = forms.CharField(
+        label='รายละเอียดประสบการณ์',
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 4, 'placeholder': 'ช่วยเล่าเพิ่มเติมเกี่ยวกับประสบการณ์ของคุณในฐานะติวเตอร์หน่อย...'}),
+    )
+
+
 class TutorCourseForm(forms.ModelForm):
     """ฟอร์มสร้าง/แก้ไขรายวิชาที่รับสอน"""
     class Meta:
