@@ -1,0 +1,199 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}การอนุมัติติวเตอร์{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>การอนุมัติติวเตอร์</h1>
+    <p>ตรวจสอบและจัดการการลงทะเบียนผู้สอนใหม่สำหรับเครือข่าย RMUTI</p>
+  </div>
+</div>
+
+<!-- ── Toolbar ── -->
+<div class="card-panel mb-4">
+  <div class="card-toolbar">
+    <form method="get" class="d-flex align-items-center gap-2 flex-wrap flex-grow-1">
+      <div class="search-box flex-grow-1" style="max-width:400px;">
+        <i class="bi bi-search"></i>
+        <input type="text" name="q" value="{{ q }}"
+               placeholder="ค้นหาจาก รหัสติวเตอร์, ชื่อ-นามสกุล หรือ ชื่อคณะ...">
+      </div>
+      <input type="hidden" name="status" value="{{ status_filter }}">
+    </form>
+
+    <div class="d-flex gap-2 ms-auto">
+      <a href="?q={{ q }}&status="
+         class="btn-filter {% if status_filter == '' %}btn-filter--active{% endif %}">
+        ทั้งหมด
+      </a>
+      <a href="?q={{ q }}&status=pending"
+         class="btn-filter btn-filter--pending {% if status_filter == 'pending' %}btn-filter--active{% endif %}">
+        <i class="bi bi-hourglass-split"></i> รอดำเนินการ
+      </a>
+      <a href="?q={{ q }}&status=approved"
+         class="btn-filter btn-filter--approved {% if status_filter == 'approved' %}btn-filter--active{% endif %}">
+        <i class="bi bi-check-circle"></i> อนุมัติแล้ว
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Table ── -->
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>รหัสติวเตอร์</th>
+        <th>ชื่อ-นามสกุล</th>
+        <th>ชื่อคณะ</th>
+        <th>สถานะ</th>
+        <th>การปฏิบัติ</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for tutor in page_obj %}
+      <tr>
+        <td>
+          <a href="{% url 'admin_panel:tutor_mgmt_detail' tutor.pk %}"
+             style="color:var(--primary);font-weight:600;text-decoration:none;font-size:13px;">
+            TR-{{ tutor.tut_id.user.date_joined|date:"Y" }}-{{ tutor.pk|stringformat:"04d" }}
+          </a>
+        </td>
+        <td>
+          <div class="d-flex align-items-center gap-2">
+            {% if tutor.tut_id.mb_img %}
+              <img src="{{ tutor.tut_id.mb_img.url }}"
+                   style="width:32px;height:32px;border-radius:50%;object-fit:cover;" alt="">
+            {% else %}
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--primary);
+                          color:#fff;display:flex;align-items:center;justify-content:center;
+                          font-size:12px;font-weight:700;flex-shrink:0;">
+                {{ tutor.tut_id.mb_full_name|first|upper }}
+              </div>
+            {% endif %}
+            <span style="font-weight:500;">{{ tutor.tut_id.mb_full_name }}</span>
+          </div>
+        </td>
+        <td style="color:var(--text-muted);">
+          {{ tutor.tut_id.mj_id.fac_id.fac_name|default:"—" }}
+        </td>
+        <td>
+          {% if tutor.tut_status == 0 %}
+            <span class="tutor-status tutor-status--pending">• รอดำเนินการ</span>
+          {% elif tutor.tut_status == 1 %}
+            <span class="tutor-status tutor-status--approved">• อนุมัติแล้ว</span>
+          {% elif tutor.tut_status == 2 %}
+            <span class="tutor-status tutor-status--rejected">• ปฏิเสธ</span>
+          {% else %}
+            <span class="tutor-status tutor-status--suspended">• ระงับการสอน</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'admin_panel:tutor_mgmt_detail' tutor.pk %}"
+             class="d-inline-flex align-items-center gap-1"
+             style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none;">
+            รายละเอียด <i class="bi bi-eye"></i>
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5">
+          <div class="empty-state">
+            <i class="bi bi-person-x"></i>
+            <p>ไม่พบข้อมูลติวเตอร์</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- ── Pagination ── -->
+  {% if page_obj.has_other_pages %}
+  <div class="pagination-wrap">
+    <span class="pagination-info">
+      แสดง {{ page_obj.start_index }}–{{ page_obj.end_index }} จาก {{ page_obj.paginator.count }} ติวเตอร์
+    </span>
+    <ul class="pagination">
+      <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+        <a class="page-link" href="?q={{ q }}&status={{ status_filter }}&page={{ page_obj.previous_page_number }}">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      </li>
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+          <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+        {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          <li class="page-item">
+            <a class="page-link" href="?q={{ q }}&status={{ status_filter }}&page={{ num }}">{{ num }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+        <a class="page-link" href="?q={{ q }}&status={{ status_filter }}&page={{ page_obj.next_page_number }}">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── Summary cards ── -->
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="summary-card">
+      <div class="summary-icon"><i class="bi bi-people"></i></div>
+      <div>
+        <div class="val">{{ total }}</div>
+        <div class="lbl">จำนวนติวเตอร์ทั้งหมด</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="summary-card">
+      <div class="summary-icon" style="background:#FEF9C3;color:#92400E;">
+        <i class="bi bi-hourglass-split"></i>
+      </div>
+      <div>
+        <div class="val" style="color:#D97706;">{{ pending_count }}</div>
+        <div class="lbl">ติวเตอร์ที่รอการอนุมัติ</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="summary-card">
+      <div class="summary-icon" style="background:#DCFCE7;color:#166534;">
+        <i class="bi bi-patch-check"></i>
+      </div>
+      <div>
+        <div class="val" style="color:#16A34A;">{{ approved_count }}</div>
+        <div class="lbl">ติวเตอร์ที่ได้รับการอนุมัติแล้ว</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .btn-filter {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    color: var(--text-muted); text-decoration: none; border: 1px solid var(--border);
+    background: #fff; transition: all .15s; white-space: nowrap;
+  }
+  .btn-filter:hover { background: var(--primary-lt); color: var(--primary); border-color: var(--primary); }
+  .btn-filter--active { background: var(--primary); color: #fff !important; border-color: var(--primary); }
+  .btn-filter--pending.btn-filter--active  { background: #FEF9C3; color: #92400E !important; border-color: #FCD34D; }
+  .btn-filter--approved.btn-filter--active { background: #DCFCE7; color: #166534 !important; border-color: #86EFAC; }
+
+  .tutor-status {
+    display: inline-block; padding: 3px 10px; border-radius: 99px;
+    font-size: 12px; font-weight: 600;
+  }
+  .tutor-status--pending  { background: #FEF9C3; color: #92400E; }
+  .tutor-status--approved { background: #DCFCE7; color: #166534; }
+  .tutor-status--rejected { background: #FEE2E2; color: #7F1D1D; }
+  .tutor-status--suspended{ background: #F3E8FF; color: #581C87; }
+</style>
+{% endblock %}
