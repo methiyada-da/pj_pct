@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import MemberRegisterForm
+from apps.courses.models import Major
 
 
 # ─────────────────────────────────────────────
@@ -116,6 +117,57 @@ def logout_view(request):
         logout(request)
         messages.info(request, 'ออกจากระบบแล้ว')
     return redirect('home')
+
+
+# ─────────────────────────────────────────────
+#  จัดการโปรไฟล์
+# ─────────────────────────────────────────────
+@login_required
+def profile_view(request):
+    member = request.user.member
+    password_error = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'photo':
+            # อัปเดตเฉพาะรูปโปรไฟล์ — ไม่แตะรหัสผ่านหรือข้อมูลอื่น
+            if 'mb_img' in request.FILES:
+                member.mb_img = request.FILES['mb_img']
+                member.save(update_fields=['mb_img'])
+                messages.success(request, 'เปลี่ยนรูปโปรไฟล์เรียบร้อยแล้ว')
+            return redirect('accounts:profile')
+
+        elif action == 'password':
+            # เปลี่ยนเฉพาะรหัสผ่าน — ไม่แตะรูปหรือข้อมูลอื่น
+            from django.contrib.auth import update_session_auth_hash
+            old_pw  = request.POST.get('old_password', '')
+            new_pw1 = request.POST.get('new_password1', '')
+            new_pw2 = request.POST.get('new_password2', '')
+
+            if not request.user.check_password(old_pw):
+                password_error = 'รหัสผ่านปัจจุบันไม่ถูกต้อง'
+            elif len(new_pw1) < 8:
+                password_error = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'
+            elif new_pw1 != new_pw2:
+                password_error = 'รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน'
+            else:
+                request.user.set_password(new_pw1)
+                request.user.save()
+                update_session_auth_hash(request, request.user)
+                messages.success(request, 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว')
+                return redirect('accounts:profile')
+
+    from apps.accounts.models import Tutor
+    tutor = Tutor.objects.filter(tut_id=member).first()
+
+    return render(request, 'accounts/profile.html', {
+        'member'        : member,
+        'faculty_name'  : member.mj_id.fac_id.fac_name if member.mj_id else '—',
+        'major_name'    : member.mj_id.mj_name          if member.mj_id else '—',
+        'password_error': password_error,
+        'tutor_status'  : tutor.tut_status if tutor else None,
+    })
 
 
 # ─────────────────────────────────────────────

@@ -37,13 +37,13 @@
                 <img src="{{ user.member.mb_img.url }}" class="avatar-sm" alt="profile">
               {% else %}
                 <div class="avatar-sm avatar-placeholder">
-                  <i class="fas fa-user"></i>
+                  {{ user.member.mb_full_name|first|upper }}
                 </div>
               {% endif %}
             </a>
             <ul class="dropdown-menu dropdown-menu-end pct-dropdown" aria-labelledby="userDropdown">
               <li>
-                <a class="dropdown-item" href="#">
+                <a class="dropdown-item" href="{% url 'accounts:profile' %}">
                   <i class="fas fa-user-circle me-2"></i>จัดการโปรไฟล์
                 </a>
               </li>
