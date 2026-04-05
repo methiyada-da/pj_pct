@@ -45,9 +45,6 @@
         </option>
         {% endfor %}
       </select>
-      <button type="submit" class="btn-primary-custom" style="padding:7px 14px;">
-        <i class="bi bi-funnel"></i> กรองข้อมูล
-      </button>
       {% if q or cg_filter %}
       <a href="{% url 'courses:course_list' %}" class="btn btn-sm btn-outline-secondary">ล้างการค้นหา</a>
       {% endif %}
@@ -67,10 +64,7 @@
       {% for obj in page_obj %}
       <tr>
         <td>
-          <span style="font-family:monospace;font-size:13px;
-                       background:#F3F4F6;padding:2px 8px;border-radius:5px;color:#374151;">
-            {{ obj.crs_id }}
-          </span>
+            <code style="font-size:13px;color:#6B7280;">{{ obj.crs_id }}</code>
         </td>
         <td>
           <strong>{{ obj.crs_name }}</strong>
