@@ -45,9 +45,6 @@
         </option>
         {% endfor %}
       </select>
-      <button type="submit" class="btn-primary-custom" style="padding:7px 14px;">
-        <i class="bi bi-funnel"></i> กรองข้อมูล
-      </button>
       {% if q or fac_filter %}
       <a href="{% url 'courses:major_list' %}" class="btn btn-sm btn-outline-secondary">ล้างการค้นหา</a>
       {% endif %}
