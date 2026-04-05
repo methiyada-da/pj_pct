@@ -10,7 +10,7 @@ from .forms import MemberRegisterForm
 # ─────────────────────────────────────────────
 def home_view(request):
     """หน้าแรกของเว็บไซต์"""
-    return render(request, 'home.html')
+    return render(request, 'main/home.html')
 
 
 # ─────────────────────────────────────────────

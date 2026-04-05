@@ -17,7 +17,8 @@ def is_admin(user):
 def dashboard(request):
     """หน้าภาพรวมแดชบอร์ด — เพิ่ม context ตามต้องการในภายหลัง"""
     return render(request, 'admin_panel/dashboard.html', {
-        'active_menu': 'dashboard',
+        'active_menu'       : 'dashboard',
+        'topbar_breadcrumb' : 'ภาพรวมแดชบอร์ด',
     })
 
 
@@ -55,8 +56,9 @@ def system_settings(request):
                 messages.error(request, 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง')
 
     return render(request, 'admin_panel/system_settings.html', {
-        'system'     : system,
-        'sys_form'   : sys_form,
-        'user_form'  : user_form,
-        'active_menu': 'system',
+        'system'            : system,
+        'sys_form'          : sys_form,
+        'user_form'         : user_form,
+        'active_menu'       : 'system',
+        'topbar_breadcrumb' : 'ตั้งค่าระบบ',
     })
