@@ -1,0 +1,204 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}รายละเอียดติวเตอร์{% endblock %}
+
+{% block content %}
+
+<!-- ── Page header ── -->
+<div class="page-header align-items-center">
+  <div>
+    <h1>ตรวจสอบการลงทะเบียนติวเตอร์</h1>
+    <p>Please verify the academic credentials and experience before approval.</p>
+  </div>
+  <a href="{% url 'admin_panel:tutor_mgmt_list' %}" class="btn-primary-custom ms-auto" style="background:#fff;color:var(--text-muted);border:1px solid var(--border);">
+    <i class="bi bi-arrow-left"></i> ย้อนกลับ
+  </a>
+</div>
+
+<!-- ── Profile card ── -->
+<div class="card-panel mb-4" style="padding:24px;">
+  <div class="d-flex align-items-center gap-4 flex-wrap">
+    {% if member.mb_img %}
+      <img src="{{ member.mb_img.url }}"
+           style="width:80px;height:80px;border-radius:12px;object-fit:cover;flex-shrink:0;" alt="">
+    {% else %}
+      <div style="width:80px;height:80px;border-radius:12px;background:var(--primary);
+                  color:#fff;display:flex;align-items:center;justify-content:center;
+                  font-size:28px;font-weight:700;flex-shrink:0;">
+        {{ member.mb_full_name|first|upper }}
+      </div>
+    {% endif %}
+    <div>
+      <div class="d-flex align-items-center gap-3 flex-wrap mb-1">
+        <h2 style="font-size:20px;font-weight:700;margin:0;">{{ member.mb_full_name }}</h2>
+        {% if tutor.tut_status == 0 %}
+          <span class="tutor-badge tutor-badge--pending">รอการตรวจสอบ</span>
+        {% elif tutor.tut_status == 1 %}
+          <span class="tutor-badge tutor-badge--approved">อนุมัติแล้ว</span>
+        {% elif tutor.tut_status == 2 %}
+          <span class="tutor-badge tutor-badge--rejected">ปฏิเสธ</span>
+        {% else %}
+          <span class="tutor-badge tutor-badge--suspended">ระงับการสอน</span>
+        {% endif %}
+      </div>
+      <div style="font-size:13px;color:var(--text-muted);">
+        <i class="bi bi-calendar3 me-1"></i>
+        Applied on {{ member.user.date_joined|date:"M j, Y" }}
+        &nbsp;·&nbsp;
+        <span style="color:var(--primary);font-weight:600;">{{ tutor_id }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Details ── -->
+<div class="row g-4 mb-4">
+
+  <!-- Education -->
+  <div class="col-lg-6">
+    <div class="card-panel" style="padding:22px;height:100%;">
+      <div class="detail-section-title">
+        <i class="bi bi-mortarboard"></i> วุฒิการศึกษา
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">อีเมล</span>
+        <span class="detail-val">{{ member.mb_email }}</span>
+      </div>
+      <div class="row g-3 mt-0">
+        <div class="col-6">
+          <div class="detail-label mb-1">คณะ</div>
+          <div class="detail-val">{{ faculty_name }}</div>
+        </div>
+        <div class="col-6">
+          <div class="detail-label mb-1">สาขา</div>
+          <div class="detail-val">{{ major_name }}</div>
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="detail-label" style="letter-spacing:.04em;text-transform:uppercase;font-size:11px;">Cumulative GPA</div>
+        <div style="font-size:26px;font-weight:700;color:var(--primary);margin-top:4px;">
+          {{ tutor.tut_gpax }} <span style="font-size:16px;color:var(--text-muted);font-weight:400;">/ 4.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skills + Experience -->
+  <div class="col-lg-6">
+    <div class="card-panel" style="padding:22px;height:100%;">
+      <div class="detail-section-title">
+        <i class="bi bi-lightbulb"></i> ทักษะการสอน
+      </div>
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        {% for skill in skills %}
+          <span class="skill-tag">{{ skill }}</span>
+        {% empty %}
+          <span style="font-size:13px;color:var(--text-muted);">—</span>
+        {% endfor %}
+      </div>
+
+      {% if tutor.tut_has_exp == 1 %}
+      <div class="detail-section-title mt-2">
+        <i class="bi bi-briefcase"></i> ประสบการณ์การสอน
+      </div>
+      <blockquote class="exp-quote">
+        {{ tutor.tut_exp_desc|default:"—" }}
+      </blockquote>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ── Action footer ── -->
+<div class="card-panel" style="padding:20px 24px;">
+  <form method="post">
+    {% csrf_token %}
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <p style="font-size:13px;color:var(--text-muted);margin:0;max-width:480px;">
+        เมื่ออนุมัติแล้ว คุณจะให้สิทธิ์การเข้าถึงระดับผู้สอนและสิทธิ์ในการแสดงรายการแก่ผู้ใช้รายนี้
+      </p>
+      <div class="d-flex gap-2">
+        {% if tutor.tut_status == 0 %}
+          <button type="submit" name="action" value="reject" class="btn-action-reject">
+            <i class="bi bi-x-lg"></i> ปฏิเสธคำขอ
+          </button>
+          <button type="submit" name="action" value="approve" class="btn-action-approve">
+            <i class="bi bi-check-lg"></i> อนุมัติติวเตอร์
+          </button>
+        {% elif tutor.tut_status == 1 %}
+          <button type="submit" name="action" value="suspend" class="btn-action-reject">
+            <i class="bi bi-slash-circle"></i> ระงับการสอน
+          </button>
+        {% elif tutor.tut_status == 2 %}
+          <span style="font-size:13px;color:var(--text-muted);">
+            <i class="bi bi-info-circle me-1"></i>
+            ผู้สมัครสามารถส่งคำขอใหม่ได้ที่หน้าสมัครติวเตอร์
+          </span>
+        {% elif tutor.tut_status == 3 %}
+          <button type="submit" name="action" value="unsuspend" class="btn-action-approve">
+            <i class="bi bi-shield-check"></i> ปลดระงับการสอน
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</div>
+
+<p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:24px;">
+  RMUTI Tutor Management System &bull; For Administrator Use Only
+</p>
+
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .tutor-badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 12px; border-radius: 99px;
+    font-size: 12px; font-weight: 600;
+  }
+  .tutor-badge--pending  { background: #FEF9C3; color: #92400E; border: 1px solid #FCD34D; }
+  .tutor-badge--approved { background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; }
+  .tutor-badge--rejected { background: #FEE2E2; color: #7F1D1D; border: 1px solid #FCA5A5; }
+  .tutor-badge--suspended{ background: #F3E8FF; color: #581C87; border: 1px solid #D8B4FE; }
+
+  .detail-section-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 700; color: var(--text-main);
+    margin-bottom: 14px;
+  }
+  .detail-section-title i { color: var(--primary); font-size: 16px; }
+
+  .detail-label { font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+  .detail-val   { font-size: 14px; color: var(--text-main); margin-top: 2px; }
+  .detail-row   { margin-bottom: 12px; }
+
+  .skill-tag {
+    display: inline-block; padding: 4px 12px; border-radius: 99px;
+    background: var(--primary-lt); color: var(--primary);
+    font-size: 12px; font-weight: 600; border: 1px solid #BFDBFE;
+  }
+
+  .exp-quote {
+    background: #F9FAFB; border-left: 3px solid var(--primary);
+    border-radius: 0 8px 8px 0; padding: 12px 16px;
+    font-size: 13px; color: var(--text-main); line-height: 1.7;
+    margin: 0; font-style: italic;
+  }
+
+  .btn-action-reject {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #EF4444; color: #fff; border: none; border-radius: 8px;
+    padding: 9px 20px; font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background .15s;
+  }
+  .btn-action-reject:hover { background: #DC2626; }
+
+  .btn-action-approve {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #16A34A; color: #fff; border: none; border-radius: 8px;
+    padding: 9px 20px; font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background .15s;
+  }
+  .btn-action-approve:hover { background: #15803D; }
+</style>
+{% endblock %}

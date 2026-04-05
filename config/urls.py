@@ -35,6 +35,7 @@ urlpatterns = [
 
     path('panel/',     include('apps.admin_panel.urls', namespace='admin_panel')),
     path('courses/',   include('apps.courses.urls',     namespace='courses')),
+    path('tutoring/',  include('apps.tutoring.urls',    namespace='tutoring')),
 ]
  
 # Serve media files ในโหมด development
