@@ -26,11 +26,12 @@ def faculty_list(request):
     page = paginator.get_page(request.GET.get('page', 1))
     form = FacultyForm()
     return render(request, 'courses/faculty_list.html', {
-        'page_obj' : page,
-        'form'     : form,
-        'q'        : q,
-        'total'    : qs.count(),
-        'active_menu': 'faculty',
+        'page_obj'          : page,
+        'form'              : form,
+        'q'                 : q,
+        'total'             : qs.count(),
+        'active_menu'       : 'faculty',
+        'topbar_breadcrumb' : 'การจัดการข้อมูลพื้นฐาน › คณะ',
     })
 
 
@@ -96,13 +97,14 @@ def major_list(request):
     form      = MajorForm()
     faculties = Faculty.objects.all().order_by('fac_name')
     return render(request, 'courses/major_list.html', {
-        'page_obj'  : page,
-        'form'      : form,
-        'q'         : q,
-        'faculties' : faculties,
-        'fac_filter': fac_filter,
-        'total'     : qs.count(),
-        'active_menu': 'major',
+        'page_obj'          : page,
+        'form'              : form,
+        'q'                 : q,
+        'faculties'         : faculties,
+        'fac_filter'        : fac_filter,
+        'total'             : qs.count(),
+        'active_menu'       : 'major',
+        'topbar_breadcrumb' : 'การจัดการข้อมูลพื้นฐาน › สาขา',
     })
 
 
@@ -170,11 +172,12 @@ def course_group_list(request):
     page      = paginator.get_page(request.GET.get('page', 1))
     form      = CourseGroupForm()
     return render(request, 'courses/course_group_list.html', {
-        'page_obj'   : page,
-        'form'       : form,
-        'q'          : q,
-        'total'      : qs.count(),
-        'active_menu': 'course_group',
+        'page_obj'          : page,
+        'form'              : form,
+        'q'                 : q,
+        'total'             : qs.count(),
+        'active_menu'       : 'course_group',
+        'topbar_breadcrumb' : 'การจัดการข้อมูลพื้นฐาน › กลุ่มรายวิชา',
     })
 
 
@@ -240,13 +243,14 @@ def course_list(request):
     form          = CourseForm()
     course_groups = CourseGroup.objects.all().order_by('cg_name')
     return render(request, 'courses/course_list.html', {
-        'page_obj'    : page,
-        'form'        : form,
-        'q'           : q,
-        'course_groups': course_groups,
-        'cg_filter'   : cg_filter,
-        'total'       : qs.count(),
-        'active_menu' : 'course',
+        'page_obj'          : page,
+        'form'              : form,
+        'q'                 : q,
+        'course_groups'     : course_groups,
+        'cg_filter'         : cg_filter,
+        'total'             : qs.count(),
+        'active_menu'       : 'course',
+        'topbar_breadcrumb' : 'การจัดการข้อมูลพื้นฐาน › รายวิชา',
     })
 
 

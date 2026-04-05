@@ -1,0 +1,63 @@
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="sidebar-section-label">เมนูหลัก</div>
+  <a href="{% url 'admin_panel:dashboard' %}"
+     class="sidebar-link {% if active_menu == 'dashboard' %}active{% endif %}">
+    <i class="bi bi-grid-1x2"></i> ภาพรวมแดชบอร์ด
+  </a>
+
+  <div class="sidebar-section-label" style="margin-top:8px;">การจัดการข้อมูลพื้นฐาน</div>
+  <div class="sidebar-sub">
+    <a href="{% url 'courses:faculty_list' %}"
+       class="sidebar-link {% if active_menu == 'faculty' %}active{% endif %}">
+      <i class="bi bi-building"></i> คณะ
+    </a>
+    <a href="{% url 'courses:major_list' %}"
+       class="sidebar-link {% if active_menu == 'major' %}active{% endif %}">
+      <i class="bi bi-diagram-3"></i> สาขา
+    </a>
+    <a href="{% url 'courses:course_group_list' %}"
+       class="sidebar-link {% if active_menu == 'course_group' %}active{% endif %}">
+      <i class="bi bi-collection"></i> กลุ่มรายวิชา
+    </a>
+    <a href="{% url 'courses:course_list' %}"
+       class="sidebar-link {% if active_menu == 'course' %}active{% endif %}">
+      <i class="bi bi-journal-bookmark"></i> รายวิชา
+    </a>
+  </div>
+
+  <div class="sidebar-section-label" style="margin-top:8px;">การดำเนินงาน</div>
+  <a href="#" class="sidebar-link {% if active_menu == 'tutor_mgmt' %}active{% endif %}">
+    <i class="bi bi-person-check"></i> การอนุมัติติวเตอร์
+  </a>
+  <a href="#" class="sidebar-link {% if active_menu == 'refill' %}active{% endif %}">
+    <i class="bi bi-coin"></i> การเติมเครดิต
+  </a>
+  <a href="#" class="sidebar-link {% if active_menu == 'payment' %}active{% endif %}">
+    <i class="bi bi-cash-stack"></i> การชำระเงิน
+  </a>
+
+  <div class="sidebar-section-label" style="margin-top:8px;">ระบบ</div>
+  <a href="{% url 'admin_panel:system_settings' %}"
+     class="sidebar-link {% if active_menu == 'system' %}active{% endif %}">
+    <i class="bi bi-gear"></i> ตั้งค่าระบบ
+  </a>
+
+  <div class="sidebar-bottom">
+    <div class="user-info">
+      <div class="avatar" style="width:32px;height:32px;font-size:12px;">
+        {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+      </div>
+      <div>
+        <div class="name">{{ request.user.get_full_name|default:request.user.username }}</div>
+        <div class="email">{{ request.user.email }}</div>
+      </div>
+      <form method="post" action="{% url 'accounts:logout' %}" style="margin-left:auto;">
+        {% csrf_token %}
+        <button type="submit" class="logout-btn" title="ออกจากระบบ">
+          <i class="bi bi-box-arrow-right"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+</nav>
