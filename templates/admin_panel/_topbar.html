@@ -1,0 +1,15 @@
+<!-- ── Topbar ── -->
+<div class="topbar">
+  <a href="{% url 'admin_panel:dashboard' %}" class="topbar-brand">
+    <div class="brand-icon"><i class="bi bi-mortarboard-fill"></i></div>
+    Puean Chuay Tu
+  </a>
+  <div class="topbar-title">{{ topbar_breadcrumb }}</div>
+  <div class="topbar-actions">
+    <button class="topbar-icon-btn"><i class="bi bi-bell"></i></button>
+    <button class="topbar-icon-btn"><i class="bi bi-chat-dots"></i></button>
+    <div class="avatar">
+      {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+    </div>
+  </div>
+</div>
