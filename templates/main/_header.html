@@ -48,9 +48,15 @@
                 </a>
               </li>
               <li>
-                <a class="dropdown-item" href="#">
-                  <i class="fas fa-chalkboard-teacher me-2"></i>สมัครเป็นติวเตอร์
-                </a>
+                {% if user.member.tutor.tut_status == 1 %}
+                  <a class="dropdown-item" href="#">
+                    <i class="fas fa-book-open me-2"></i>จัดการคอร์สเรียน
+                  </a>
+                {% else %}
+                  <a class="dropdown-item" href="{% url 'tutoring:register_tutor' %}">
+                    <i class="fas fa-chalkboard-teacher me-2"></i>สมัครเป็นติวเตอร์
+                  </a>
+                {% endif %}
               </li>
               <li>
                 <a class="dropdown-item" href="#">
