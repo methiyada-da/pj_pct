@@ -1,9 +1,13 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
 
 from apps.accounts.models import Tutor
+from apps.courses.models import CourseGroup, Course
 from .forms import TutorRegisterForm
+import re
+from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 
 
 def _member_context(member):
@@ -21,7 +25,6 @@ def register_tutor(request):
     member = request.user.member
     tutor  = Tutor.objects.filter(tut_id=member).first()
 
-    # เติมฟอร์มจากข้อมูลที่มีอยู่ (กรณีสมัครแล้ว)
     initial = {}
     if tutor:
         initial = {
@@ -68,3 +71,316 @@ def register_tutor(request):
         'tutor'        : tutor,
         'is_view_only' : tutor is not None and tutor.tut_status in (0, 3),
     })
+
+
+# ─── หน้าเมนูหลัก จัดการข้อมูลติวเตอร์ ──────────────────────────────────────
+
+@login_required
+def tutor_manage(request):
+    member = request.user.member
+    tutor  = Tutor.objects.filter(tut_id=member).first()
+
+    course_count         = 0
+    pending_booking_count = 0
+    total_student_count  = 0
+
+    if tutor and tutor.tut_status == 1:
+        courses = TutorCourse.objects.filter(tut_id=tutor)
+        course_count = courses.count()
+        # TODO: ใส่ logic booking count เมื่อมี booking model
+
+    return render(request, 'tutoring/tutor_manage.html', {
+        **_member_context(member),
+        'tutor'               : tutor,
+        'course_count'        : course_count,
+        'pending_booking_count': pending_booking_count,
+        'total_student_count' : total_student_count,
+    })
+
+
+# ─── รายการคอร์สของติวเตอร์ ──────────────────────────────────────────────────
+
+@login_required
+def tutor_course_list(request):
+    member = request.user.member
+    tutor  = get_object_or_404(Tutor, tut_id=member, tut_status=1)
+    courses = TutorCourse.objects.filter(tut_id=tutor).select_related('crs_id', 'crs_id__cg_id').order_by('-tutc_id')
+
+    return render(request, 'tutoring/tutor_course_list.html', {
+        **_member_context(member),
+        'tutor'  : tutor,
+        'courses': courses,
+    })
+
+
+# ─── เพิ่ม / แก้ไขคอร์ส ──────────────────────────────────────────────────────
+
+@login_required
+def manage_course(request, tutc_id=None):
+    member = request.user.member
+    tutor  = get_object_or_404(Tutor, tut_id=member, tut_status=1)
+
+    tutc  = None
+    rates = []
+    schedule_dates_with_slots = []
+
+    if tutc_id:
+        tutc  = get_object_or_404(TutorCourse, tutc_id=tutc_id, tut_id=tutor)
+        rates = TutorRate.objects.filter(tutc_id=tutc)
+        schedule_dates_with_slots = ScheduleDate.objects.filter(tutc_id=tutc).prefetch_related('time_slots')
+
+    course_groups = CourseGroup.objects.all().order_by('cg_name')
+
+    if request.method == 'POST':
+        # ── ข้อมูลพื้นฐาน ──
+        tutc_name    = request.POST.get('tutc_name', '').strip()
+        tutc_desc    = request.POST.get('tutc_desc', '').strip()
+        tutc_max_stu = request.POST.get('tutc_max_stu', '').strip()
+        tutc_status  = 1 if request.POST.get('tutc_status') == '1' else 0
+        crs_id_val   = request.POST.get('crs_id', '').strip()
+
+        # ── ตรวจ new_dates + existing_sd ──
+        new_dates        = [d for d in request.POST.getlist('new_date[]') if d.strip()]
+        existing_sd_ids  = [
+            key.split('ts_start_')[1].rstrip('[]').split('[')[0]
+            for key in request.POST
+            if key.startswith('ts_start_') and not key.startswith('ts_start_new_')
+        ]
+        has_any_date = len(new_dates) > 0 or len(existing_sd_ids) > 0
+
+        # ── ตรวจ rate ──
+        stu_counts  = request.POST.getlist('rate_stu_count[]')
+        per_persons = request.POST.getlist('rate_per_person[]')
+        valid_rates = [
+            (sc, pp) for sc, pp in zip(stu_counts, per_persons)
+            if sc.strip() and pp.strip() and int(sc) >= 1 and int(pp) >= 0
+        ]
+
+        # ── ตรวจ time slots อย่างน้อย 1 ช่วงในแต่ละวัน และทุก slot ต้องกรอกครบคู่ ──
+        has_all_slots   = True
+        slot_error_msg  = ''
+
+        # ── compile regex เวลา HH:MM ครั้งเดียว ──
+        time_re = re.compile(r'^([01][0-9]|2[0-3]):[0-5][0-9]$')
+
+        # วันใหม่ — key รูปแบบ ts_start_new_XXXX[]
+        seen_new_suffixes = set()
+        for key in request.POST:
+            if key.startswith('ts_start_new_'):
+                suffix = key[len('ts_start_new_'):].rstrip('[]')
+                if suffix in seen_new_suffixes:
+                    continue
+                seen_new_suffixes.add(suffix)
+
+                starts = [s.strip() for s in request.POST.getlist(key)                       if s.strip()]
+                ends   = [e.strip() for e in request.POST.getlist(f'ts_end_new_{suffix}[]')  if e.strip()]
+
+                if len(starts) == 0:
+                    has_all_slots  = False
+                    slot_error_msg = 'แต่ละวันต้องมีช่วงเวลาอย่างน้อย 1 ช่วง'
+                    break
+                if len(starts) != len(ends):
+                    has_all_slots  = False
+                    slot_error_msg = 'กรุณากรอกเวลาเริ่มและเวลาสิ้นสุดให้ครบทุกช่วง'
+                    break
+                # ตรวจ format HH:MM และ end > start
+                for s, e in zip(starts, ends):
+                    if not time_re.match(s) or not time_re.match(e):
+                        has_all_slots  = False
+                        slot_error_msg = 'รูปแบบเวลาไม่ถูกต้อง กรุณาใช้รูปแบบ HH:MM (เช่น 09:00)'
+                        break
+                    if e <= s:
+                        has_all_slots  = False
+                        slot_error_msg = 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'
+                        break
+                if not has_all_slots:
+                    break
+
+        # วันเก่า — key รูปแบบ ts_start_SDID[]
+        if has_all_slots:
+            for sd_id_str in existing_sd_ids:
+                starts = [s.strip() for s in request.POST.getlist(f'ts_start_{sd_id_str}[]') if s.strip()]
+                ends   = [e.strip() for e in request.POST.getlist(f'ts_end_{sd_id_str}[]')   if e.strip()]
+
+                if len(starts) == 0:
+                    has_all_slots  = False
+                    slot_error_msg = 'แต่ละวันต้องมีช่วงเวลาอย่างน้อย 1 ช่วง'
+                    break
+                if len(starts) != len(ends):
+                    has_all_slots  = False
+                    slot_error_msg = 'กรุณากรอกเวลาเริ่มและเวลาสิ้นสุดให้ครบทุกช่วง'
+                    break
+                for s, e in zip(starts, ends):
+                    if not time_re.match(s) or not time_re.match(e):
+                        has_all_slots  = False
+                        slot_error_msg = 'รูปแบบเวลาไม่ถูกต้อง กรุณาใช้รูปแบบ HH:MM (เช่น 09:00)'
+                        break
+                    if e <= s:
+                        has_all_slots  = False
+                        slot_error_msg = 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'
+                        break
+                if not has_all_slots:
+                    break
+
+        # ── รวม error ──
+        errors = []
+        if not tutc_name:
+            errors.append('กรุณากรอกชื่อรายวิชา')
+        if not crs_id_val:
+            errors.append('กรุณาเลือกรายวิชา')
+        if not tutc_max_stu or not tutc_max_stu.isdigit() or int(tutc_max_stu) < 1:
+            errors.append('กรุณาระบุจำนวนรับสูงสุด')
+        if not has_any_date:
+            errors.append('กรุณาเพิ่มวันที่อย่างน้อย 1 วัน')
+        elif not has_all_slots:
+            errors.append(slot_error_msg or 'แต่ละวันต้องมีช่วงเวลาอย่างน้อย 1 ช่วง')
+        if not valid_rates:
+            errors.append('กรุณากรอกอัตราค่าติวอย่างน้อย 1 เรท')
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+            # ส่ง context กลับไปให้ฟอร์มแสดงข้อมูลที่กรอกไว้
+            return render(request, 'tutoring/manage_course.html', {
+                **_member_context(member),
+                'tutor'                    : tutor,
+                'tutc'                     : tutc,
+                'rates'                    : rates,
+                'course_groups'            : course_groups,
+                'schedule_dates_with_slots': schedule_dates_with_slots,
+            })
+
+        course = get_object_or_404(Course, crs_id=crs_id_val)
+
+        # ── สร้าง / อัปเดต TutorCourse ──
+        if tutc:
+            tutc.tutc_name    = tutc_name
+            tutc.tutc_desc    = tutc_desc or None
+            tutc.tutc_max_stu = int(tutc_max_stu)
+            tutc.tutc_status  = tutc_status
+            tutc.crs_id       = course
+            if 'tutc_img' in request.FILES:
+                tutc.tutc_img = request.FILES['tutc_img']
+            tutc.save()
+            messages.success(request, 'อัปเดตคอร์สเรียบร้อยแล้ว')
+        else:
+            # สร้าง tutc_id แบบ TUTC001, TUTC002, ...
+            last = TutorCourse.objects.order_by('-tutc_id').first()
+            if last and re.match(r'TUTC\d+', last.tutc_id):
+                last_num = int(last.tutc_id[4:])
+            else:
+                last_num = 0
+            new_id = f"TUTC{last_num + 1:03d}"
+            tutc = TutorCourse.objects.create(
+                tutc_id      = new_id,
+                tutc_name    = tutc_name,
+                tutc_desc    = tutc_desc or None,
+                tutc_max_stu = int(tutc_max_stu),
+                tutc_status  = tutc_status,
+                crs_id       = course,
+                tut_id       = tutor,
+                tutc_img     = request.FILES.get('tutc_img'),
+            )
+            messages.success(request, 'เพิ่มคอร์สเรียบร้อยแล้ว')
+
+        # ── อัปเดต Rates ──
+        TutorRate.objects.filter(tutc_id=tutc).delete()
+        stu_counts  = request.POST.getlist('rate_stu_count[]')
+        per_persons = request.POST.getlist('rate_per_person[]')
+        for sc, pp in zip(stu_counts, per_persons):
+            if sc and pp:
+                TutorRate.objects.create(
+                    tutc_id             = tutc,
+                    tut_rate_stu_count  = int(sc),
+                    tut_rate_per_person = int(pp),
+                )
+
+        # ── อัปเดต Schedule Dates + Time Slots ──
+        # วันที่มีอยู่แล้ว (sd_id ที่ส่งมาจาก POST)
+        existing_sd_ids = [
+            key.split('ts_start_')[1].rstrip('[]').split('[')[0]
+            for key in request.POST
+            if key.startswith('ts_start_') and not key.startswith('ts_start_new_')
+        ]
+        # ลบ sd เก่าที่ไม่ได้ส่งมา
+        ScheduleDate.objects.filter(tutc_id=tutc).exclude(sd_id__in=[
+            int(i) for i in existing_sd_ids if i.isdigit()
+        ]).delete()
+
+        # อัปเดต time slots ของวันที่มีอยู่
+        for sd_id_str in existing_sd_ids:
+            if not sd_id_str.isdigit():
+                continue
+            sd = ScheduleDate.objects.filter(sd_id=int(sd_id_str), tutc_id=tutc).first()
+            if not sd:
+                continue
+            TimeSlot.objects.filter(sd_id=sd, ts_status=0).delete()
+            starts = request.POST.getlist(f'ts_start_{sd_id_str}[]')
+            ends   = request.POST.getlist(f'ts_end_{sd_id_str}[]')
+            for s, e in zip(starts, ends):
+                if s and e:
+                    TimeSlot.objects.create(sd_id=sd, ts_start_time=s, ts_end_time=e)
+
+        # วันที่ใหม่
+        new_dates = request.POST.getlist('new_date[]')
+        for date_str in new_dates:
+            if not date_str:
+                continue
+            sd = ScheduleDate.objects.create(sd_date=date_str, tutc_id=tutc)
+            # หา key แบบ ts_start_new_XXXX[]
+            for key in request.POST:
+                if key.startswith('ts_start_new_'):
+                    suffix = key[len('ts_start_new_'):].rstrip('[]')
+                    starts = request.POST.getlist(key)
+                    ends   = request.POST.getlist(f'ts_end_new_{suffix}[]')
+                    for s, e in zip(starts, ends):
+                        if s and e:
+                            TimeSlot.objects.create(sd_id=sd, ts_start_time=s, ts_end_time=e)
+                    break
+
+        return redirect('tutoring:tutor_course_list')
+
+    return render(request, 'tutoring/manage_course.html', {
+        **_member_context(member),
+        'tutor'                   : tutor,
+        'tutc'                    : tutc,
+        'rates'                   : rates,
+        'course_groups'           : course_groups,
+        'schedule_dates_with_slots': schedule_dates_with_slots,
+    })
+
+
+# ─── เปิด / ปิด รับนักเรียน ──────────────────────────────────────────────────
+
+@login_required
+def toggle_course_status(request, tutc_id):
+    if request.method != 'POST':
+        return redirect('tutoring:tutor_course_list')
+
+    member = request.user.member
+    tutor  = get_object_or_404(Tutor, tut_id=member, tut_status=1)
+    tutc   = get_object_or_404(TutorCourse, tutc_id=tutc_id, tut_id=tutor)
+
+    tutc.tutc_status = 0 if tutc.tutc_status == 1 else 1
+    tutc.save()
+
+    label = 'เปิดรับสอน' if tutc.tutc_status == 1 else 'ปิดรับสอน'
+    messages.success(request, f'เปลี่ยนสถานะคอร์ส "{tutc.tutc_name}" เป็น {label} แล้ว')
+    return redirect('tutoring:tutor_course_list')
+
+
+# ─── ลบคอร์ส ─────────────────────────────────────────────────────────────────
+
+@login_required
+def delete_course(request, tutc_id):
+    if request.method != 'POST':
+        return redirect('tutoring:tutor_course_list')
+
+    member = request.user.member
+    tutor  = get_object_or_404(Tutor, tut_id=member, tut_status=1)
+    tutc   = get_object_or_404(TutorCourse, tutc_id=tutc_id, tut_id=tutor)
+
+    name = tutc.tutc_name
+    tutc.delete()
+    messages.success(request, f'ลบคอร์ส "{name}" เรียบร้อยแล้ว')
+    return redirect('tutoring:tutor_course_list')

@@ -1,0 +1,212 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}จัดการข้อมูลติวเตอร์ | Puean Chuay Tu{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero Banner ── -->
+<section class="py-5" style="background:linear-gradient(135deg,#1d4ed8 0%,#2563eb 50%,#3b82f6 100%); color:#fff; position:relative; overflow:hidden;">
+  <!-- subtle pattern overlay -->
+  <div class="position-absolute top-0 start-0 w-100 h-100" style="background:url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='30'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\"); pointer-events:none;"></div>
+  <div class="container position-relative">
+    <span class="badge rounded-pill mb-3 px-3 py-2 fw-semibold"
+          style="background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.25); font-size:.78rem; letter-spacing:.04em;">
+      <i class="fas fa-chalkboard-teacher me-1"></i> ติวเตอร์
+    </span>
+    <h1 class="fw-bold mb-1" style="font-size:1.9rem; letter-spacing:-.02em;">จัดการข้อมูลติวเตอร์</h1>
+    <p class="mb-3" style="opacity:.8; font-size:.92rem;">ดูแลคอร์สเรียน ตารางเวลา และคำขอจองของคุณ</p>
+
+    {% if tutor %}
+      {% if tutor.tut_status == 1 %}
+        <span class="badge rounded-pill px-3 py-2 bg-success bg-opacity-75 fw-semibold" style="font-size:.8rem;">
+          <i class="fas fa-circle me-1" style="font-size:.5rem; vertical-align:middle;"></i> อนุมัติแล้ว — พร้อมรับนักเรียน
+        </span>
+      {% elif tutor.tut_status == 0 %}
+        <span class="badge rounded-pill px-3 py-2 bg-warning text-dark fw-semibold" style="font-size:.8rem;">
+          <i class="fas fa-circle me-1" style="font-size:.5rem; vertical-align:middle;"></i> รอการตรวจสอบจากทีมงาน
+        </span>
+      {% elif tutor.tut_status == 2 %}
+        <span class="badge rounded-pill px-3 py-2 bg-danger fw-semibold" style="font-size:.8rem;">
+          <i class="fas fa-circle me-1" style="font-size:.5rem; vertical-align:middle;"></i> ถูกปฏิเสธ — กรุณาแก้ไขข้อมูล
+        </span>
+      {% endif %}
+    {% endif %}
+  </div>
+</section>
+
+<!-- ── Stats Strip ── -->
+{% if tutor and tutor.tut_status == 1 %}
+<div class="bg-white border-bottom py-3">
+  <div class="container">
+    <div class="d-flex justify-content-around align-items-center">
+      <div class="text-center">
+        <div class="fw-bold text-primary" style="font-size:1.5rem; line-height:1;">{{ course_count|default:"0" }}</div>
+        <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem; letter-spacing:.05em;">คอร์สที่เปิดสอน</div>
+      </div>
+      <div class="vr"></div>
+      <div class="text-center">
+        <div class="fw-bold text-primary" style="font-size:1.5rem; line-height:1;">{{ pending_booking_count|default:"0" }}</div>
+        <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem; letter-spacing:.05em;">รอยืนยัน</div>
+      </div>
+      <div class="vr"></div>
+      <div class="text-center">
+        <div class="fw-bold text-primary" style="font-size:1.5rem; line-height:1;">{{ total_student_count|default:"0" }}</div>
+        <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem; letter-spacing:.05em;">นักเรียนทั้งหมด</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Menu Section ── -->
+<section class="py-4 pb-5 bg-light">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- Left: Menu Cards -->
+      <div class="col-lg-8">
+
+        {% if tutor and tutor.tut_status == 1 %}
+        <!-- คอร์สเรียน -->
+        <p class="text-muted text-uppercase fw-bold mb-2" style="font-size:.7rem; letter-spacing:.1em;">📚 คอร์สเรียน</p>
+        <div class="d-flex flex-column gap-3 mb-4">
+
+          <a href="{% url 'tutoring:tutor_course_list' %}" class="card border rounded-4 text-decoration-none text-dark shadow-sm menu-card">
+            <div class="card-body d-flex align-items-center gap-3 p-4">
+              <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary flex-shrink-0"
+                   style="width:52px; height:52px; font-size:1.3rem;">
+                <i class="fas fa-book-open"></i>
+              </div>
+              <div class="flex-fill">
+                <div class="fw-bold" style="font-size:.97rem;">คอร์สเรียนของฉัน</div>
+                <p class="text-muted mb-0 small">ดูและจัดการคอร์สที่เปิดสอนทั้งหมด</p>
+              </div>
+              <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+          </a>
+
+          <a href="{% url 'tutoring:manage_course' %}" class="card border rounded-4 text-decoration-none text-dark shadow-sm menu-card">
+            <div class="card-body d-flex align-items-center gap-3 p-4">
+              <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success flex-shrink-0"
+                   style="width:52px; height:52px; font-size:1.3rem;">
+                <i class="fas fa-plus-circle"></i>
+              </div>
+              <div class="flex-fill">
+                <div class="fw-bold" style="font-size:.97rem;">เพิ่มคอร์สเรียนใหม่</div>
+                <p class="text-muted mb-0 small">สร้างคอร์สสอน ตั้งราคา และตารางเวลา</p>
+              </div>
+              <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+          </a>
+        </div>
+
+        <!-- การจอง -->
+        <p class="text-muted text-uppercase fw-bold mb-2" style="font-size:.7rem; letter-spacing:.1em;">📋 การจอง</p>
+        <div class="d-flex flex-column gap-3 mb-4">
+          <a href="#" class="card border rounded-4 text-decoration-none text-dark shadow-sm menu-card">
+            <div class="card-body d-flex align-items-center gap-3 p-4">
+              <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-warning bg-opacity-10 text-warning flex-shrink-0"
+                   style="width:52px; height:52px; font-size:1.3rem;">
+                <i class="fas fa-clipboard-list"></i>
+              </div>
+              <div class="flex-fill">
+                <div class="fw-bold" style="font-size:.97rem;">
+                  คำขอจองเรียน
+                  {% if pending_booking_count %}
+                    <span class="badge bg-danger rounded-pill ms-1" style="font-size:.68rem;">{{ pending_booking_count }}</span>
+                  {% endif %}
+                </div>
+                <p class="text-muted mb-0 small">ตรวจสอบและยืนยันคำขอจากนักเรียน</p>
+              </div>
+              <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+          </a>
+        </div>
+
+        {% else %}
+        <!-- ยังไม่อนุมัติ -->
+        <p class="text-muted text-uppercase fw-bold mb-2" style="font-size:.7rem; letter-spacing:.1em;">⚙️ บัญชีติวเตอร์</p>
+        <div class="d-flex flex-column gap-3">
+          <a href="{% url 'tutoring:register_tutor' %}" class="card border rounded-4 text-decoration-none text-dark shadow-sm menu-card">
+            <div class="card-body d-flex align-items-center gap-3 p-4">
+              <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary flex-shrink-0"
+                   style="width:52px; height:52px; font-size:1.3rem;">
+                <i class="fas fa-user-edit"></i>
+              </div>
+              <div class="flex-fill">
+                <div class="fw-bold" style="font-size:.97rem;">แก้ไขข้อมูลสมัคร</div>
+                <p class="text-muted mb-0 small">อัปเดต GPA ทักษะ และประสบการณ์ของคุณ</p>
+              </div>
+              <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+          </a>
+        </div>
+        {% endif %}
+
+        <!-- โปรไฟล์ติวเตอร์ -->
+        <p class="text-muted text-uppercase fw-bold mb-2 mt-4" style="font-size:.7rem; letter-spacing:.1em;">👤 โปรไฟล์</p>
+        <div class="d-flex flex-column gap-3">
+          <a href="{% url 'tutoring:register_tutor' %}" class="card border rounded-4 text-decoration-none text-dark shadow-sm menu-card">
+            <div class="card-body d-flex align-items-center gap-3 p-4">
+              <div class="d-inline-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                   style="width:52px; height:52px; font-size:1.3rem; background:#f5f3ff; color:#7c3aed;">
+                <i class="fas fa-id-badge"></i>
+              </div>
+              <div class="flex-fill">
+                <div class="fw-bold" style="font-size:.97rem;">โปรไฟล์ติวเตอร์</div>
+                <p class="text-muted mb-0 small">แก้ไข GPA ทักษะ ประสบการณ์ และข้อมูลส่วนตัว</p>
+              </div>
+              <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+          </a>
+        </div>
+
+      </div>
+
+      <!-- Right: Info Panel -->
+      <div class="col-lg-4">
+        {% if tutor %}
+        <div class="card border rounded-4 shadow-sm mb-3" style="background:#eff6ff; border-color:#bfdbfe !important;">
+          <div class="card-body p-3">
+            <p class="fw-bold small mb-2 text-primary"><i class="fas fa-info-circle me-1"></i> ข้อมูลติวเตอร์</p>
+            <div class="d-flex align-items-center gap-2 mb-2 small text-secondary">
+              <i class="fas fa-star text-primary"></i>
+              GPAX: <strong class="text-dark">{{ tutor.tut_gpax }}</strong>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-2 small text-secondary">
+              <i class="fas fa-tools text-primary"></i>
+              ทักษะ: {{ tutor.tut_skill|truncatechars:40 }}
+            </div>
+            <div class="d-flex align-items-center gap-2 small text-secondary">
+              <i class="fas fa-briefcase text-primary"></i>
+              {% if tutor.tut_has_exp %}มีประสบการณ์สอน{% else %}ไม่มีประสบการณ์สอน{% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Tips -->
+        <div class="card border rounded-4 shadow-sm">
+          <div class="card-body p-3">
+            <p class="fw-bold small mb-2"><i class="fas fa-lightbulb text-warning me-1"></i> เคล็ดลับ</p>
+            <ul class="mb-0 ps-3 text-muted" style="font-size:.79rem; line-height:1.7;">
+              <li>เพิ่มรูปปกคอร์สเพื่อดึงดูดนักเรียน</li>
+              <li>ตั้งราคาให้เหมาะสมกับระดับวิชา</li>
+              <li>ยืนยันคำขอจองภายใน 24 ชั่วโมง</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<style>
+.menu-card { transition: box-shadow .2s, transform .2s; }
+.menu-card:hover { box-shadow: 0 4px 20px rgba(37,99,235,.12) !important; transform: translateY(-2px); border-color: #2563eb !important; }
+.menu-card:hover .fa-chevron-right { color: #2563eb !important; }
+</style>
+
+{% endblock %}

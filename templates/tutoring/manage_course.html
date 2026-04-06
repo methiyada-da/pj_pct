@@ -1,0 +1,591 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}{% if tutc %}แก้ไขคอร์สเรียน{% else %}เพิ่มคอร์สเรียน{% endif %} | Puean Chuay Tu{% endblock %}
+
+{% block content %}
+
+<!-- Django success messages only (error handled by JS inline) -->
+{% if messages %}
+<div class="mx-0">
+  {% for message in messages %}
+    {% if message.tags != 'error' %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-0 mb-0" role="alert">
+      <i class="fas fa-check-circle me-2"></i>{{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Page Header -->
+<div class="bg-white border-bottom py-3">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3">
+      <a href="{% url 'tutoring:tutor_manage' %}" class="text-secondary text-decoration-none">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <h1 class="h5 fw-bold mb-0">{% if tutc %}แก้ไขคอร์สเรียน{% else %}เพิ่มคอร์สเรียนใหม่{% endif %}</h1>
+    </div>
+  </div>
+</div>
+
+<div class="py-4 pb-5 bg-light" style="min-height:80vh;">
+<div class="container">
+<form method="POST" enctype="multipart/form-data" id="courseForm">
+{% csrf_token %}
+
+<div class="row g-4">
+<div class="col-lg-8">
+
+  <!-- ① ข้อมูลทางวิชาการ -->
+  <div class="card border rounded-4 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom rounded-top-4 d-flex align-items-center gap-2 py-3 px-4">
+      <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary"
+           style="width:36px; height:36px; flex-shrink:0;">
+        <i class="fas fa-book"></i>
+      </div>
+      <h2 class="h6 fw-bold mb-0">ข้อมูลทางวิชาการ</h2>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">กลุ่มวิชา <span class="text-danger">*</span></label>
+          <select name="cg_id" id="cgSelect" class="form-select" required>
+            <option value="">-- เลือกกลุ่มวิชา --</option>
+            {% for cg in course_groups %}
+              <option value="{{ cg.cg_id }}"
+                {% if tutc and tutc.crs_id.cg_id_id == cg.cg_id %}selected{% endif %}>
+                {{ cg.cg_name }}
+              </option>
+            {% endfor %}
+          </select>
+          <div class="invalid-feedback d-block" id="err_cg" style="display:none!important;"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">รายวิชา <span class="text-danger">*</span></label>
+          <select name="crs_id" id="crsSelect" class="form-select" required>
+            <option value="">-- เลือกกลุ่มวิชาก่อน --</option>
+            {% if tutc %}
+              <option value="{{ tutc.crs_id.crs_id }}" selected>
+                {{ tutc.crs_id.crs_id }} - {{ tutc.crs_id.crs_name }}
+              </option>
+            {% endif %}
+          </select>
+          <div class="invalid-feedback d-block" id="err_crs" style="display:none!important;"></div>
+        </div>
+      </div>
+      <div class="row g-3 mt-1">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">จำนวนรับสูงสุด (คน) <span class="text-danger">*</span></label>
+          <input type="number" name="tutc_max_stu" class="form-control"
+                 min="1" max="50" placeholder="เช่น 10"
+                 value="{{ tutc.tutc_max_stu|default:'' }}" required>
+          <div class="invalid-feedback d-block" id="err_max_stu" style="display:none!important;"></div>
+        </div>
+        <div class="col-md-6 d-flex flex-column justify-content-end">
+          <label class="form-label fw-semibold small">สถานะการเปิดสอน</label>
+          <div class="d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2">
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" name="tutc_status"
+                     id="statusToggle" value="1"
+                     {% if not tutc or tutc.tutc_status == 1 %}checked{% endif %}>
+              <label class="form-check-label fw-semibold small" for="statusToggle" id="statusLabel">
+                {% if not tutc or tutc.tutc_status == 1 %}เปิดรับสอน{% else %}ปิดรับสอน{% endif %}
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② รายละเอียดคอร์ส -->
+  <div class="card border rounded-4 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom rounded-top-4 d-flex align-items-center gap-2 py-3 px-4">
+      <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-primary bg-opacity-10 text-primary"
+           style="width:36px; height:36px; flex-shrink:0;">
+        <i class="fas fa-bullhorn"></i>
+      </div>
+      <h2 class="h6 fw-bold mb-0">รายละเอียดคอร์ส</h2>
+    </div>
+    <div class="card-body p-4">
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">ชื่อรายวิชา (ชื่อโฆษณา) <span class="text-danger">*</span></label>
+        <input type="text" name="tutc_name" class="form-control"
+               placeholder="เช่น เข้าใจโปรแกรมภายใน 1 คอร์ส"
+               value="{{ tutc.tutc_name|default:'' }}" required>
+        <div class="invalid-feedback d-block" id="err_name" style="display:none!important;"></div>
+        <div class="form-text">ชื่อที่นักเรียนจะเห็นในหน้าค้นหา</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">คำอธิบายรายวิชา</label>
+        <textarea name="tutc_desc" class="form-control" rows="4"
+                  placeholder="อธิบายสิ่งที่นักเรียนจะได้เรียนรู้...">{{ tutc.tutc_desc|default:'' }}</textarea>
+      </div>
+      <!-- Image Upload -->
+      <div class="mb-1">
+        <label class="form-label fw-semibold small">รูปปกคอร์ส</label>
+        <div class="border border-2 border-dashed rounded-3 p-4 text-center position-relative"
+             style="cursor:pointer; transition:all .2s; border-color:#d1d5db !important;"
+             id="uploadZone"
+             onmouseover="this.style.borderColor='#2563eb'; this.style.background='#eff6ff';"
+             onmouseout="this.style.borderColor='#d1d5db'; this.style.background='';">
+          <input type="file" name="tutc_img" accept="image/*" id="imgInput"
+                 class="position-absolute top-0 start-0 w-100 h-100 opacity-0" style="cursor:pointer;">
+          <img id="imgPreview" src="" alt="preview"
+               class="w-100 rounded-3 d-none" style="object-fit:cover; max-height:180px;">
+          <div id="uploadPlaceholder">
+            <div class="text-secondary mb-2" style="font-size:2rem;"><i class="fas fa-image"></i></div>
+            <p class="text-muted small mb-0">คลิกหรือลากไฟล์รูปมาวางที่นี่<br>PNG, JPG ขนาดไม่เกิน 5MB</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ ตารางเวลา -->
+  <div class="card border rounded-4 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom rounded-top-4 d-flex align-items-center gap-2 py-3 px-4">
+      <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-warning bg-opacity-10 text-warning"
+           style="width:36px; height:36px; flex-shrink:0;">
+        <i class="fas fa-calendar-alt"></i>
+      </div>
+      <h2 class="h6 fw-bold mb-0">การจัดตารางเวลา</h2>
+    </div>
+    <div class="card-body p-4">
+      <div class="d-flex gap-2 align-items-center mb-3">
+        <input type="date" id="newDateInput" class="form-control" style="max-width:180px;">
+        <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="addDateSlot()">
+          <i class="fas fa-plus me-1"></i> เพิ่มวัน
+        </button>
+      </div>
+
+      <div id="slotContainer">
+        {% for sd in schedule_dates_with_slots %}
+          <div class="mb-3 slot-day-group" data-sdid="{{ sd.sd_id }}">
+            <input type="hidden" name="existing_sd[]" value="{{ sd.sd_id }}">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="text-muted fw-bold" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.06em;">
+                {{ sd.sd_date|date:'D d/m/Y' }}
+              </span>
+              <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0"
+                      style="width:28px; height:28px;"
+                      onclick="this.closest('.slot-day-group').remove()" title="ลบวันนี้">
+                <i class="fas fa-trash-alt" style="font-size:.7rem;"></i>
+              </button>
+            </div>
+            {% for ts in sd.time_slots.all %}
+            <div class="slot-row d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 mb-2">
+              <input type="text" name="ts_start_{{ sd.sd_id }}[]"
+                     class="form-control form-control-sm time-input flex-fill" value="{{ ts.ts_start_time|time:'H:i' }}"
+                     placeholder="09:00" maxlength="5" inputmode="numeric">
+              <span class="text-muted small">—</span>
+              <input type="text" name="ts_end_{{ sd.sd_id }}[]"
+                     class="form-control form-control-sm time-input flex-fill" value="{{ ts.ts_end_time|time:'H:i' }}"
+                     placeholder="10:00" maxlength="5" inputmode="numeric">
+              <button type="button" class="btn btn-link text-secondary p-0"
+                      onclick="this.closest('.slot-row').remove()" title="ลบ">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            {% endfor %}
+            <button type="button" class="btn btn-outline-secondary btn-sm w-100 border-dashed mt-1"
+                    style="border-style:dashed;"
+                    onclick="addSlot({{ sd.sd_id }}, this)">
+              <i class="fas fa-plus me-1"></i> เพิ่มช่วงเวลา
+            </button>
+          </div>
+        {% empty %}
+          <p class="text-muted small" id="emptySlotMsg">ยังไม่มีวันที่กำหนด — เลือกวันด้านบนเพื่อเริ่มต้น</p>
+        {% endfor %}
+      <div class="invalid-feedback d-block mt-1" id="err_slots" style="display:none!important;"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /col-lg-8 -->
+
+<!-- Right Panel -->
+<div class="col-lg-4">
+
+  <!-- ④ ราคา -->
+  <div class="card border rounded-4 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom rounded-top-4 d-flex align-items-center gap-2 py-3 px-4">
+      <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success"
+           style="width:36px; height:36px; flex-shrink:0;">
+        <i class="fas fa-coins"></i>
+      </div>
+      <h2 class="h6 fw-bold mb-0">รายละเอียดราคา</h2>
+    </div>
+    <div class="card-body p-4">
+      <p class="text-muted small mb-1">กำหนดราคาตามจำนวนนักเรียนต่อ session</p>
+      <p class="text-muted small mb-3"><i class="fas fa-coins text-warning me-1"></i> 1 เครดิต = 10 บาท</p>
+      <div id="rateContainer">
+        {% if rates %}
+          {% for rate in rates %}
+          <div class="rate-row bg-light border rounded-3 p-3 mb-3">
+            <div class="row g-2 align-items-center">
+              <div class="col">
+                <label class="form-label fw-semibold small mb-1">จำนวนนักเรียน <span class="text-danger">*</span></label>
+                <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu"
+                       min="1" value="{{ rate.tut_rate_stu_count }}" placeholder="เช่น 1">
+              </div>
+              <div class="col">
+                <label class="form-label fw-semibold small mb-1">เครดิต/คน <span class="text-danger">*</span></label>
+                <div class="input-group input-group-sm">
+                  <input type="number" name="rate_per_person[]" class="form-control rate-price"
+                         min="0" value="{{ rate.tut_rate_per_person }}" placeholder="เช่น 10">
+                  <span class="input-group-text bg-warning-subtle border-warning-subtle text-warning fw-bold">
+                    <i class="fas fa-coins"></i>
+                  </span>
+                </div>
+              </div>
+              <div class="col-auto pt-3">
+                <button type="button" class="btn btn-link text-danger p-0"
+                        onclick="this.closest('.rate-row').remove()">
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="rate-row bg-light border rounded-3 p-3 mb-3">
+            <div class="row g-2 align-items-center">
+              <div class="col">
+                <label class="form-label fw-semibold small mb-1">จำนวนนักเรียน <span class="text-danger">*</span></label>
+                <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu" min="1" placeholder="เช่น 1">
+              </div>
+              <div class="col">
+                <label class="form-label fw-semibold small mb-1">เครดิต/คน <span class="text-danger">*</span></label>
+                <div class="input-group input-group-sm">
+                  <input type="number" name="rate_per_person[]" class="form-control rate-price" min="0" placeholder="เช่น 10">
+                  <span class="input-group-text bg-warning-subtle border-warning-subtle text-warning fw-bold">
+                    <i class="fas fa-coins"></i>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+      <div class="invalid-feedback d-block mt-1" id="err_rate" style="display:none!important;"></div>
+      <button type="button" class="btn btn-outline-secondary btn-sm w-100" style="border-style:dashed;" onclick="addRate()">
+        <i class="fas fa-plus me-1"></i> เพิ่มเรท
+      </button>
+    </div>
+  </div>
+
+  <!-- Tips -->
+  <div class="card border rounded-4 shadow-sm">
+    <div class="card-body p-3">
+      <p class="fw-bold small mb-2"><i class="fas fa-lightbulb text-warning me-1"></i> เคล็ดลับราคา</p>
+      <ul class="mb-0 ps-3 text-muted" style="font-size:.78rem; line-height:1.8;">
+        <li>ตั้งเรทหลายแบบเพื่อรองรับหลายขนาดกลุ่ม</li>
+        <li>กลุ่มใหญ่ควรถูกกว่ากลุ่มเล็ก</li>
+        <li>ราคา 0 = ฟรีค่าบริการ</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+</div><!-- /row -->
+
+</form>
+</div>
+</div>
+
+<!-- Sticky Action Bar -->
+<div class="bg-white border-top py-3 sticky-bottom" style="z-index:100;">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <a href="{% url 'tutoring:tutor_manage' %}" class="btn btn-outline-secondary fw-semibold px-4">ยกเลิก</a>
+      <button type="submit" form="courseForm" class="btn btn-primary fw-bold px-4">
+        <i class="fas fa-save me-2"></i>
+        {% if tutc %}บันทึกการเปลี่ยนแปลง{% else %}บันทึกและเผยแพร่{% endif %}
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── helpers ──
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.style.removeProperty('display');
+}
+function clearErr(id) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = ''; el.style.setProperty('display','none','important'); }
+}
+function markField(el, errId, msg) {
+  el.classList.add('is-invalid');
+  showErr(errId, msg);
+}
+function clearField(el, errId) {
+  el.classList.remove('is-invalid');
+  clearErr(errId);
+}
+
+// ── clear on change ──
+document.getElementById('cgSelect').addEventListener('change', () => clearField(document.getElementById('cgSelect'), 'err_cg'));
+document.getElementById('crsSelect').addEventListener('change', () => clearField(document.getElementById('crsSelect'), 'err_crs'));
+document.querySelector('[name=tutc_max_stu]').addEventListener('input', () => clearField(document.querySelector('[name=tutc_max_stu]'), 'err_max_stu'));
+document.querySelector('[name=tutc_name]').addEventListener('input', () => clearField(document.querySelector('[name=tutc_name]'), 'err_name'));
+
+// ── Form Validation ──
+document.getElementById('courseForm').addEventListener('submit', function(e) {
+  let valid = true;
+
+  // 1. กลุ่มวิชา
+  const cgSel = document.getElementById('cgSelect');
+  if (!cgSel.value) { markField(cgSel, 'err_cg', 'กรุณาเลือกกลุ่มวิชา'); valid = false; }
+  else clearField(cgSel, 'err_cg');
+
+  // 2. รายวิชา
+  const crsSel = document.getElementById('crsSelect');
+  if (!crsSel.value) { markField(crsSel, 'err_crs', 'กรุณาเลือกรายวิชา'); valid = false; }
+  else clearField(crsSel, 'err_crs');
+
+  // 3. จำนวนรับสูงสุด
+  const maxStuEl = document.querySelector('[name=tutc_max_stu]');
+  if (!maxStuEl.value || parseInt(maxStuEl.value) < 1) { markField(maxStuEl, 'err_max_stu', 'กรุณาระบุจำนวนรับสูงสุด'); valid = false; }
+  else clearField(maxStuEl, 'err_max_stu');
+
+  // 4. ชื่อรายวิชา
+  const nameEl = document.querySelector('[name=tutc_name]');
+  if (!nameEl.value.trim()) { markField(nameEl, 'err_name', 'กรุณากรอกชื่อรายวิชา'); valid = false; }
+  else clearField(nameEl, 'err_name');
+
+  // 5. วันที่ + time slots
+  const dayGroups = document.querySelectorAll('#slotContainer .slot-day-group');
+  if (dayGroups.length === 0) {
+    showErr('err_slots', 'กรุณาเพิ่มวันที่อย่างน้อย 1 วัน');
+    valid = false;
+  } else {
+    let slotErr = '';
+    dayGroups.forEach(group => {
+      const slots = group.querySelectorAll('.slot-row');
+      if (slots.length === 0) { slotErr = slotErr || 'แต่ละวันต้องมีช่วงเวลาอย่างน้อย 1 ช่วง'; valid = false; return; }
+      const timeRe = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+      slots.forEach(slot => {
+        const inputs = slot.querySelectorAll('input[type=text]');
+        inputs.forEach(inp => {
+          if (!inp.value.trim()) {
+            inp.classList.add('is-invalid');
+            slotErr = slotErr || 'กรุณากรอกเวลาให้ครบทุกช่วง';
+            valid = false;
+          } else if (!timeRe.test(inp.value.trim())) {
+            inp.classList.add('is-invalid');
+            slotErr = slotErr || 'รูปแบบเวลาไม่ถูกต้อง กรุณาใช้ HH:MM';
+            valid = false;
+          } else {
+            inp.classList.remove('is-invalid');
+          }
+        });
+        // ตรวจ end > start
+        const inps = slot.querySelectorAll('input[type=text]');
+        if (inps.length === 2 && inps[0].value && inps[1].value) {
+          if (inps[1].value <= inps[0].value) {
+            inps[1].classList.add('is-invalid');
+            slotErr = slotErr || 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น';
+            valid = false;
+          }
+        }
+      });
+    });
+    if (slotErr) showErr('err_slots', slotErr);
+    else clearErr('err_slots');
+  }
+
+  // 6. rate
+  const rateRows = document.querySelectorAll('.rate-row');
+  let hasValidRate = false;
+  rateRows.forEach(row => {
+    const stu   = row.querySelector('.rate-stu');
+    const price = row.querySelector('.rate-price');
+    if (!stu || !price) return;
+    const stuOk   = stu.value   && parseInt(stu.value) >= 1;
+    const priceOk = price.value !== '' && parseInt(price.value) >= 0;
+    if (!stuOk)   { stu.classList.add('is-invalid');   valid = false; }
+    else            stu.classList.remove('is-invalid');
+    if (!priceOk) { price.classList.add('is-invalid'); valid = false; }
+    else            price.classList.remove('is-invalid');
+    if (stuOk && priceOk) hasValidRate = true;
+  });
+  if (!hasValidRate) {
+    showErr('err_rate', 'กรุณากรอกอัตราค่าติวอย่างน้อย 1 เรทให้ครบถ้วน');
+    valid = false;
+  } else {
+    clearErr('err_rate');
+  }
+
+  if (!valid) {
+    e.preventDefault();
+    // scroll ไปหา field แรกที่ error
+    const firstInvalid = document.querySelector('.is-invalid, [id^="err_"]:not([style*="display:none"]):not(:empty)');
+    if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+});
+
+// ── Image Preview ──
+document.getElementById('imgInput').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('imgPreview');
+    preview.src = e.target.result;
+    preview.classList.remove('d-none');
+    document.getElementById('uploadPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
+
+// ── Status Toggle Label ──
+document.getElementById('statusToggle').addEventListener('change', function () {
+  document.getElementById('statusLabel').textContent = this.checked ? 'เปิดรับสอน' : 'ปิดรับสอน';
+});
+
+// ── Course Select (AJAX filter) ──
+document.getElementById('cgSelect').addEventListener('change', function () {
+  const cgId = this.value;
+  const crsSelect = document.getElementById('crsSelect');
+  crsSelect.innerHTML = '<option value="">กำลังโหลด...</option>';
+  if (!cgId) { crsSelect.innerHTML = '<option value="">-- เลือกกลุ่มวิชาก่อน --</option>'; return; }
+  fetch(`/courses/api/courses-by-group/?cg_id=${cgId}`)
+    .then(r => r.json())
+    .then(data => {
+      crsSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
+      data.courses.forEach(c => {
+        crsSelect.innerHTML += `<option value="${c.crs_id}">${c.crs_id} - ${c.crs_name}</option>`;
+      });
+    })
+    .catch(() => { crsSelect.innerHTML = '<option value="">เกิดข้อผิดพลาด</option>'; });
+});
+
+// ── Add Time Slot ──
+function addSlot(sdId, btn) {
+  const group = btn.closest('.slot-day-group');
+  const row = document.createElement('div');
+  row.className = 'slot-row d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 mb-2';
+  row.innerHTML = `
+    <input type="text" name="ts_start_${sdId}[]" class="form-control form-control-sm time-input flex-fill" placeholder="09:00" maxlength="5" inputmode="numeric">
+    <span class="text-muted small">—</span>
+    <input type="text" name="ts_end_${sdId}[]" class="form-control form-control-sm time-input flex-fill" placeholder="10:00" maxlength="5" inputmode="numeric">
+    <button type="button" class="btn btn-link text-secondary p-0" title="ลบ" onclick="this.closest('.slot-row').remove()">
+      <i class="fas fa-times"></i>
+    </button>`;
+  group.insertBefore(row, btn);
+  row.querySelectorAll('.time-input').forEach(initTimeInput);
+}
+
+// ── Add New Date ──
+let newDateCounter = 9000;
+function addDateSlot() {
+  const inp = document.getElementById('newDateInput');
+  const dateStr = inp.value;
+  if (!dateStr) return;
+  newDateCounter++;
+  const sdId = `new_${newDateCounter}`;
+  const dateObj = new Date(dateStr + 'T00:00:00');
+  const label = dateObj.toLocaleDateString('th-TH', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' });
+  const group = document.createElement('div');
+  group.className = 'mb-3 slot-day-group';
+  group.dataset.sdid = sdId;
+  group.innerHTML = `
+    <input type="hidden" name="new_date[]" value="${dateStr}">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <span class="text-muted fw-bold" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.06em;">${label}</span>
+      <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0" style="width:28px;height:28px;"
+              onclick="this.closest('.slot-day-group').remove()">
+        <i class="fas fa-trash-alt" style="font-size:.7rem;"></i>
+      </button>
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-1" style="border-style:dashed;"
+            onclick="addSlot('${sdId}', this)">
+      <i class="fas fa-plus me-1"></i> เพิ่มช่วงเวลา
+    </button>`;
+  const empty = document.getElementById('emptySlotMsg');
+  if (empty) empty.remove();
+  document.getElementById('slotContainer').appendChild(group);
+  addSlot(sdId, group.querySelector('button[onclick]'));
+  inp.value = '';
+}
+
+// ── 24-Hour Time Input Auto-Format ──
+function initTimeInput(input) {
+  input.addEventListener('input', function () {
+    let digits = this.value.replace(/\D/g, '');
+    if (digits.length > 4) digits = digits.slice(0, 4);
+    if (digits.length >= 3) {
+      this.value = digits.slice(0, 2) + ':' + digits.slice(2);
+    } else {
+      this.value = digits;
+    }
+  });
+  input.addEventListener('blur', function () {
+    const parts = this.value.split(':');
+    if (parts.length === 2) {
+      const h = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      if (!isNaN(h) && !isNaN(m) && h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+        this.value = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+        this.classList.remove('is-invalid');
+      } else {
+        this.classList.add('is-invalid');
+      }
+    } else if (this.value !== '') {
+      this.classList.add('is-invalid');
+    }
+  });
+}
+
+document.querySelectorAll('.time-input').forEach(initTimeInput);
+const _timeObserver = new MutationObserver(mutations => {
+  mutations.forEach(m => m.addedNodes.forEach(node => {
+    if (node.nodeType === 1) {
+      node.querySelectorAll && node.querySelectorAll('.time-input').forEach(initTimeInput);
+      if (node.classList && node.classList.contains('time-input')) initTimeInput(node);
+    }
+  }));
+});
+_timeObserver.observe(document.getElementById('slotContainer'), { childList: true, subtree: true });
+
+// ── Add Rate Row ──
+function addRate() {
+  const container = document.getElementById('rateContainer');
+  const div = document.createElement('div');
+  div.className = 'rate-row bg-light border rounded-3 p-3 mb-3';
+  div.innerHTML = `
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <label class="form-label fw-semibold small mb-1">จำนวนนักเรียน <span class="text-danger">*</span></label>
+        <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu" min="1" placeholder="เช่น 1">
+      </div>
+      <div class="col">
+        <label class="form-label fw-semibold small mb-1">เครดิต/คน <span class="text-danger">*</span></label>
+        <div class="input-group input-group-sm">
+          <input type="number" name="rate_per_person[]" class="form-control rate-price" min="0" placeholder="เช่น 10">
+          <span class="input-group-text bg-warning-subtle border-warning-subtle text-warning fw-bold">
+            <i class="fas fa-coins"></i>
+          </span>
+        </div>
+      </div>
+      <div class="col-auto pt-3">
+        <button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('.rate-row').remove()">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+    </div>`;
+  container.appendChild(div);
+}
+</script>
+{% endblock %}
