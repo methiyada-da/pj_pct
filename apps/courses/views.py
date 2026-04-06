@@ -315,3 +315,21 @@ def course_json(request, pk):
         'crs_desc': obj.crs_desc or '',
         'cg_id'   : obj.cg_id_id,
     })
+
+# ─── API: รายวิชาตามกลุ่มวิชา (สำหรับ AJAX ใน manage_course) ────────────────
+ 
+def courses_by_group(request):
+    """
+    GET /courses/api/courses-by-group/?cg_id=<id>
+    คืนรายวิชาในกลุ่มวิชาที่ระบุ — ใช้โดย tutoring/manage_course.html
+    """
+    cg_id = request.GET.get('cg_id', '').strip()
+    if not cg_id:
+        return JsonResponse({'courses': []})
+    courses = (
+        Course.objects
+        .filter(cg_id=cg_id)
+        .order_by('crs_id')
+        .values('crs_id', 'crs_name')
+    )
+    return JsonResponse({'courses': list(courses)})

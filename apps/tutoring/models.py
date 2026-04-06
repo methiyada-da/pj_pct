@@ -78,10 +78,22 @@ class ScheduleDate(models.Model):
 
 
 # 4.3.1.11 ตารางข้อมูลช่วงเวลาที่เปิดสอน
+# *** เพิ่ม ts_status เพื่อล็อก slot เมื่อติวเตอร์รับงานแล้ว ***
+# ล็อกระดับ slot ไม่ใช่ระดับวัน → 1 วันมีได้หลาย slot, ล็อกแค่ slot ที่จองแล้ว
 class TimeSlot(models.Model):
+    STATUS_CHOICES = [
+        (0, 'ว่าง'),      # จองได้ปกติ
+        (1, 'ล็อกแล้ว'),  # ติวเตอร์รับงานแล้ว — ห้ามจองซ้ำ
+    ]
+
     ts_id         = models.AutoField(primary_key=True, verbose_name="รหัสช่วงเวลา")
     ts_start_time = models.TimeField(verbose_name="เวลาเริ่ม")
     ts_end_time   = models.TimeField(verbose_name="เวลาจบ")
+    ts_status     = models.IntegerField(
+        choices=STATUS_CHOICES,
+        default=0,
+        verbose_name="สถานะช่วงเวลา"
+    )
     sd_id         = models.ForeignKey(
         ScheduleDate,
         on_delete=models.CASCADE,
@@ -95,4 +107,5 @@ class TimeSlot(models.Model):
         verbose_name = "ข้อมูลช่วงเวลาที่เปิดสอน"
 
     def __str__(self):
-        return f"{self.sd_id.sd_date} | {self.ts_start_time} - {self.ts_end_time}"
+        status_label = '🔒' if self.ts_status == 1 else '✓'
+        return f"{self.sd_id.sd_date} | {self.ts_start_time} - {self.ts_end_time} {status_label}"
