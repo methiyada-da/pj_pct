@@ -25,6 +25,9 @@ urlpatterns = [
     path('course-group/<int:pk>/delete/',   views.course_group_delete, name='course_group_delete'),
     path('course-group/<int:pk>/json/',     views.course_group_json,   name='course_group_json'),
 
+    # API (AJAX)
+    path('api/courses-by-group/', views.courses_by_group, name='courses_by_group'),
+
     # Course
     path('course/',                         views.course_list,     name='course_list'),
     path('course/create/',                  views.course_create,   name='course_create'),
