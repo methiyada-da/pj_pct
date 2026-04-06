@@ -3,171 +3,182 @@
 
 {% block title %}สมัครเป็นติวเตอร์ — Puean Chuay Tu{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/tutor.css' %}">
-{% endblock %}
-
 {% block content %}
-<div class="tutor-register-page">
-  <div class="container" style="max-width: 680px;">
+<div class="bg-light py-5 px-2 px-md-3" style="min-height:calc(100vh - 64px);">
+  <div class="container" style="max-width:680px;">
 
-    <!-- Page Heading -->
-    <div class="page-heading">
-      <h1>สมัครเป็นติวเตอร์</h1>
-      <p>กรอกข้อมูลโปรไฟล์ของคุณให้ครบถ้วนเพื่อแบ่งปันความเชี่ยวชาญของคุณกับชุมชน RMUTI</p>
+    <!-- Page heading -->
+    <div class="mb-4">
+      <h4 class="fw-bold mb-1">สมัครเป็นติวเตอร์</h4>
+      <p class="text-muted small mb-0">
+        กรอกข้อมูลโปรไฟล์ของคุณให้ครบถ้วนเพื่อแบ่งปันความเชี่ยวชาญของคุณกับชุมชน RMUTI
+      </p>
     </div>
 
-    <!-- Form Card -->
-    <div class="form-card">
-      <div class="section-heading">
-        <div class="icon-badge"><i class="fas fa-id-badge"></i></div>
-        คุณวุฒิทางวิชาการและการสอน
-        {% if tutor %}
-          {% if tutor.tut_status == 0 %}
-            <span class="reg-status reg-status--pending ms-auto">
-              <i class="fas fa-clock"></i> รอการตรวจสอบ
-            </span>
-          {% elif tutor.tut_status == 1 %}
-            <span class="reg-status reg-status--approved ms-auto">
-              <i class="fas fa-check-circle"></i> อนุมัติแล้ว
-            </span>
-          {% elif tutor.tut_status == 2 %}
-            <span class="reg-status reg-status--rejected ms-auto">
-              <i class="fas fa-times-circle"></i> ถูกปฏิเสธ
-            </span>
-          {% elif tutor.tut_status == 3 %}
-            <span class="reg-status reg-status--suspended ms-auto">
-              <i class="fas fa-ban"></i> ระงับการสอน
-            </span>
-          {% endif %}
-        {% endif %}
-      </div>
+    <!-- Form card -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
 
-      <form method="post" action="{% url 'tutoring:register_tutor' %}">
-        {% csrf_token %}
-
-        <!-- Row: ชื่อเต็ม + อีเมล RMUTI -->
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label class="form-label-custom">ชื่อเต็ม</label>
-            <div class="input-with-icon">
-              <i class="fas fa-user field-icon"></i>
-              <input type="text" class="form-control-custom readonly input-with-icon"
-                     value="{{ member.mb_full_name }}" readonly>
-            </div>
+        <!-- Section heading + status badge -->
+        <div class="d-flex align-items-center gap-3 pb-3 mb-4 border-bottom">
+          <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+               style="width:36px;height:36px;background:#EFF6FF;">
+            <i class="fas fa-id-badge text-primary"></i>
           </div>
-          <div class="col-md-6">
-            <label class="form-label-custom">อีเมล RMUTI</label>
-            <div class="input-with-icon">
-              <i class="fas fa-envelope field-icon"></i>
-              <input type="email" class="form-control-custom readonly input-with-icon"
-                     value="{{ member.mb_email }}" readonly>
-            </div>
-          </div>
-        </div>
+          <span class="fw-bold" style="font-size:16px;">คุณวุฒิทางวิชาการและการสอน</span>
 
-        <!-- Row: คณะ + สาขา -->
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label class="form-label-custom">คณะ</label>
-            <input type="text" class="form-control-custom readonly"
-                   value="{{ faculty_name }}" readonly>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label-custom">สาขา</label>
-            <input type="text" class="form-control-custom readonly"
-                   value="{{ major_name }}" readonly>
-          </div>
-        </div>
-
-        <!-- เกรดเฉลี่ยสะสม -->
-        <div class="mb-3" style="max-width: 220px;">
-          <label class="form-label-custom">เกรดเฉลี่ยสะสม</label>
-          <input type="number" name="gpa" step="0.01" min="0" max="4"
-                 class="form-control-custom {% if is_view_only %}readonly{% endif %}"
-                 placeholder="0.00"
-                 value="{{ form.gpa.value|default:'' }}"
-                 {% if is_view_only %}readonly{% endif %}>
-        </div>
-
-        <!-- ทักษะการสอน -->
-        <div class="mb-3">
-          <label class="form-label-custom">
-            ทักษะการสอน
-            <span class="sub">ระบุวิชาหรือหัวข้อเฉพาะที่คุณมีความเชี่ยวชาญ (เช่น แคลคูลัส การเขียนโปรแกรมภาษาจาวา อุณหพลศาสตร์)</span>
-          </label>
-          <textarea name="teaching_skills"
-                    class="form-control-custom {% if is_view_only %}readonly{% endif %}"
-                    rows="3"
-                    placeholder="ระบุสาขาวิชาที่คุณเชี่ยวชาญ..."
-                    {% if is_view_only %}readonly{% endif %}>{{ form.teaching_skills.value|default:'' }}</textarea>
-        </div>
-
-        <!-- ประสบการณ์การสอน -->
-        <div class="mb-3">
-          <label class="form-label-custom">ประสบการณ์การสอน</label>
-          <div class="radio-group">
-            <label class="radio-option">
-              <input type="radio" name="has_experience" value="1"
-                     {% if form.has_experience.value == '1' %}checked{% endif %}
-                     {% if is_view_only %}disabled{% endif %}>
-              มีประสบการณ์
-            </label>
-            <label class="radio-option">
-              <input type="radio" name="has_experience" value="0"
-                     {% if form.has_experience.value == '0' or not form.has_experience.value %}checked{% endif %}
-                     {% if is_view_only %}disabled{% endif %}>
-              ไม่มีประสบการณ์
-            </label>
-          </div>
-        </div>
-
-        <!-- รายละเอียดประสบการณ์ -->
-        <div class="mb-0" id="experience-detail-wrap">
-          <label class="form-label-custom">
-            รายละเอียดประสบการณ์
-            <span class="sub">โปรดอธิบายประสบการณ์การสอน การเป็นผู้ช่วยสอน หรือประสบการณ์การให้คำปรึกษาที่เกี่ยวข้องในอดีตของคุณ</span>
-          </label>
-          <textarea name="experience_detail"
-                    class="form-control-custom {% if is_view_only %}readonly{% endif %}"
-                    rows="4"
-                    placeholder="ช่วยเล่าเพิ่มเติมเกี่ยวกับประสบการณ์ของคุณในฐานะติวเตอร์หน่อย..."
-                    {% if is_view_only %}readonly{% endif %}>{{ form.experience_detail.value|default:'' }}</textarea>
-        </div>
-
-        <!-- Info box -->
-        <div class="info-box">
-          <i class="fas fa-info-circle info-icon"></i>
-          <p class="info-text">
-            {% if tutor.tut_status == 3 %}
-              <strong>ถูกระงับการสอน</strong>
-              บัญชีติวเตอร์ของคุณถูกระงับชั่วคราว ไม่สามารถแก้ไขข้อมูลได้จนกว่าจะได้รับการปลดระงับจากผู้ดูแลระบบ
-            {% elif is_view_only %}
-              <strong>อยู่ระหว่างการตรวจสอบ</strong>
-              ข้อมูลของคุณอยู่ระหว่างการตรวจสอบโดยทีมงาน ไม่สามารถแก้ไขได้ในขณะนี้
-              คุณจะได้รับแจ้งผลภายใน 2-3 วันทำการ
-            {% else %}
-              <strong>กระบวนการตรวจสอบ</strong>
-              ทีมวิชาการของเราจะตรวจสอบทักษะการสอนและรายละเอียดโปรไฟล์ของคุณภายใน 2-3 วันทำการ
-              คุณจะได้รับอีเมลเมื่อได้รับการยืนยันแล้ว
+          {% if tutor %}
+            {% if tutor.tut_status == 0 %}
+              <span class="badge rounded-pill ms-auto fw-semibold"
+                    style="background:#FEF9C3;color:#92400E;border:1px solid #FCD34D;">
+                <i class="fas fa-clock me-1"></i>รอการตรวจสอบ
+              </span>
+            {% elif tutor.tut_status == 1 %}
+              <span class="badge rounded-pill ms-auto fw-semibold"
+                    style="background:#DCFCE7;color:#14532D;border:1px solid #86EFAC;">
+                <i class="fas fa-check-circle me-1"></i>อนุมัติแล้ว
+              </span>
+            {% elif tutor.tut_status == 2 %}
+              <span class="badge rounded-pill ms-auto fw-semibold"
+                    style="background:#FEE2E2;color:#7F1D1D;border:1px solid #FCA5A5;">
+                <i class="fas fa-times-circle me-1"></i>ถูกปฏิเสธ
+              </span>
+            {% elif tutor.tut_status == 3 %}
+              <span class="badge rounded-pill ms-auto fw-semibold"
+                    style="background:#F3E8FF;color:#581C87;border:1px solid #D8B4FE;">
+                <i class="fas fa-ban me-1"></i>ระงับการสอน
+              </span>
             {% endif %}
-          </p>
-        </div>
-
-        <!-- Navigation -->
-        <div class="form-nav">
-          <a href="{% url 'home' %}" class="btn-back">
-            <i class="fas fa-arrow-left"></i> กลับหน้าแรก
-          </a>
-          {% if not is_view_only %}
-            <button type="submit" class="btn-submit">
-              {% if tutor %}{% if tutor.tut_status == 2 %}ส่งคำขอใหม่{% else %}อัปเดตข้อมูล{% endif %}{% else %}ส่งคำขอสมัคร{% endif %}
-              <i class="fas fa-paper-plane"></i>
-            </button>
           {% endif %}
         </div>
 
-      </form>
+        <form method="post" action="{% url 'tutoring:register_tutor' %}">
+          {% csrf_token %}
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">ชื่อเต็ม</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-user text-secondary"></i></span>
+                <input type="text" class="form-control bg-light"
+                       value="{{ member.mb_full_name }}" readonly>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">อีเมล RMUTI</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-envelope text-secondary"></i></span>
+                <input type="email" class="form-control bg-light"
+                       value="{{ member.mb_email }}" readonly>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">คณะ</label>
+              <input type="text" class="form-control bg-light"
+                     value="{{ faculty_name }}" readonly>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">สาขา</label>
+              <input type="text" class="form-control bg-light"
+                     value="{{ major_name }}" readonly>
+            </div>
+          </div>
+
+          <div class="mb-3" style="max-width:220px;">
+            <label class="form-label fw-semibold small">เกรดเฉลี่ยสะสม (GPAX)</label>
+            <input type="number" name="gpa" step="0.01" min="0" max="4"
+                   class="form-control {% if is_view_only %}bg-light{% endif %}"
+                   placeholder="0.00"
+                   value="{{ form.gpa.value|default:'' }}"
+                   {% if is_view_only %}readonly{% endif %}>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">
+              ทักษะการสอน
+              <span class="text-muted fw-normal d-block" style="font-size:11px;">
+                ระบุวิชาหรือหัวข้อเฉพาะที่คุณมีความเชี่ยวชาญ (เช่น แคลคูลัส Python อุณหพลศาสตร์)
+              </span>
+            </label>
+            <textarea name="teaching_skills" rows="3"
+                      class="form-control {% if is_view_only %}bg-light{% endif %}"
+                      placeholder="ระบุสาขาวิชาที่คุณเชี่ยวชาญ..."
+                      {% if is_view_only %}readonly{% endif %}>{{ form.teaching_skills.value|default:'' }}</textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">ประสบการณ์การสอน</label>
+            <div class="d-flex gap-4">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="has_experience" id="hasExpYes"
+                       value="1"
+                       {% if form.has_experience.value == '1' %}checked{% endif %}
+                       {% if is_view_only %}disabled{% endif %}>
+                <label class="form-check-label small" for="hasExpYes">มีประสบการณ์</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="has_experience" id="hasExpNo"
+                       value="0"
+                       {% if form.has_experience.value == '0' or not form.has_experience.value %}checked{% endif %}
+                       {% if is_view_only %}disabled{% endif %}>
+                <label class="form-check-label small" for="hasExpNo">ไม่มีประสบการณ์</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-0" id="experience-detail-wrap">
+            <label class="form-label fw-semibold small">
+              รายละเอียดประสบการณ์
+              <span class="text-muted fw-normal d-block" style="font-size:11px;">
+                โปรดอธิบายประสบการณ์การสอน การเป็นผู้ช่วยสอน หรือประสบการณ์การให้คำปรึกษาที่ผ่านมา
+              </span>
+            </label>
+            <textarea name="experience_detail" rows="4"
+                      class="form-control {% if is_view_only %}bg-light{% endif %}"
+                      placeholder="ช่วยเล่าเพิ่มเติมเกี่ยวกับประสบการณ์ของคุณในฐานะติวเตอร์..."
+                      {% if is_view_only %}readonly{% endif %}>{{ form.experience_detail.value|default:'' }}</textarea>
+          </div>
+
+          <!-- Info alert -->
+          <div class="alert mt-4 mb-0 d-flex gap-3 align-items-start
+                      {% if tutor.tut_status == 3 or is_view_only %}alert-warning{% else %}alert-info{% endif %}">
+            <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
+            <div>
+              {% if tutor.tut_status == 3 %}
+                <strong>ถูกระงับการสอน</strong><br>
+                <small>บัญชีติวเตอร์ของคุณถูกระงับชั่วคราว ไม่สามารถแก้ไขข้อมูลได้จนกว่าจะได้รับการปลดระงับ</small>
+              {% elif is_view_only %}
+                <strong>อยู่ระหว่างการตรวจสอบ</strong><br>
+                <small>ข้อมูลของคุณอยู่ระหว่างการตรวจสอบโดยทีมงาน ไม่สามารถแก้ไขได้ในขณะนี้ คุณจะได้รับแจ้งผลภายใน 2-3 วันทำการ</small>
+              {% else %}
+                <strong>กระบวนการตรวจสอบ</strong><br>
+                <small>ทีมวิชาการของเราจะตรวจสอบโปรไฟล์ของคุณภายใน 2-3 วันทำการ คุณจะได้รับอีเมลเมื่อได้รับการยืนยันแล้ว</small>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Footer buttons -->
+          <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left me-1"></i> กลับหน้าแรก
+            </a>
+            {% if not is_view_only %}
+              <button type="submit" class="btn btn-primary fw-semibold">
+                {% if tutor %}
+                  {% if tutor.tut_status == 2 %}ส่งคำขอใหม่{% else %}อัปเดตข้อมูล{% endif %}
+                {% else %}
+                  ส่งคำขอสมัคร
+                {% endif %}
+                <i class="fas fa-paper-plane ms-1"></i>
+              </button>
+            {% endif %}
+          </div>
+
+        </form>
+      </div>
     </div>
 
   </div>
@@ -176,14 +187,13 @@
 
 {% block extra_js %}
 <script>
-  const radios = document.querySelectorAll('input[name="has_experience"]');
+  const radios    = document.querySelectorAll('input[name="has_experience"]');
   const detailWrap = document.getElementById('experience-detail-wrap');
 
   function toggleDetail() {
     const hasExp = document.querySelector('input[name="has_experience"]:checked')?.value === '1';
     detailWrap.style.display = hasExp ? 'block' : 'none';
   }
-
   radios.forEach(r => r.addEventListener('change', toggleDetail));
   toggleDetail();
 </script>

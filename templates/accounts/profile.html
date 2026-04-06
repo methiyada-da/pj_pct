@@ -3,30 +3,50 @@
 
 {% block title %}จัดการโปรไฟล์ — Puean Chuay Tu{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/profile.css' %}">
-{% endblock %}
-
 {% block content %}
-<div class="profile-page">
-  <div class="pf-container">
+<div class="bg-light py-4 px-2 px-md-3" style="min-height:calc(100vh - 64px);">
+  <div class="container" style="max-width:600px;">
 
-    <!-- ── Avatar ── -->
-    <div class="pf-avatar-section">
-      <div class="pf-avatar-wrap">
+    <!-- ── Avatar section ── -->
+    <div class="text-center py-4">
+      <div class="position-relative d-inline-block mb-3">
         {% if member.mb_img %}
-          <img src="{{ member.mb_img.url }}" class="pf-avatar" id="avatarPreview" alt="profile">
+          <img src="{{ member.mb_img.url }}" id="avatarPreview"
+               class="rounded-circle shadow"
+               style="width:130px;height:130px;object-fit:cover;border:4px solid #fff;" alt="profile">
         {% else %}
-          <div class="pf-avatar pf-avatar--text" id="avatarPreview">
+          <div id="avatarPreview"
+               class="rounded-circle shadow d-flex align-items-center justify-content-center fw-bold"
+               style="width:130px;height:130px;background:#2563EB;color:#fff;font-size:48px;border:4px solid #fff;">
             {{ member.mb_full_name|first|upper }}
           </div>
         {% endif %}
-        <label for="id_mb_img" class="pf-avatar-edit" title="เปลี่ยนรูปโปรไฟล์">
-          <i class="fas fa-camera"></i>
+        <label for="id_mb_img"
+               class="position-absolute bottom-0 end-0 rounded-circle d-flex align-items-center justify-content-center"
+               style="width:32px;height:32px;background:#2563EB;color:#fff;cursor:pointer;border:2px solid #fff;">
+          <i class="fas fa-camera" style="font-size:12px;"></i>
         </label>
       </div>
-      <div class="pf-name">{{ member.mb_full_name }}</div>
-      <div class="pf-email">{{ member.mb_email }}</div>
+      <h5 class="fw-bold mb-1">{{ member.mb_full_name }}</h5>
+      <div class="text-muted small mb-2">{{ member.mb_email }}</div>
+
+      <!-- Member status dot -->
+      {% if member.mb_status == 1 %}
+        <span class="d-inline-flex align-items-center gap-2 small fw-semibold" style="color:#16A34A;">
+          <span class="rounded-circle" style="width:8px;height:8px;background:#16A34A;display:inline-block;"></span>
+          ใช้งานปกติ
+        </span>
+      {% elif member.mb_status == 0 %}
+        <span class="d-inline-flex align-items-center gap-2 small fw-semibold" style="color:#6B7280;">
+          <span class="rounded-circle" style="width:8px;height:8px;background:#9CA3AF;display:inline-block;"></span>
+          ปิดการใช้งาน
+        </span>
+      {% elif member.mb_status == 2 %}
+        <span class="d-inline-flex align-items-center gap-2 small fw-semibold" style="color:#D97706;">
+          <span class="rounded-circle" style="width:8px;height:8px;background:#D97706;display:inline-block;"></span>
+          ระงับชั่วคราว
+        </span>
+      {% endif %}
     </div>
 
     <!-- Hidden photo form -->
@@ -39,137 +59,123 @@
     <!-- ── Tutor status banner ── -->
     {% if tutor_status is not None %}
       {% if tutor_status == 0 %}
-        <div class="pf-banner pf-banner--pending">
-          <div class="pf-banner-icon"><i class="fas fa-hourglass-half"></i></div>
+        <div class="alert d-flex align-items-center gap-3 mb-3"
+             style="background:#FEF9C3;border:1px solid #FCD34D;color:#92400E;">
+          <i class="fas fa-hourglass-half fs-5"></i>
           <div>
-            <div class="pf-banner-title">รอการอนุมัติ</div>
-            <div class="pf-banner-sub">คำขอสมัครติวเตอร์ของคุณอยู่ระหว่างการพิจารณา</div>
+            <div class="fw-bold">รอการอนุมัติ</div>
+            <div class="small">คำขอสมัครติวเตอร์ของคุณอยู่ระหว่างการพิจารณา</div>
           </div>
         </div>
       {% elif tutor_status == 1 %}
-        <div class="pf-banner pf-banner--approved">
-          <div class="pf-banner-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="alert d-flex align-items-center gap-3 mb-3"
+             style="background:#DCFCE7;border:1px solid #86EFAC;color:#14532D;">
+          <i class="fas fa-check-circle fs-5"></i>
           <div>
-            <div class="pf-banner-title">ติวเตอร์ที่ได้รับการอนุมัติ</div>
-            <div class="pf-banner-sub">คุณสามารถจัดการคอร์สเรียนได้แล้ว</div>
+            <div class="fw-bold">ติวเตอร์ที่ได้รับการอนุมัติ</div>
+            <div class="small">คุณสามารถจัดการคอร์สเรียนได้แล้ว</div>
           </div>
         </div>
       {% elif tutor_status == 3 %}
-        <div class="pf-banner pf-banner--suspended">
-          <div class="pf-banner-icon"><i class="fas fa-ban"></i></div>
+        <div class="alert d-flex align-items-center gap-3 mb-3"
+             style="background:#F3E8FF;border:1px solid #D8B4FE;color:#581C87;">
+          <i class="fas fa-ban fs-5"></i>
           <div>
-            <div class="pf-banner-title">ระงับการสอน</div>
-            <div class="pf-banner-sub">บัญชีติวเตอร์ของคุณถูกระงับชั่วคราว</div>
+            <div class="fw-bold">ระงับการสอน</div>
+            <div class="small">บัญชีติวเตอร์ของคุณถูกระงับชั่วคราว</div>
           </div>
         </div>
       {% endif %}
     {% endif %}
 
     <!-- ── Personal info card ── -->
-    <div class="pf-card">
-      <div class="pf-card-header">ข้อมูลส่วนตัว</div>
-      <div class="pf-info-list">
-        <div class="pf-info-row">
-          <div class="pf-info-label">คณะ</div>
-          <div class="pf-info-box">
-            <i class="fas fa-university pf-info-icon"></i>
-            <span>{{ faculty_name|default:"—" }}</span>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body p-4">
+        <div class="text-muted small fw-semibold text-uppercase mb-3"
+             style="letter-spacing:.06em;">ข้อมูลส่วนตัว</div>
+        <div class="d-flex flex-column gap-3">
+          {% for label, value in info_rows %}
+          <div>
+            <div class="text-muted" style="font-size:12px;font-weight:600;">{{ label }}</div>
+            <div class="rounded-3 border d-flex align-items-center gap-2 px-3 py-2 mt-1"
+                 style="background:#F9FAFB;">
+              <span style="font-size:14px;font-weight:500;color:#111827;">{{ value }}</span>
+            </div>
           </div>
-        </div>
-        <div class="pf-info-row">
-          <div class="pf-info-label">สาขาวิชา</div>
-          <div class="pf-info-box">
-            <i class="fas fa-book pf-info-icon"></i>
-            <span>{{ major_name|default:"—" }}</span>
-          </div>
-        </div>
-        <div class="pf-info-row">
-          <div class="pf-info-label">ชื่อ-นามสกุล</div>
-          <div class="pf-info-box">
-            <i class="fas fa-id-card pf-info-icon"></i>
-            <span>{{ member.mb_full_name }}</span>
-          </div>
-        </div>
-        <div class="pf-info-row">
-          <div class="pf-info-label">อีเมล</div>
-          <div class="pf-info-box">
-            <i class="fas fa-envelope pf-info-icon"></i>
-            <span>{{ member.mb_email }}</span>
-          </div>
+          {% endfor %}
         </div>
       </div>
     </div>
 
     <!-- ── Password card ── -->
-    <div class="pf-card">
-      <div class="pf-card-header">รหัสผ่าน</div>
-      <div class="pf-pw-row">
-        <div class="pf-pw-input-wrap">
-          <i class="fas fa-lock pf-info-icon"></i>
-          <input type="password" value="password" class="pf-pw-display" readonly tabindex="-1">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <div class="text-muted small fw-semibold text-uppercase mb-3"
+             style="letter-spacing:.06em;">รหัสผ่าน</div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-3 border d-flex align-items-center gap-2 px-3 py-2 flex-grow-1"
+               style="background:#F9FAFB;">
+            <i class="fas fa-lock text-secondary" style="font-size:13px;"></i>
+            <input type="password" value="password" class="border-0 bg-transparent flex-grow-1"
+                   style="font-size:16px;letter-spacing:3px;color:#6B7280;outline:none;"
+                   readonly tabindex="-1">
+          </div>
+          <button type="button" class="btn btn-primary px-3 py-2 fw-semibold"
+                  data-bs-toggle="modal" data-bs-target="#passwordModal">
+            <i class="fas fa-sync-alt me-1"></i> เปลี่ยน
+          </button>
         </div>
-        <button type="button" class="pf-btn-change" id="openPasswordModal">
-          <i class="fas fa-sync-alt"></i> เปลี่ยน
-        </button>
       </div>
     </div>
 
-  </div><!-- /pf-container -->
+  </div>
 </div>
 
-<!-- ══════════════════════════════
-     Password Modal
-══════════════════════════════ -->
-<div class="pf-modal-overlay" id="passwordModal">
-  <div class="pf-modal">
-    <div class="pf-modal-header">
-      <span>เปลี่ยนรหัสผ่าน</span>
-      <button type="button" class="pf-modal-close" id="closePasswordModal">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-    <div class="pf-modal-body">
+<!-- ── Password Modal ── -->
+<div class="modal fade" id="passwordModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-4">
+      <div class="modal-header border-bottom">
+        <h5 class="modal-title fw-bold">เปลี่ยนรหัสผ่าน</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
 
-      <div id="modalError" class="pf-modal-error" style="display:none;"></div>
+        {% if password_error %}
+          <div class="alert alert-danger d-flex gap-2 align-items-center">
+            <i class="fas fa-exclamation-circle"></i> {{ password_error }}
+          </div>
+        {% endif %}
+        <div id="modalClientError" class="alert alert-danger d-none"></div>
 
-      <form method="post" id="passwordForm">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="password">
+        <form method="post" id="passwordForm">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="password">
 
-        <div class="pf-field">
-          <label class="pf-label">รหัสผ่านปัจจุบัน</label>
-          <div class="pf-input-wrap">
-            <i class="fas fa-lock pf-input-icon"></i>
-            <input type="password" name="old_password" class="pf-input pf-input--icon"
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">รหัสผ่านปัจจุบัน</label>
+            <input type="password" name="old_password" class="form-control"
                    placeholder="กรอกรหัสผ่านปัจจุบัน" autocomplete="current-password">
           </div>
-        </div>
-
-        <div class="pf-field">
-          <label class="pf-label">รหัสผ่านใหม่</label>
-          <div class="pf-input-wrap">
-            <i class="fas fa-key pf-input-icon"></i>
-            <input type="password" name="new_password1" id="newPw1" class="pf-input pf-input--icon"
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">รหัสผ่านใหม่</label>
+            <input type="password" name="new_password1" id="newPw1" class="form-control"
                    placeholder="อย่างน้อย 8 ตัวอักษร" autocomplete="new-password">
           </div>
-        </div>
-
-        <div class="pf-field" style="margin-bottom:0;">
-          <label class="pf-label">ยืนยันรหัสผ่านใหม่</label>
-          <div class="pf-input-wrap">
-            <i class="fas fa-key pf-input-icon"></i>
-            <input type="password" name="new_password2" id="newPw2" class="pf-input pf-input--icon"
+          <div class="mb-0">
+            <label class="form-label fw-semibold small">ยืนยันรหัสผ่านใหม่</label>
+            <input type="password" name="new_password2" id="newPw2" class="form-control"
                    placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" autocomplete="new-password">
           </div>
-        </div>
 
-        <div class="pf-modal-footer">
-          <button type="button" class="pf-btn-cancel" id="closePasswordModal2">ยกเลิก</button>
-          <button type="submit" class="pf-btn-save">
-            <i class="fas fa-check"></i> บันทึก
-          </button>
-        </div>
-      </form>
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary fw-semibold">
+              <i class="fas fa-check me-1"></i> บันทึก
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </div>
@@ -177,7 +183,7 @@
 
 {% block extra_js %}
 <script>
-  // ── Photo preview + auto submit ──
+  // Photo preview + auto submit
   document.getElementById('id_mb_img')?.addEventListener('change', function () {
     const file = this.files[0];
     if (!file) return;
@@ -189,7 +195,8 @@
       } else {
         const img = document.createElement('img');
         img.src = e.target.result;
-        img.className = 'pf-avatar';
+        img.className = 'rounded-circle shadow';
+        img.style.cssText = 'width:130px;height:130px;object-fit:cover;border:4px solid #fff;';
         img.id = 'avatarPreview';
         preview.replaceWith(img);
       }
@@ -198,47 +205,26 @@
     reader.readAsDataURL(file);
   });
 
-  // ── Password modal ──
-  const modal   = document.getElementById('passwordModal');
-  const openBtn = document.getElementById('openPasswordModal');
-  const closeBtn  = document.getElementById('closePasswordModal');
-  const closeBtn2 = document.getElementById('closePasswordModal2');
-
-  function openModal()  { modal.classList.add('is-open'); }
-  function closeModal() { modal.classList.remove('is-open'); clearError(); }
-
-  openBtn.addEventListener('click', openModal);
-  closeBtn.addEventListener('click', closeModal);
-  closeBtn2.addEventListener('click', closeModal);
-  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-
-  // ── Client-side validation before submit ──
-  function clearError() { document.getElementById('modalError').style.display = 'none'; }
-  function showError(msg) {
-    const el = document.getElementById('modalError');
-    el.textContent = msg;
-    el.style.display = 'flex';
-  }
-
+  // Client-side validation
   document.getElementById('passwordForm').addEventListener('submit', function (e) {
     const pw1 = document.getElementById('newPw1').value;
     const pw2 = document.getElementById('newPw2').value;
+    const errEl = document.getElementById('modalClientError');
+    errEl.classList.add('d-none');
     if (pw1.length > 0 && pw1.length < 8) {
       e.preventDefault();
-      showError('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร');
-      return;
-    }
-    if (pw1 !== pw2) {
+      errEl.textContent = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร';
+      errEl.classList.remove('d-none');
+    } else if (pw1 !== pw2) {
       e.preventDefault();
-      showError('รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน');
-      return;
+      errEl.textContent = 'รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน';
+      errEl.classList.remove('d-none');
     }
   });
 
-  // ── Re-open modal if server returned error ──
+  // Re-open modal on server error
   {% if password_error %}
-    openModal();
-    showError("{{ password_error }}");
+    new bootstrap.Modal(document.getElementById('passwordModal')).show();
   {% endif %}
 </script>
 {% endblock %}
