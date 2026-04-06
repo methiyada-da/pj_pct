@@ -49,8 +49,8 @@
               </li>
               <li>
                 {% if user.member.tutor.tut_status == 1 %}
-                  <a class="dropdown-item" href="#">
-                    <i class="fas fa-book-open me-2"></i>จัดการคอร์สเรียน
+                  <a class="dropdown-item" href="{% url 'tutoring:tutor_manage' %}">
+                    <i class="fas fa-book-open me-2"></i>จัดการข้อมูลติวเตอร์
                   </a>
                 {% else %}
                   <a class="dropdown-item" href="{% url 'tutoring:register_tutor' %}">
@@ -65,7 +65,7 @@
               </li>
               <li>
                 <a class="dropdown-item" href="#">
-                  <i class="fas fa-star me-2"></i>การรีวิว
+                  <i class="fas fa-star me-2"></i>การจอง
                 </a>
               </li>
               <li><hr class="dropdown-divider"></li>
