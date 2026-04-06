@@ -63,6 +63,7 @@ def login_view(request):
         'active_tab': 'login',
         'next': request.GET.get('next', ''),
         'login_error': login_error if 'login_error' in locals() else '',
+        'email_value': email if 'email' in locals() else '',
     }
     return render(request, 'accounts/login.html', context)
 
@@ -159,12 +160,22 @@ def profile_view(request):
                 return redirect('accounts:profile')
 
     from apps.accounts.models import Tutor
-    tutor = Tutor.objects.filter(tut_id=member).first()
+    tutor        = Tutor.objects.filter(tut_id=member).first()
+    faculty_name = member.mj_id.fac_id.fac_name if member.mj_id else '—'
+    major_name   = member.mj_id.mj_name          if member.mj_id else '—'
+
+    info_rows = [
+        ('คณะ',          faculty_name),
+        ('สาขาวิชา',     major_name),
+        ('ชื่อ-นามสกุล', member.mb_full_name),
+        ('อีเมล',        member.mb_email),
+    ]
 
     return render(request, 'accounts/profile.html', {
         'member'        : member,
-        'faculty_name'  : member.mj_id.fac_id.fac_name if member.mj_id else '—',
-        'major_name'    : member.mj_id.mj_name          if member.mj_id else '—',
+        'faculty_name'  : faculty_name,
+        'major_name'    : major_name,
+        'info_rows'     : info_rows,
         'password_error': password_error,
         'tutor_status'  : tutor.tut_status if tutor else None,
     })
