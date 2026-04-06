@@ -75,9 +75,10 @@ body {
 }
 .avatar-placeholder {
   display: flex; align-items: center; justify-content: center;
-  background: var(--pct-primary-lt);
-  color: var(--pct-primary);
-  font-size: .85rem;
+  background: #2563EB;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 /* Dropdown */

@@ -19,14 +19,23 @@
 
 {% include 'main/_header.html' %}
 
-<!-- ===== MESSAGES ===== -->
+<!-- ===== TOAST MESSAGES ===== -->
 {% if messages %}
-<div class="container mt-3">
+<div aria-live="polite" aria-atomic="true"
+     style="position:fixed;top:72px;right:16px;z-index:9999;min-width:280px;max-width:380px;">
   {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-      {{ message }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  <div class="toast align-items-center border-0 show mb-2
+              {% if message.tags == 'error' %}text-bg-danger
+              {% elif message.tags == 'warning' %}text-bg-warning
+              {% elif message.tags == 'info' %}text-bg-secondary
+              {% else %}text-bg-success{% endif %}"
+       role="alert" data-bs-autohide="true" data-bs-delay="3500">
+    <div class="d-flex">
+      <div class="toast-body fw-500">{{ message }}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast"></button>
     </div>
+  </div>
   {% endfor %}
 </div>
 {% endif %}
@@ -40,12 +49,7 @@
 <script src="{% static 'btt5/js/bootstrap.bundle.min.js' %}"></script>
 
 <script>
-setTimeout(() => {
-  document.querySelectorAll('.alert').forEach(el => {
-    el.classList.remove('show');
-    setTimeout(() => el.remove(), 300);
-  });
-}, 3000);
+  document.querySelectorAll('.toast').forEach(el => new bootstrap.Toast(el).show());
 </script>
 
 {% block extra_js %}{% endblock %}
