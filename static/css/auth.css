@@ -35,6 +35,7 @@
 
 /* --------- Form panel --------- */
 .auth-form-panel {
+  background: #fff;
   padding: 3rem 2.5rem;
 }
 .auth-heading {

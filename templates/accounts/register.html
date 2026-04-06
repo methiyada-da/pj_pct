@@ -10,11 +10,7 @@
     <div class="auth-promo-overlay"></div>
     <div class="auth-promo-content">
       <h3>มีบัญชีอยู่แล้วใช่ไหม?</h3>
-      <p>
-        มาเริ่มแบ่งปันความรู้และพัฒนาทักษะไป<br>
-        ด้วยกันกับเพื่อนช่วยติว<br>
-        กดเข้าสู่ระบบเลย!
-      </p>
+      <p>มาเริ่มแบ่งปันความรู้และพัฒนาทักษะไปด้วยกันกับเพื่อนช่วยติว<br>กดเข้าสู่ระบบเลย!</p>
       <a href="{% url 'accounts:login' %}" class="btn btn-light btn-sm px-4 mt-2">เข้าสู่ระบบ</a>
     </div>
   </div>
@@ -23,7 +19,7 @@
   <div class="col-lg-7 auth-form-panel order-lg-1 order-0">
     <h4 class="auth-heading">สร้างบัญชีของคุณ</h4>
 
-    <div class="alert alert-info-soft d-flex gap-2 align-items-start mb-4">
+    <div class="alert-info-soft d-flex gap-2 align-items-start mb-4">
       <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
       <span>การลงทะเบียนเปิดให้เฉพาะนักศึกษาและบุคลากรของ RMUTI
         โดยใช้ที่อยู่อีเมล @rmuti.ac.th ของคุณ</span>
@@ -38,37 +34,27 @@
     <form method="post" action="{% url 'accounts:register' %}" onsubmit="return validateForm()">
       {% csrf_token %}
 
-      <!-- First & Last name -->
       <div class="row g-3 mb-3">
         <div class="col-6">
           <label class="form-label">ชื่อ</label>
-          <input
-            type="text"
-            name="first_name"
-            class="form-control pct-input {% if form.first_name.errors %}is-invalid{% endif %}"
-            placeholder="ชื่อ"
-            value="{{ form.first_name.value|default:'' }}"
-          >
+          <input type="text" name="first_name"
+                 class="form-control pct-input {% if form.first_name.errors %}is-invalid{% endif %}"
+                 placeholder="ชื่อ" value="{{ form.first_name.value|default:'' }}">
           {% if form.first_name.errors %}
             <div class="invalid-feedback">{{ form.first_name.errors.0 }}</div>
           {% endif %}
         </div>
         <div class="col-6">
           <label class="form-label">นามสกุล</label>
-          <input
-            type="text"
-            name="last_name"
-            class="form-control pct-input {% if form.last_name.errors %}is-invalid{% endif %}"
-            placeholder="นามสกุล"
-            value="{{ form.last_name.value|default:'' }}"
-          >
+          <input type="text" name="last_name"
+                 class="form-control pct-input {% if form.last_name.errors %}is-invalid{% endif %}"
+                 placeholder="นามสกุล" value="{{ form.last_name.value|default:'' }}">
           {% if form.last_name.errors %}
             <div class="invalid-feedback">{{ form.last_name.errors.0 }}</div>
           {% endif %}
         </div>
       </div>
 
-      <!-- Faculty (คณะ) & Major (สาขา) — Faculty via JS filter -->
       <div class="row g-3 mb-3">
         <div class="col-6">
           <label class="form-label">คณะ</label>
@@ -81,18 +67,14 @@
         </div>
         <div class="col-6">
           <label class="form-label">สาขา</label>
-          <select
-            name="mj_id"
-            id="majorSelect"
-            class="form-select pct-input {% if form.mj_id.errors %}is-invalid{% endif %}"
-          >
+          <select name="mj_id" id="majorSelect"
+                  class="form-select pct-input {% if form.mj_id.errors %}is-invalid{% endif %}">
             <option value="">เลือกสาขา</option>
             {% for major in form.mj_id.field.queryset %}
-              <option
-                value="{{ major.pk }}"
-                data-faculty="{{ major.fac_id_id }}"
-                {% if form.mj_id.value == major.pk|stringformat:'s' %}selected{% endif %}
-              >{{ major.mj_name }}</option>
+              <option value="{{ major.pk }}" data-faculty="{{ major.fac_id_id }}"
+                {% if form.mj_id.value == major.pk|stringformat:'s' %}selected{% endif %}>
+                {{ major.mj_name }}
+              </option>
             {% endfor %}
           </select>
           {% if form.mj_id.errors %}
@@ -101,22 +83,16 @@
         </div>
       </div>
 
-      <!-- Email -->
       <div class="mb-3">
         <label class="form-label">อีเมล</label>
         <div class="input-email-wrap">
-          <input
-            type="text"
-            name="mb_email_prefix"
-            id="emailPrefix"
-            class="form-control pct-input email-prefix {% if form.mb_email.errors %}is-invalid{% endif %}"
-            placeholder="your.name"
-            value="{% if form.mb_email.value %}{{ form.mb_email.value|cut:'@rmuti.ac.th' }}{% endif %}"
-            oninput="syncEmail()"
-          >
+          <input type="text" name="mb_email_prefix" id="emailPrefix"
+                 class="form-control pct-input email-prefix {% if form.mb_email.errors %}is-invalid{% endif %}"
+                 placeholder="your.name"
+                 value="{% if form.mb_email.value %}{{ form.mb_email.value|cut:'@rmuti.ac.th' }}{% endif %}"
+                 oninput="syncEmail()">
           <span class="email-suffix">@rmuti.ac.th</span>
-          <input type="hidden" name="mb_email" id="hiddenEmail"
-                 value="{{ form.mb_email.value|default:'' }}">
+          <input type="hidden" name="mb_email" id="hiddenEmail" value="{{ form.mb_email.value|default:'' }}">
         </div>
         {% if form.mb_email.errors %}
           <div class="text-danger small mt-1">{{ form.mb_email.errors.0 }}</div>
@@ -127,19 +103,13 @@
         </div>
       </div>
 
-      <!-- Password -->
       <div class="row g-3 mb-3">
         <div class="col-6">
           <label class="form-label">รหัสผ่าน</label>
-          <div class="input-icon-wrap">
-            <input
-              type="password"
-              name="password1"
-              id="pass1"
-              class="form-control pct-input {% if form.password1.errors %}is-invalid{% endif %}"
-              placeholder="********"
-              autocomplete="new-password"
-            >
+          <div class="position-relative">
+            <input type="password" name="password1" id="pass1"
+                   class="form-control pct-input {% if form.password1.errors %}is-invalid{% endif %}"
+                   placeholder="********" autocomplete="new-password">
             <button type="button" class="btn-toggle-pass" onclick="togglePass('pass1', this)">
               <i class="far fa-eye"></i>
             </button>
@@ -150,15 +120,10 @@
         </div>
         <div class="col-6">
           <label class="form-label">ยืนยันรหัสผ่าน</label>
-          <div class="input-icon-wrap">
-            <input
-              type="password"
-              name="password2"
-              id="pass2"
-              class="form-control pct-input {% if form.password2.errors %}is-invalid{% endif %}"
-              placeholder="********"
-              autocomplete="new-password"
-            >
+          <div class="position-relative">
+            <input type="password" name="password2" id="pass2"
+                   class="form-control pct-input {% if form.password2.errors %}is-invalid{% endif %}"
+                   placeholder="********" autocomplete="new-password">
             <button type="button" class="btn-toggle-pass" onclick="togglePass('pass2', this)">
               <i class="far fa-eye"></i>
             </button>
@@ -169,8 +134,6 @@
         </div>
       </div>
 
-
-      <!-- Terms checkbox -->
       <div class="form-check mb-4">
         <input class="form-check-input" type="checkbox" id="termsCheck" required>
         <label class="form-check-label small" for="termsCheck">
@@ -178,9 +141,7 @@
         </label>
       </div>
 
-      <button type="submit" class="btn btn-primary w-100 btn-submit">
-        สร้างบัญชี
-      </button>
+      <button type="submit" class="btn btn-primary w-100 btn-submit">สร้างบัญชี</button>
     </form>
   </div>
 
@@ -189,13 +150,10 @@
 
 {% block extra_js %}
 <script>
-// Sync hidden email field
 function syncEmail() {
   const prefix = document.getElementById('emailPrefix').value.trim();
   document.getElementById('hiddenEmail').value = prefix ? prefix + '@rmuti.ac.th' : '';
 }
-
-// Toggle password visibility
 function togglePass(id, btn) {
   const inp = document.getElementById(id);
   const icon = btn.querySelector('i');
@@ -207,20 +165,15 @@ function togglePass(id, btn) {
     icon.classList.replace('fa-eye-slash', 'fa-eye');
   }
 }
-
 function validateForm() {
   let valid = true;
-
   const fields = [
     { el: document.querySelector('[name="first_name"]'), msg: 'กรุณากรอกชื่อ' },
     { el: document.querySelector('[name="last_name"]'),  msg: 'กรุณากรอกนามสกุล' },
     { el: document.getElementById('facultySelect'),      msg: 'กรุณาเลือกคณะ' },
     { el: document.getElementById('majorSelect'),        msg: 'กรุณาเลือกสาขา' },
   ];
-
   fields.forEach(({ el, msg }) => {
-    const err = el.parentElement.querySelector('.val-error')
-              || el.closest('.col-6, .mb-3')?.querySelector('.val-error');
     if (!el.value) {
       el.classList.add('is-invalid');
       if (!el.parentElement.querySelector('.val-error')) {
@@ -235,16 +188,30 @@ function validateForm() {
       el.parentElement.querySelectorAll('.val-error').forEach(e => e.remove());
     }
   });
-
   return valid;
 }
+// Restore faculty+major selection after form error
+document.addEventListener('DOMContentLoaded', function () {
+  const majorSel = document.getElementById('majorSelect');
+  const facultySel = document.getElementById('facultySelect');
+  if (majorSel.value) {
+    const selectedOpt = majorSel.querySelector('option[value="' + majorSel.value + '"]');
+    if (selectedOpt) {
+      const facId = selectedOpt.dataset.faculty;
+      facultySel.value = facId;
+      Array.from(majorSel.options).forEach(opt => {
+        if (!opt.value) return;
+        opt.hidden = opt.dataset.faculty !== facId;
+      });
+    }
+  }
+});
 
-// Filter majors by faculty
 document.getElementById('facultySelect').addEventListener('change', function () {
   const fcId = this.value;
   const majorSel = document.getElementById('majorSelect');
   Array.from(majorSel.options).forEach(opt => {
-    if (!opt.value) return; // keep placeholder
+    if (!opt.value) return;
     opt.hidden = fcId && opt.dataset.faculty !== fcId;
   });
   majorSel.value = '';
