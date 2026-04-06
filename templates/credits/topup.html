@@ -1,0 +1,232 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}การเติมเครดิต — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<style>
+  .upload-zone {
+    border: 2px dashed #D1D5DB;
+    border-radius: 12px;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    background: #FAFAFA;
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: #2563EB; background: #EFF6FF; }
+  .upload-zone.done { border-color: #16A34A; background: #F0FDF4; }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-light min-vh-100 py-4 px-2 px-md-3">
+  <div class="container" style="max-width:1060px;">
+
+    <!-- ── Page header ── -->
+    <h4 class="fw-bold mb-1">การเติมเครดิต</h4>
+    <p class="text-muted small mb-4">
+      โอนเงินและอัปโหลดสลิปเพื่อรับเครดิต
+      ({{ crd_val|floatformat:"0" }} บาท = 1 เครดิต)
+    </p>
+
+    <div class="row g-4 align-items-start">
+
+      <!-- ── Left: Bank info ── -->
+      <div class="col-lg-5">
+
+        <!-- Bank details card -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3">
+              <i class="fas fa-university text-primary me-2"></i>ข้อมูลการโอน
+            </h6>
+
+            {% if system %}
+            <div class="mb-3 pb-3 border-bottom">
+              <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">ชื่อธนาคาร</div>
+              <div class="fw-semibold">{{ system.bank_name }}</div>
+            </div>
+
+            <div class="mb-3 pb-3 border-bottom">
+              <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">หมายเลขบัญชี</div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold fs-5" id="accNo">{{ system.acc_no }}</span>
+                <button type="button" class="btn btn-link p-0 text-secondary" onclick="copyAccNo()" title="คัดลอก">
+                  <i class="fas fa-copy" id="copyIcon"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="mb-3 pb-3 border-bottom">
+              <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">ชื่อบัญชี</div>
+              <div class="fw-semibold">{{ system.acc_name }}</div>
+            </div>
+
+            <div class="mb-3">
+              <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">มูลค่าเครดิต</div>
+              <div class="fw-semibold">{{ system.crd_val|floatformat:"0" }} บาท = 1 เครดิต</div>
+            </div>
+
+            {% else %}
+            <div class="alert alert-warning small mb-0">
+              <i class="fas fa-exclamation-triangle me-1"></i>
+              ยังไม่มีข้อมูลบัญชีรับชำระ กรุณาติดต่อผู้ดูแลระบบ
+            </div>
+            {% endif %}
+
+            <div class="alert alert-info small mb-0 mt-3">
+              <i class="fas fa-info-circle me-1"></i>
+              โปรดตรวจสอบรายละเอียดบัญชีอีกครั้งก่อนโอนเงิน
+              เครดิตจะถูกเพิ่มเข้าบัญชีของคุณหลังจากตรวจสอบสลิปเรียบร้อยแล้ว
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Card -->
+        <div class="card border-0 shadow-sm text-center">
+          <div class="card-body py-4">
+            <div class="text-muted small fw-semibold mb-3">สแกนเพื่อชำระเงินด้วยพร้อมเพย์</div>
+            <div class="d-inline-flex align-items-center justify-content-center rounded-3 mb-3"
+                 style="background:#F9FAFB;border:1px dashed #D1D5DB;width:130px;height:130px;">
+              <i class="fas fa-qrcode" style="font-size:72px;color:#374151;"></i>
+            </div>
+            <div class="text-muted" style="font-size:12px;">
+              <i class="fas fa-shield-alt text-success me-1"></i>
+              ร้านค้าที่ได้รับการยืนยัน:
+              {% if system %}{{ system.uni_name }}{% else %}Puean Chuay Tutor{% endif %}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Right: Form ── -->
+      <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-4">รายละเอียดการทำธุรกรรม</h6>
+
+            <form method="post" enctype="multipart/form-data">
+              {% csrf_token %}
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small">โอนมาจาก (ธนาคาร)</label>
+                  <select name="bank_from" class="form-select" required>
+                    <option value="">— เลือกธนาคาร —</option>
+                    {% for val, label in bank_choices %}
+                      <option value="{{ val }}">{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small">จำนวนเงิน (บาท)</label>
+                  <div class="input-group">
+                    <span class="input-group-text">฿</span>
+                    <input type="number" name="rf_money" id="rfMoney" class="form-control"
+                           placeholder="0.00" min="1" step="0.01" required>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">เครดิตที่ได้รับ</label>
+                <div class="d-flex align-items-center justify-content-between rounded-3 border px-3 py-2"
+                     style="background:#F9FAFB;">
+                  <span id="creditDisplay" class="fw-bold text-primary" style="font-size:20px;">0</span>
+                  <span class="badge bg-primary-subtle text-primary small">
+                    อัตราส่วน {{ crd_val|floatformat:"0" }}:1
+                  </span>
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small">วันที่โอน</label>
+                  <input type="date" name="tx_date" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold small">เวลาโอน</label>
+                  <input type="time" name="tx_time" class="form-control" required>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label fw-semibold small">อัปโหลดสลิป (หลักฐานการโอนเงิน)</label>
+                <div class="upload-zone" id="uploadZone">
+                  <input type="file" name="rf_slip" id="slipFile" accept="image/*,.pdf" required>
+                  <div id="uploadContent">
+                    <i class="fas fa-cloud-upload-alt mb-2 d-block text-secondary" style="font-size:32px;"></i>
+                    <div class="fw-semibold small mb-1">คลิกเพื่ออัปโหลด หรือลากและวาง</div>
+                    <div class="text-muted" style="font-size:12px;">ไฟล์ PNG, JPG หรือ PDF (ขนาดสูงสุด 5MB)</div>
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+                <i class="fas fa-shield-alt me-2"></i> ส่งเพื่อตรวจสอบยืนยัน
+              </button>
+              <p class="text-center text-muted mt-2 mb-0" style="font-size:12px;">
+                โดยปกติการตรวจสอบจะใช้เวลา 15-30 นาทีในช่วงเวลาทำการ
+              </p>
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const crdVal = {{ crd_val }};
+
+  document.getElementById('rfMoney')?.addEventListener('input', function () {
+    const credits = Math.floor((parseFloat(this.value) || 0) / crdVal);
+    document.getElementById('creditDisplay').textContent = credits;
+  });
+
+  function copyAccNo() {
+    const text = document.getElementById('accNo').textContent.trim();
+    navigator.clipboard.writeText(text).then(() => {
+      const icon = document.getElementById('copyIcon');
+      icon.className = 'fas fa-check text-success';
+      setTimeout(() => { icon.className = 'fas fa-copy'; }, 1500);
+    });
+  }
+
+  const slipFile   = document.getElementById('slipFile');
+  const uploadZone = document.getElementById('uploadZone');
+
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) {
+      slipFile.files = e.dataTransfer.files;
+      showPreview(e.dataTransfer.files[0]);
+    }
+  });
+
+  slipFile.addEventListener('change', function () {
+    if (this.files[0]) showPreview(this.files[0]);
+  });
+
+  function showPreview(file) {
+    document.getElementById('uploadContent').innerHTML = `
+      <i class="fas fa-file-image mb-2 d-block text-primary" style="font-size:28px;"></i>
+      <div class="fw-semibold small text-primary mb-1">${file.name}</div>
+      <div class="text-muted" style="font-size:12px;">${(file.size/1024/1024).toFixed(2)} MB</div>`;
+    uploadZone.classList.add('done');
+  }
+</script>
+{% endblock %}
