@@ -91,10 +91,16 @@
         <div class="card border-0 shadow-sm text-center">
           <div class="card-body py-4">
             <div class="text-muted small fw-semibold mb-3">สแกนเพื่อชำระเงินด้วยพร้อมเพย์</div>
-            <div class="d-inline-flex align-items-center justify-content-center rounded-3 mb-3"
-                 style="background:#F9FAFB;border:1px dashed #D1D5DB;width:130px;height:130px;">
-              <i class="fas fa-qrcode" style="font-size:72px;color:#374151;"></i>
+            <div class="d-inline-flex align-items-center justify-content-center rounded-3 mb-3 overflow-hidden"
+                 style="background:#F9FAFB;border:1px dashed #D1D5DB;width:150px;height:150px;">
+                {% if qr_img %}
+                <img id="qrImg" src="{{ qr_img }}" alt="PromptPay QR"
+                     style="width:140px;height:140px;object-fit:contain;">
+              {% else %}
+                <i class="fas fa-qrcode" style="font-size:72px;color:#374151;"></i>
+              {% endif %}
             </div>
+            <div id="qrAmount" class="fw-semibold text-primary mb-2" style="font-size:15px;">฿ 0.00</div>
             <div class="text-muted" style="font-size:12px;">
               <i class="fas fa-shield-alt text-success me-1"></i>
               ร้านค้าที่ได้รับการยืนยัน:
@@ -114,6 +120,9 @@
             <form method="post" enctype="multipart/form-data">
               {% csrf_token %}
 
+              <!-- hidden field ที่ส่งค่าจริงไป view -->
+              <input type="hidden" name="rf_money" id="rfMoney" value="0">
+
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
                   <label class="form-label fw-semibold small">โอนมาจาก (ธนาคาร)</label>
@@ -125,22 +134,25 @@
                   </select>
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label fw-semibold small">จำนวนเงิน (บาท)</label>
+                  <label class="form-label fw-semibold small">เครดิตที่ต้องการ</label>
                   <div class="input-group">
-                    <span class="input-group-text">฿</span>
-                    <input type="number" name="rf_money" id="rfMoney" class="form-control"
-                           placeholder="0.00" min="1" step="0.01" required>
+                    <span class="input-group-text"><i class="fas fa-coins"></i></span>
+                    <input type="number" id="rfCredits" class="form-control"
+                           placeholder="0" min="1" step="1" required>
+                    <span class="input-group-text text-muted small">เครดิต</span>
                   </div>
                 </div>
               </div>
 
               <div class="mb-3">
-                <label class="form-label fw-semibold small">เครดิตที่ได้รับ</label>
+                <label class="form-label fw-semibold small">จำนวนเงินที่ต้องโอน (บาท)</label>
                 <div class="d-flex align-items-center justify-content-between rounded-3 border px-3 py-2"
                      style="background:#F9FAFB;">
-                  <span id="creditDisplay" class="fw-bold text-primary" style="font-size:20px;">0</span>
+                  <span class="fw-bold text-primary" style="font-size:20px;">
+                    ฿<span id="moneyDisplay">0.00</span>
+                  </span>
                   <span class="badge bg-primary-subtle text-primary small">
-                    อัตราส่วน {{ crd_val|floatformat:"0" }}:1
+                    อัตราส่วน 1:{{ crd_val|floatformat:"0" }} บาท
                   </span>
                 </div>
               </div>
@@ -189,10 +201,52 @@
 <script>
   const crdVal = {{ crd_val }};
 
-  document.getElementById('rfMoney')?.addEventListener('input', function () {
-    const credits = Math.floor((parseFloat(this.value) || 0) / crdVal);
-    document.getElementById('creditDisplay').textContent = credits;
+  const promptpayId = "{{ promptpay_id }}";
+
+  document.getElementById('rfCredits')?.addEventListener('input', function () {
+    const credits = parseInt(this.value) || 0;
+    const money   = credits * crdVal;
+    document.getElementById('moneyDisplay').textContent = money.toFixed(2);
+    document.getElementById('rfMoney').value = money.toFixed(2);
+
+    const qrAmount = document.getElementById('qrAmount');
+    if (qrAmount) qrAmount.textContent = `฿ ${money.toFixed(2)}`;
+
+    // generate QR ใหม่จาก server
+    if (promptpayId && money > 0) {
+      fetch(`/credits/qr/?amount=${money.toFixed(2)}`)
+        .then(r => r.json())
+        .then(data => {
+          const qrImg = document.getElementById('qrImg');
+          if (qrImg && data.qr) qrImg.src = data.qr;
+        });
+    }
   });
+
+  // ── Thai validation messages ──
+  function setThaiValidation(el, emptyMsg, invalidMsg) {
+    el.addEventListener('invalid', function () {
+      if (el.validity.valueMissing) {
+        el.setCustomValidity(emptyMsg);
+      } else {
+        el.setCustomValidity(invalidMsg || emptyMsg);
+      }
+    });
+    el.addEventListener('input',  function () { el.setCustomValidity(''); });
+    el.addEventListener('change', function () { el.setCustomValidity(''); });
+  }
+
+  const bankSel  = document.querySelector('select[name="bank_from"]');
+  const credInp  = document.getElementById('rfCredits');
+  const dateInp  = document.querySelector('input[name="tx_date"]');
+  const timeInp  = document.querySelector('input[name="tx_time"]');
+  const slipInp  = document.getElementById('slipFile');
+
+  if (bankSel) setThaiValidation(bankSel, 'กรุณาเลือกธนาคารที่โอน', 'กรุณาเลือกธนาคารที่โอน');
+  if (credInp) setThaiValidation(credInp, 'กรุณากรอกจำนวนเครดิตที่ต้องการ', 'กรุณากรอกจำนวนเครดิตที่ถูกต้อง (ตัวเลขเท่านั้น)');
+  if (dateInp) setThaiValidation(dateInp, 'กรุณากรอกวันที่โอน', 'กรุณากรอกวันที่โอนให้ถูกต้อง');
+  if (timeInp) setThaiValidation(timeInp, 'กรุณากรอกเวลาโอน', 'กรุณากรอกเวลาโอนให้ถูกต้อง');
+  if (slipInp) setThaiValidation(slipInp, 'กรุณาอัปโหลดสลิปการโอนเงิน', 'กรุณาอัปโหลดสลิปการโอนเงิน');
 
   function copyAccNo() {
     const text = document.getElementById('accNo').textContent.trim();

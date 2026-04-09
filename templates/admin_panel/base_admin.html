@@ -255,7 +255,7 @@
     <div aria-live="polite" aria-atomic="true"
          style="position:fixed;top:72px;right:16px;z-index:9999;min-width:260px;">
       {% for msg in messages %}
-      <div class="toast align-items-center text-bg-{% if msg.tags == 'error' %}danger{% else %}success{% endif %} border-0 show mb-2"
+      <div class="toast align-items-center text-bg-{% if msg.level >= 30 %}danger{% else %}success{% endif %} border-0 show mb-2"
            role="alert" data-bs-autohide="true" data-bs-delay="3500">
         <div class="d-flex">
           <div class="toast-body">{{ msg }}</div>

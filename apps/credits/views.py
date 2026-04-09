@@ -3,13 +3,42 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
+from django.http import JsonResponse
+import base64, io
 
 from .models import Refill, Withdrawals
 from apps.admin_panel.models import System
 
 
+@login_required
+def promptpay_qr(request):
+    amount = request.GET.get('amount', '0')
+    system = _get_system()
+    if not system or not system.promptpay_id:
+        return JsonResponse({'qr': None})
+    try:
+        qr = _generate_promptpay_qr(system.promptpay_id, amount=float(amount))
+        return JsonResponse({'qr': qr})
+    except Exception:
+        return JsonResponse({'qr': None})
+
+
 def _get_system():
     return System.objects.first()
+
+
+def _generate_promptpay_qr(promptpay_id, amount=0):
+    """สร้าง PromptPay QR base64 สำหรับแสดงในหน้าเว็บ"""
+    try:
+        import qrcode
+        from promptpay import qrcode as pp_qr
+        payload = pp_qr.generate_payload(promptpay_id, amount=float(amount))
+        img = qrcode.make(payload)
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
+    except Exception:
+        return None
 
 
 @login_required
@@ -17,9 +46,29 @@ def credit_view(request):
     member = request.user.member
     system = _get_system()
 
-    refills = Refill.objects.filter(member=member).values(
-        'rf_id', 'rf_date', 'rf_money', 'rf_credit', 'rf_status'
-    )
+    refills_qs = Refill.objects.filter(member=member).order_by('-rf_date')
+    refills = []
+    
+    for r in refills_qs:
+        r.extracted_bank = ""
+        r.display_cmt = r.rf_cmt if r.rf_cmt else ""
+
+        # ถ้าในหมายเหตุมีคำว่า "โอนจาก:" ให้ตัดเอาเฉพาะชื่อธนาคารมา
+        if r.rf_cmt and r.rf_cmt.startswith('โอนจาก:'):
+            parts = r.rf_cmt.split('|')
+            r.extracted_bank = parts[0].replace('โอนจาก:', '').strip()
+
+            # ดึง admin note จาก part ที่ 3 (format: "โอนจาก:... | วันที่:... | หมายเหตุ: ...")
+            admin_note = ''
+            for p in parts[2:]:
+                p = p.strip()
+                if p.startswith('หมายเหตุ:'):
+                    admin_note = p.replace('หมายเหตุ:', '', 1).strip()
+
+            r.display_cmt = admin_note if r.rf_status == 2 else ""
+        
+        refills.append(r)
+
     withdrawals = Withdrawals.objects.filter(member=member).values(
         'wd_id', 'wd_req_date', 'wd_credit', 'wd_status', 'wd_bank_name'
     )
@@ -30,10 +79,10 @@ def credit_view(request):
             'type'  : 'topup',
             'title' : 'เติมเครดิต',
             'sub'   : 'ผ่าน Mobile Banking',
-            'amount': r['rf_credit'],
+            'amount': r.rf_credit,
             'sign'  : '+',
-            'date'  : r['rf_date'],
-            'status': r['rf_status'],
+            'date'  : r.rf_date,
+            'status': r.rf_status,
         })
     for w in withdrawals:
         tx_list.append({
@@ -58,6 +107,7 @@ def credit_view(request):
         'available': available,
         'page_obj' : page_obj,
         'system'   : system,
+        'refills'  : refills,
     })
 
 
@@ -92,9 +142,9 @@ def topup_view(request):
         try:
             rf_money_f = float(rf_money)
             if rf_money_f <= 0:
-                errors.append('กรุณากรอกจำนวนเงินที่ถูกต้อง')
+                errors.append('กรุณากรอกจำนวนเครดิตที่ต้องการ')
         except ValueError:
-            errors.append('จำนวนเงินไม่ถูกต้อง')
+            errors.append('จำนวนเครดิตไม่ถูกต้อง')
             rf_money_f = 0
 
         if not bank_from:
@@ -107,7 +157,7 @@ def topup_view(request):
             errors.append('กรุณาอัปโหลดสลิปการโอนเงิน')
 
         if not errors:
-            rf_credit = int(rf_money_f / crd_val)
+            rf_credit = round(rf_money_f / crd_val)
             cmt = f'โอนจาก: {bank_from} | วันที่: {tx_date} {tx_time}'
             Refill.objects.create(
                 rf_date   = timezone.now(),
@@ -124,9 +174,15 @@ def topup_view(request):
         for err in errors:
             messages.error(request, err)
 
+    qr_img = None
+    if system and system.promptpay_id:
+        qr_img = _generate_promptpay_qr(system.promptpay_id, amount=0)
+
     return render(request, 'credits/topup.html', {
         'member'      : member,
         'system'      : system,
         'bank_choices': BANK_CHOICES,
         'crd_val'     : crd_val,
+        'qr_img'      : qr_img,
+        'promptpay_id': system.promptpay_id if system and system.promptpay_id else '',
     })

@@ -7,6 +7,11 @@ from apps.courses.models import Major
 
 class MemberRegisterForm(UserCreationForm):
     """ฟอร์มสมัครสมาชิกใหม่ — สร้าง User + Member พร้อมกัน"""
+
+    # แปลข้อความ error รหัสผ่านไม่ตรงกัน
+    error_messages = {
+        'password_mismatch': 'รหัสผ่านไม่ตรงกัน กรุณาป้อนรหัสใหม่อีกครั้ง',
+    }
     mb_email = forms.EmailField(
         label='อีเมลมหาวิทยาลัย (@rmuti.ac.th)',
         widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'xxxxx@rmuti.ac.th'})
@@ -41,6 +46,38 @@ class MemberRegisterForm(UserCreationForm):
                 field.widget.attrs.setdefault('class', 'form-control')
             elif isinstance(field.widget, forms.Select):
                 field.widget.attrs.setdefault('class', 'form-select')
+
+    _VALIDATOR_MSG_MAP = {
+        'This password is too short. It must contain at least 8 characters.':
+            'รหัสผ่านนี้สั้นเกินไป ต้องมีความยาวอย่างน้อย 8 ตัวอักษร',
+        'This password is too common.':
+            'รหัสผ่านนี้พบได้บ่อยเกินไป กรุณาใช้รหัสผ่านที่คาดเดายากขึ้น',
+        'This password is entirely numeric.':
+            'รหัสผ่านนี้เป็นตัวเลขทั้งหมด กรุณาใช้ตัวอักษรหรือตัวเลขผสมกัน',
+    }
+
+    def _translate_password_errors(self, password, user=None):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjValidationError
+        if password and password.isdigit():
+            raise forms.ValidationError(
+                self._VALIDATOR_MSG_MAP['This password is entirely numeric.']
+            )
+        try:
+            validate_password(password, user)
+        except DjValidationError as e:
+            raise forms.ValidationError(
+                [self._VALIDATOR_MSG_MAP.get(str(m), str(m)) for m in e.messages]
+            )
+
+    def clean_password2(self):
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError(self.error_messages['password_mismatch'])
+        if password2:
+            self._translate_password_errors(password2, self.instance)
+        return password2
 
     def clean_mb_email(self):
         email = self.cleaned_data.get('mb_email')
