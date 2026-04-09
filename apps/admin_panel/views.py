@@ -5,9 +5,13 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.urls import reverse
 
+from django.utils import timezone
+from django.db.models import Sum, Count
+
 from .models import System
 from .forms  import SystemForm, AdminUserForm
-from apps.accounts.models import Tutor
+from apps.accounts.models import Tutor, Member
+from apps.credits.models  import Refill
 
 
 def is_admin(user):
@@ -165,4 +169,127 @@ def tutor_mgmt_detail(request, pk):
             f'<span style="color:#D1D5DB;margin:0 6px;">›</span>'
             f'<span style="color:var(--text-main);font-weight:500;">รายละเอียด</span>'
         ),
+    })
+
+
+# ─────────────────────────────────────────────
+#  การเติมเครดิต (admin)
+# ─────────────────────────────────────────────
+@login_required
+@user_passes_test(is_admin)
+def refill_mgmt(request):
+    """รายการคำขอเติมเครดิตทั้งหมด"""
+
+    # handle approve / reject
+    if request.method == 'POST':
+        rf_id  = request.POST.get('rf_id')
+        action = request.POST.get('action')
+        note   = request.POST.get('note', '').strip()
+        refill = get_object_or_404(Refill.objects.select_related('member'), pk=rf_id)
+
+        if action == 'approve' and refill.rf_status == 0:
+            refill.rf_status       = 1
+            refill.rf_confirm_date = timezone.now()
+            # preserve original bank/date info; append admin note as 3rd pipe-segment
+            orig = (refill.rf_cmt or '').split('| หมายเหตุ:')[0].rstrip()
+            refill.rf_cmt = (orig + f' | หมายเหตุ: {note}') if note else (orig or None)
+            refill.save()
+            # เพิ่มเครดิตให้ member
+            member = refill.member
+            member.mb_deposit_crd += refill.rf_credit
+            member.save(update_fields=['mb_deposit_crd'])
+            messages.success(request, f'อนุมัติการเติมเครดิต RF{refill.rf_id:05d} เรียบร้อย (+{refill.rf_credit} เครดิต)')
+
+        elif action == 'reject' and refill.rf_status == 0:
+            refill.rf_status = 2
+            orig = (refill.rf_cmt or '').split('| หมายเหตุ:')[0].rstrip()
+            refill.rf_cmt = (orig + f' | หมายเหตุ: {note}') if note else (orig or None)
+            refill.save()
+            messages.error(request, f'ปฏิเสธการเติมเครดิต RF{refill.rf_id:05d} เรียบร้อย')
+
+        return redirect('admin_panel:refill_mgmt')
+
+    # ── filters ──
+    status_filter = request.GET.get('status', '')
+    date_filter   = request.GET.get('date',   '')
+
+    qs = Refill.objects.select_related('member').order_by('-rf_date')
+    if status_filter != '':
+        qs = qs.filter(rf_status=status_filter)
+    if date_filter:
+        qs = qs.filter(rf_date__date=date_filter)
+
+    # ── summary stats ──
+    all_refills = Refill.objects.all()
+    pending_count  = all_refills.filter(rf_status=0).count()
+    approved_count = all_refills.filter(rf_status=1).count()
+    total_money    = all_refills.filter(rf_status=1).aggregate(t=Sum('rf_money'))['t'] or 0
+
+    paginator = Paginator(qs, 15)
+    page      = paginator.get_page(request.GET.get('page', 1))
+
+    # แยก bank name และ admin note ออกจาก rf_cmt สำหรับแต่ละรายการ
+    for rf in page.object_list:
+        rf.extracted_bank = ''
+        rf.admin_note = ''
+        if rf.rf_cmt and rf.rf_cmt.startswith('โอนจาก:'):
+            parts = rf.rf_cmt.split('|')
+            rf.extracted_bank = parts[0].replace('โอนจาก:', '').strip()
+            for p in parts[2:]:
+                p = p.strip()
+                if p.startswith('หมายเหตุ:'):
+                    rf.admin_note = p.replace('หมายเหตุ:', '', 1).strip()
+        elif rf.rf_cmt:
+            # rf_cmt เก่าที่ยังไม่มีรูปแบบ โอนจาก: ให้ใส่เป็น admin_note
+            rf.admin_note = rf.rf_cmt
+
+    return render(request, 'admin_panel/refill_mgmt.html', {
+        'page'           : page,
+        'pending_count'  : pending_count,
+        'approved_count' : approved_count,
+        'total_money'    : total_money,
+        'status_filter'  : status_filter,
+        'date_filter'    : date_filter,
+        'active_menu'    : 'refill_mgmt',
+        'topbar_breadcrumb': 'การเติมเครดิต',
+    })
+
+
+
+# ─────────────────────────────────────────────
+#  จัดการสมาชิก (admin)
+# ─────────────────────────────────────────────
+@login_required
+@user_passes_test(is_admin)
+def member_mgmt(request):
+    q             = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "")
+
+    qs = Member.objects.select_related("user", "mj_id", "mj_id__fac_id").order_by("-user__date_joined")
+
+    if q:
+        qs = qs.filter(
+            Q(mb_full_name__icontains=q) |
+            Q(mb_email__icontains=q)     |
+            Q(mj_id__mj_name__icontains=q)
+        )
+    if status_filter != "": 
+        qs = qs.filter(mb_status=status_filter)
+
+    total_count  = Member.objects.count()
+    active_count = Member.objects.filter(mb_status=1).count()
+    tutor_count  = Member.objects.filter(tutor__tut_status=1).count()
+
+    paginator = Paginator(qs, 15)
+    page      = paginator.get_page(request.GET.get("page", 1))
+
+    return render(request, "admin_panel/member_mgmt.html", {
+        "page"          : page,
+        "q"             : q,
+        "status_filter" : status_filter,
+        "total_count"   : total_count,
+        "active_count"  : active_count,
+        "tutor_count"   : tutor_count,
+        "active_menu"   : "member_mgmt",
+        "topbar_breadcrumb": "จัดการสมาชิก",
     })

@@ -27,11 +27,16 @@
   </div>
 
   <div class="sidebar-section-label" style="margin-top:8px;">การดำเนินงาน</div>
+  <a href="{% url 'admin_panel:member_mgmt' %}"
+     class="sidebar-link {% if active_menu == 'member_mgmt' %}active{% endif %}">
+    <i class="bi bi-people"></i> จัดการสมาชิก
+  </a>
   <a href="{% url 'admin_panel:tutor_mgmt_list' %}"
      class="sidebar-link {% if active_menu == 'tutor_mgmt' %}active{% endif %}">
     <i class="bi bi-person-check"></i> การอนุมัติติวเตอร์
   </a>
-  <a href="#" class="sidebar-link {% if active_menu == 'refill' %}active{% endif %}">
+  <a href="{% url 'admin_panel:refill_mgmt' %}"
+     class="sidebar-link {% if active_menu == 'refill_mgmt' %}active{% endif %}">
     <i class="bi bi-coin"></i> การเติมเครดิต
   </a>
   <a href="#" class="sidebar-link {% if active_menu == 'payment' %}active{% endif %}">
