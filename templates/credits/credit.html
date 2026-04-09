@@ -10,7 +10,7 @@
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
       <h4 class="fw-bold mb-0">เครดิต</h4>
       <div class="d-flex gap-2">
-        <a href="#" class="btn btn-outline-secondary btn-sm px-3">
+        <a href="{% url 'credits:withdraw' %}" class="btn btn-outline-secondary btn-sm px-3">
           <i class="fas fa-arrow-up-from-bracket me-1"></i> ถอนเครดิต
         </a>
         <a href="{% url 'credits:topup' %}" class="btn btn-primary btn-sm px-3">
@@ -93,44 +93,51 @@
     </div>
 
     <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3 px-4">
+      <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3 px-4 flex-wrap gap-2">
         <span class="fw-bold">รายการความเคลื่อนไหว</span>
+        <select class="form-select form-select-sm" style="width:auto;"
+                onchange="location.href='?kind='+this.value">
+          <option value=""       {% if not kind_filter %}selected{% endif %}>ทุกประเภท</option>
+          <option value="topup"  {% if kind_filter == 'topup'    %}selected{% endif %}>เติมเครดิต</option>
+          <option value="withdraw" {% if kind_filter == 'withdraw' %}selected{% endif %}>ถอนเครดิต</option>
+          <option value="income" {% if kind_filter == 'income'   %}selected{% endif %}>รายได้</option>
+        </select>
       </div>
 
-      {% if refills %}
+      {% if page_obj %}
         <ul class="list-group list-group-flush">
-          {% for rf in refills %}
+          {% for tx in page_obj %}
+
+          {% if tx.kind == 'topup' %}
+          {# ── เติมเครดิต ── #}
           <li class="list-group-item px-4 py-3" style="cursor:pointer;"
               onclick="openRefillDetail(
-                '{{ rf.rf_id|stringformat:"05d" }}',
-                '{{ rf.rf_money|floatformat:"2" }}',
-                '{{ rf.rf_credit }}',
-                '{{ rf.rf_date|date:"j M Y - H:i" }}',
-                {{ rf.rf_status }},
-                '{{ rf.display_cmt|default:""|escapejs }}',
-                '{% if rf.rf_slip %}{{ rf.rf_slip.url }}{% endif %}',
-                '{{ rf.extracted_bank|default:""|escapejs }}'
+                '{{ tx.rf_id|stringformat:"05d" }}',
+                '{{ tx.money|floatformat:"2" }}',
+                '{{ tx.amount }}',
+                '{{ tx.date|date:"j M Y - H:i" }}',
+                {{ tx.status }},
+                '{{ tx.display_cmt|escapejs }}',
+                '{{ tx.slip_url }}',
+                '{{ tx.extracted_bank|escapejs }}'
               )">
             <div class="d-flex align-items-center gap-3">
-
               <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                    style="width:42px;height:42px;background:#DCFCE7;color:#16A34A;font-size:18px;">
                 <i class="fas fa-plus-circle"></i>
               </div>
-
               <div class="flex-grow-1">
                 <div class="fw-semibold" style="font-size:14px;">เติมเครดิต</div>
                 <div class="text-muted" style="font-size:12px;">ผ่าน Mobile Banking</div>
               </div>
-
               <div class="text-end flex-shrink-0 d-flex align-items-center gap-4">
                 <div>
-                  {% if rf.rf_status == 0 %}
+                  {% if tx.status == 0 %}
                     <span class="badge rounded-pill fw-normal px-2 py-1"
                           style="background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;font-size:11px;">
                       <i class="fas fa-clock me-1"></i>รอดำเนินการ
                     </span>
-                  {% elif rf.rf_status == 1 %}
+                  {% elif tx.status == 1 %}
                     <span class="badge rounded-pill fw-normal px-2 py-1"
                           style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;font-size:11px;">
                       <i class="fas fa-check-circle me-1"></i>อนุมัติแล้ว
@@ -143,17 +150,91 @@
                   {% endif %}
                 </div>
                 <div>
-                  <div class="fw-bold" style="font-size:15px;color:{% if rf.rf_status == 2 %}#EF4444{% else %}#16A34A{% endif %};">
-                    +{{ rf.rf_credit }} P
+                  <div class="fw-bold {% if tx.status == 2 %}text-danger{% else %}text-success{% endif %}" style="font-size:15px;">
+                    +{{ tx.amount }} P
                   </div>
-                  <div class="text-muted" style="font-size:12px;">{{ rf.rf_date|date:"j M Y - H:i" }}</div>
+                  <div class="text-muted" style="font-size:12px;">{{ tx.date|date:"j M Y - H:i" }}</div>
                 </div>
               </div>
-
             </div>
           </li>
+
+          {% else %}
+          {# ── ถอนเครดิต ── #}
+          <li class="list-group-item px-4 py-3" style="cursor:pointer;"
+              onclick="openWithdrawDetail(
+                '{{ tx.wd_id|stringformat:"05d" }}',
+                '{{ tx.amount }}',
+                '{{ tx.net_cash|floatformat:"2" }}',
+                '{{ tx.bank_name|escapejs }}',
+                '{{ tx.date|date:"j M Y - H:i" }}',
+                {{ tx.status }},
+                '{{ tx.wd_cmt|escapejs }}'
+              )">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:42px;height:42px;background:#FEE2E2;color:#EF4444;font-size:18px;">
+                <i class="fas fa-minus-circle"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-semibold" style="font-size:14px;">ถอนเครดิต</div>
+                <div class="text-muted" style="font-size:12px;">ถอนเข้าบัญชี {{ tx.bank_name }}</div>
+              </div>
+              <div class="text-end flex-shrink-0 d-flex align-items-center gap-4">
+                <div>
+                  {% if tx.status == 0 %}
+                    <span class="badge rounded-pill fw-normal px-2 py-1"
+                          style="background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;font-size:11px;">
+                      <i class="fas fa-clock me-1"></i>รอดำเนินการ
+                    </span>
+                  {% elif tx.status == 1 %}
+                    <span class="badge rounded-pill fw-normal px-2 py-1"
+                          style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;font-size:11px;">
+                      <i class="fas fa-check-circle me-1"></i>จ่ายแล้ว
+                    </span>
+                  {% else %}
+                    <span class="badge rounded-pill fw-normal px-2 py-1"
+                          style="background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;font-size:11px;">
+                      <i class="fas fa-times-circle me-1"></i>ปฏิเสธ
+                    </span>
+                  {% endif %}
+                </div>
+                <div>
+                  <div class="fw-bold text-danger" style="font-size:15px;">
+                    -{{ tx.amount }} P
+                  </div>
+                  <div class="text-muted" style="font-size:12px;">{{ tx.date|date:"j M Y - H:i" }}</div>
+                </div>
+              </div>
+            </div>
+          </li>
+          {% endif %}
+
           {% endfor %}
         </ul>
+
+        {# Pagination #}
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3 px-4">
+          <span class="text-muted small">แสดง {{ page_obj.start_index }}–{{ page_obj.end_index }} จาก {{ page_obj.paginator.count }} รายการ</span>
+          <div class="d-flex gap-1">
+            {% if page_obj.has_previous %}
+              <a href="?kind={{ kind_filter }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></a>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <button class="btn btn-sm btn-primary">{{ num }}</button>
+              {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                <a href="?kind={{ kind_filter }}&page={{ num }}" class="btn btn-sm btn-outline-secondary">{{ num }}</a>
+              {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+              <a href="?kind={{ kind_filter }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-right"></i></a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
       {% else %}
         <div class="text-center text-muted py-5">
           <i class="fas fa-receipt mb-3 d-block" style="font-size:40px;opacity:.3;"></i>
@@ -224,6 +305,55 @@
   </div>
 </div>
 
+<!-- ── Withdrawal Detail Modal ── -->
+<div class="modal fade" id="withdrawDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0 px-4 pt-4">
+        <div>
+          <h6 class="fw-bold mb-0">รายละเอียดการถอนเครดิต</h6>
+          <div class="text-muted small" id="wdRfId"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+
+        <div id="wdStatusBanner" class="rounded-3 p-3 mb-3 text-center fw-semibold"></div>
+
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">จำนวนเครดิต</span>
+          <span class="fw-bold text-danger small" id="wdCredit"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">จำนวนเงินสุทธิ (หลังหักค่าธรรมเนียม)</span>
+          <span class="fw-bold text-primary small" id="wdNetCash"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">ธนาคารปลายทาง</span>
+          <span class="fw-semibold small" id="wdBank"></span>
+        </div>
+        <div class="mb-3 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">วันที่ขอถอน</span>
+          <span class="fw-semibold small" id="wdDate"></span>
+        </div>
+
+        <div id="wdCmtSection" class="d-none">
+          <div class="rounded-3 p-3" style="background:#FEF9C3;border:1px solid #FDE68A;">
+            <div class="fw-semibold small mb-1" style="color:#92400E;">
+              <i class="fas fa-comment-alt me-1"></i>หมายเหตุ
+            </div>
+            <div class="small" id="wdCmt"></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -283,6 +413,36 @@ function openRefillDetail(rfId, money, credit, date, status, cmt, slipUrl, bank)
   }
 
   new bootstrap.Modal(document.getElementById('refillDetailModal')).show();
+}
+
+function openWithdrawDetail(wdId, credit, netCash, bank, date, status, cmt) {
+  document.getElementById('wdRfId').textContent    = 'WD' + wdId;
+  document.getElementById('wdCredit').textContent  = '-' + credit + ' P';
+  document.getElementById('wdNetCash').textContent = '฿' + netCash;
+  document.getElementById('wdBank').textContent    = bank;
+  document.getElementById('wdDate').textContent    = date;
+
+  const banner = document.getElementById('wdStatusBanner');
+  if (status === 0) {
+    banner.style.cssText = 'background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-clock me-2"></i>รอดำเนินการ';
+  } else if (status === 1) {
+    banner.style.cssText = 'background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-check-circle me-2"></i>จ่ายแล้ว';
+  } else {
+    banner.style.cssText = 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-times-circle me-2"></i>ปฏิเสธการถอน';
+  }
+
+  const cmtSec = document.getElementById('wdCmtSection');
+  if (cmt) {
+    document.getElementById('wdCmt').textContent = cmt;
+    cmtSec.classList.remove('d-none');
+  } else {
+    cmtSec.classList.add('d-none');
+  }
+
+  new bootstrap.Modal(document.getElementById('withdrawDetailModal')).show();
 }
 </script>
 {% endblock %}

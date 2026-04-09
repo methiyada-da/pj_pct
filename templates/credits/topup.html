@@ -129,7 +129,7 @@
                   <select name="bank_from" class="form-select" required>
                     <option value="">— เลือกธนาคาร —</option>
                     {% for val, label in bank_choices %}
-                      <option value="{{ val }}">{{ label }}</option>
+                      <option value="{{ val }}" {% if prev.bank_from == val %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -138,7 +138,8 @@
                   <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-coins"></i></span>
                     <input type="number" id="rfCredits" class="form-control"
-                           placeholder="0" min="1" step="1" required>
+                           placeholder="0" min="1" step="1" required
+                           value="{{ prev.rfCredits|default:'' }}">
                     <span class="input-group-text text-muted small">เครดิต</span>
                   </div>
                 </div>
@@ -160,11 +161,13 @@
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
                   <label class="form-label fw-semibold small">วันที่โอน</label>
-                  <input type="date" name="tx_date" class="form-control" required>
+                  <input type="date" name="tx_date" class="form-control" required
+                         value="{{ prev.tx_date|default:'' }}">
                 </div>
                 <div class="col-md-6">
                   <label class="form-label fw-semibold small">เวลาโอน</label>
-                  <input type="time" name="tx_time" class="form-control" required>
+                  <input type="time" name="tx_time" class="form-control" required
+                         value="{{ prev.tx_time|default:'' }}">
                 </div>
               </div>
 
@@ -180,9 +183,15 @@
                 </div>
               </div>
 
-              <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
-                <i class="fas fa-shield-alt me-2"></i> ส่งเพื่อตรวจสอบยืนยัน
-              </button>
+              <div class="d-flex gap-3 mt-2">
+                <a href="{% url 'credits:credit' %}"
+                   class="btn btn-outline-secondary px-4 py-2 fw-semibold d-flex align-items-center gap-2">
+                  <i class="fas fa-arrow-left"></i> ย้อนกลับ
+                </a>
+                <button type="submit" class="btn btn-primary flex-fill py-2 fw-bold">
+                  <i class="fas fa-shield-alt me-2"></i> ส่งเพื่อตรวจสอบยืนยัน
+                </button>
+              </div>
               <p class="text-center text-muted mt-2 mb-0" style="font-size:12px;">
                 โดยปกติการตรวจสอบจะใช้เวลา 15-30 นาทีในช่วงเวลาทำการ
               </p>

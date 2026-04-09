@@ -1,38 +1,351 @@
 {% extends "admin_panel/base_admin.html" %}
+{% load static %}
+
 {% block title %}ภาพรวมแดชบอร์ด{% endblock %}
 
+{% block extra_head %}
+<style>
+/* ── stat cards ── */
+.db-card {
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 20px 22px;
+  height: 100%;
+}
+.db-card-icon {
+  width: 46px; height: 46px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.db-val  { font-size: 2rem; font-weight: 700; line-height: 1.15; color: #111827; }
+.db-lbl  { font-size: 13px; color: #6B7280; font-weight: 500; margin-top: 3px; }
+.db-sub  { font-size: 12px; color: #9CA3AF; margin-top: 6px; }
+.db-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600; border-radius: 99px; padding: 2px 9px;
+}
+
+/* ── alert rows ── */
+.alert-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 18px; border-radius: 10px; margin-bottom: 8px;
+  font-size: 13px; font-weight: 600;
+}
+
+/* ── section cards ── */
+.sec-card {
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 22px;
+  height: 100%;
+}
+.sec-title { font-size: 15px; font-weight: 700; color: #111827; }
+
+/* ── bar chart ── */
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.bar-label { width: 100px; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-bg { flex: 1; height: 8px; background: #F1F5F9; border-radius: 99px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 99px; background: #2563EB; }
+.bar-count { font-size: 12px; color: #6B7280; white-space: nowrap; }
+
+/* ── activity list ── */
+.act-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 0; border-bottom: 1px solid #F3F4F6;
+}
+.act-item:last-child { border-bottom: none; padding-bottom: 0; }
+.act-ico {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.act-name { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.act-meta { font-size: 11px; color: #9CA3AF; }
+.act-tag  { font-size: 11px; font-weight: 600; white-space: nowrap; }
+</style>
+{% endblock %}
+
 {% block content %}
+
+<!-- ── Page header ── -->
 <div class="page-header">
   <div>
-    <h1>ภาพรวมแดชบอร์ด</h1>
-    <p>ยินดีต้อนรับ, {{ request.user.get_full_name|default:request.user.username }}</p>
+    <h1>รายงานภาพรวมของระบบ</h1>
+    <p>ประสิทธิภาพและสถานะการใช้งานของระบบ</p>
   </div>
+  <div class="text-muted" style="font-size:12px;margin-top:6px;">อัปเดตล่าสุด: ตอนนี้</div>
 </div>
 
-<div class="row g-3">
-  <div class="col-md-3">
-    <div class="summary-card">
-      <div class="summary-icon"><i class="bi bi-building"></i></div>
-      <div><div class="val">—</div><div class="lbl">คณะทั้งหมด</div></div>
+<!-- ── 4 Summary cards ── -->
+<div class="row g-3 mb-3">
+
+  <div class="col-6 col-xl-3">
+    <div class="db-card">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="db-card-icon" style="background:#DBEAFE;color:#2563EB;">
+          <i class="bi bi-people-fill"></i>
+        </div>
+        <span class="db-chip" style="background:#DCFCE7;color:#166534;">
+          <i class="bi bi-arrow-up-short"></i>ใช้งาน {{ active_members }}
+        </span>
+      </div>
+      <div class="db-val">{{ total_members }}</div>
+      <div class="db-lbl">สมาชิกทั้งหมด</div>
+      <div class="db-sub">{{ total_faculties }} คณะ · {{ total_majors }} สาขา</div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="summary-card">
-      <div class="summary-icon" style="background:#F0FDF4;color:#16A34A;"><i class="bi bi-diagram-3"></i></div>
-      <div><div class="val">—</div><div class="lbl">สาขาทั้งหมด</div></div>
+
+  <div class="col-6 col-xl-3">
+    <div class="db-card">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="db-card-icon" style="background:#DCFCE7;color:#16A34A;">
+          <i class="bi bi-person-check-fill"></i>
+        </div>
+        {% if pending_tutors %}
+          <span class="db-chip" style="background:#FEF9C3;color:#92400E;">
+            <i class="bi bi-clock"></i>รอ {{ pending_tutors }}
+          </span>
+        {% else %}
+          <span class="db-chip" style="background:#DCFCE7;color:#166534;">
+            <i class="bi bi-check2"></i>ไม่มีคำขอรอ
+          </span>
+        {% endif %}
+      </div>
+      <div class="db-val">{{ total_tutors }}</div>
+      <div class="db-lbl">ติวเตอร์ที่อนุมัติแล้ว</div>
+      <div class="db-sub">รอการอนุมัติ {{ pending_tutors }} คน</div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="summary-card">
-      <div class="summary-icon" style="background:#FFF7ED;color:#EA580C;"><i class="bi bi-people"></i></div>
-      <div><div class="val">—</div><div class="lbl">สมาชิกทั้งหมด</div></div>
+
+  <div class="col-6 col-xl-3">
+    <div class="db-card">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="db-card-icon" style="background:#FEF3C7;color:#D97706;">
+          <i class="bi bi-journal-bookmark-fill"></i>
+        </div>
+      </div>
+      <div class="db-val">{{ total_courses }}</div>
+      <div class="db-lbl">รายวิชาทั้งหมด</div>
+      <div class="db-sub">ใน {{ total_majors }} สาขาวิชา</div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="summary-card">
-      <div class="summary-icon" style="background:#FDF4FF;color:#9333EA;"><i class="bi bi-calendar-check"></i></div>
-      <div><div class="val">—</div><div class="lbl">การจองทั้งหมด</div></div>
+
+  <div class="col-6 col-xl-3">
+    <div class="db-card">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="db-card-icon" style="background:#FCE7F3;color:#DB2777;">
+          <i class="bi bi-cash-coin"></i>
+        </div>
+      </div>
+      <div class="db-val" style="font-size:1.6rem;">฿{{ total_topup_money|floatformat:"0" }}</div>
+      <div class="db-lbl">ยอดเติมเครดิตรวม</div>
+      <div class="db-sub">เฉพาะที่อนุมัติแล้ว</div>
     </div>
   </div>
+
 </div>
+
+<!-- ── Pending alerts ── -->
+{% if pending_refills or pending_withdraw or pending_tutors %}
+<div class="mb-3">
+  {% if pending_refills %}
+  <div class="alert-row" style="background:#FEF9C3;color:#92400E;">
+    <span><i class="bi bi-coin me-2"></i>รอตรวจสอบการเติมเครดิต {{ pending_refills }} รายการ</span>
+    <a href="{% url 'admin_panel:refill_mgmt' %}"
+       class="btn btn-sm fw-semibold px-3"
+       style="background:#D97706;color:#fff;border-radius:8px;">ดูรายการ</a>
+  </div>
+  {% endif %}
+  {% if pending_withdraw %}
+  <div class="alert-row" style="background:#FEE2E2;color:#991B1B;">
+    <span><i class="bi bi-cash-stack me-2"></i>รอดำเนินการถอนเครดิต {{ pending_withdraw }} รายการ</span>
+    <a href="{% url 'admin_panel:payment_mgmt' %}"
+       class="btn btn-sm fw-semibold px-3"
+       style="background:#DC2626;color:#fff;border-radius:8px;">ดูรายการ</a>
+  </div>
+  {% endif %}
+  {% if pending_tutors %}
+  <div class="alert-row" style="background:#DBEAFE;color:#1E40AF;">
+    <span><i class="bi bi-person-check me-2"></i>รอการอนุมัติติวเตอร์ {{ pending_tutors }} คน</span>
+    <a href="{% url 'admin_panel:tutor_mgmt_list' %}"
+       class="btn btn-sm fw-semibold px-3"
+       style="background:#2563EB;color:#fff;border-radius:8px;">ดูรายการ</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ── Chart + Groups ── -->
+<div class="row g-3 mb-3">
+
+  <div class="col-lg-7">
+    <div class="sec-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="sec-title">การเติบโตของสมาชิกรายเดือน</span>
+        <span class="db-chip" style="background:#DBEAFE;color:#1E40AF;">
+          <i class="bi bi-people me-1"></i>สมาชิก
+        </span>
+      </div>
+      <canvas id="memberChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="sec-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="sec-title">กลุ่มวิชาในระบบ</span>
+        <a href="{% url 'courses:course_group_list' %}" class="text-primary" style="font-size:13px;">ดูทั้งหมด</a>
+      </div>
+      {% for g in top_groups %}
+      <div class="bar-row">
+        <div class="bar-label" title="{{ g.cg_name }}">{{ g.cg_name }}</div>
+        <div class="bar-bg">
+          <div class="bar-fill" style="width:{% widthratio g.crs_count max_crs 100 %}%;"></div>
+        </div>
+        <div class="bar-count">{{ g.crs_count }} วิชา</div>
+      </div>
+      {% empty %}
+      <div class="text-center text-muted py-4" style="font-size:13px;">
+        <i class="bi bi-folder d-block mb-2" style="font-size:32px;opacity:.3;"></i>
+        ยังไม่มีกลุ่มวิชา
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Recent activity ── -->
+<div class="row g-3">
+
+  <div class="col-lg-4">
+    <div class="sec-card">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="sec-title">สมาชิกล่าสุด</span>
+        <a href="{% url 'admin_panel:member_mgmt' %}" class="text-primary" style="font-size:13px;">ดูทั้งหมด</a>
+      </div>
+      {% for m in recent_members %}
+      <div class="act-item">
+        <div class="act-ico" style="background:#DBEAFE;color:#2563EB;">
+          <i class="bi bi-person-fill"></i>
+        </div>
+        <div class="flex-grow-1 overflow-hidden">
+          <div class="act-name text-truncate">{{ m.mb_full_name }}</div>
+          <div class="act-meta">{{ m.mj_id.fac_id.fac_name|default:"—" }}</div>
+        </div>
+        <div class="act-tag text-muted">{{ m.user.date_joined|date:"d M" }}</div>
+      </div>
+      {% empty %}
+      <div class="text-center text-muted py-3" style="font-size:13px;">ยังไม่มีสมาชิก</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="sec-card">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="sec-title">การเติมเครดิตล่าสุด</span>
+        <a href="{% url 'admin_panel:refill_mgmt' %}" class="text-primary" style="font-size:13px;">ดูทั้งหมด</a>
+      </div>
+      {% for r in recent_refills %}
+      <div class="act-item">
+        <div class="act-ico"
+             style="background:{% if r.rf_status == 1 %}#DCFCE7;color:#16A34A{% elif r.rf_status == 2 %}#FEE2E2;color:#DC2626{% else %}#FEF9C3;color:#D97706{% endif %};">
+          <i class="bi bi-coin"></i>
+        </div>
+        <div class="flex-grow-1 overflow-hidden">
+          <div class="act-name text-truncate">{{ r.member.mb_full_name }}</div>
+          <div class="act-meta">฿{{ r.rf_money|floatformat:"0" }} · +{{ r.rf_credit }} P</div>
+        </div>
+        <div>
+          {% if r.rf_status == 0 %}
+            <span class="act-tag" style="color:#D97706;">รอ</span>
+          {% elif r.rf_status == 1 %}
+            <span class="act-tag" style="color:#16A34A;">อนุมัติ</span>
+          {% else %}
+            <span class="act-tag" style="color:#DC2626;">ปฏิเสธ</span>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="text-center text-muted py-3" style="font-size:13px;">ยังไม่มีรายการ</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="sec-card">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="sec-title">การถอนเครดิตล่าสุด</span>
+        <a href="{% url 'admin_panel:payment_mgmt' %}" class="text-primary" style="font-size:13px;">ดูทั้งหมด</a>
+      </div>
+      {% for w in recent_withdraw %}
+      <div class="act-item">
+        <div class="act-ico"
+             style="background:{% if w.wd_status == 1 %}#DCFCE7;color:#16A34A{% elif w.wd_status == 2 %}#FEE2E2;color:#DC2626{% else %}#FEF9C3;color:#D97706{% endif %};">
+          <i class="bi bi-cash-stack"></i>
+        </div>
+        <div class="flex-grow-1 overflow-hidden">
+          <div class="act-name text-truncate">{{ w.member.mb_full_name }}</div>
+          <div class="act-meta">-{{ w.wd_credit }} P · ฿{{ w.wd_net_cash|floatformat:"0" }}</div>
+        </div>
+        <div>
+          {% if w.wd_status == 0 %}
+            <span class="act-tag" style="color:#D97706;">รอ</span>
+          {% elif w.wd_status == 1 %}
+            <span class="act-tag" style="color:#16A34A;">จ่าย</span>
+          {% else %}
+            <span class="act-tag" style="color:#DC2626;">ปฏิเสธ</span>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="text-center text-muted py-3" style="font-size:13px;">ยังไม่มีรายการ</div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const ctx = document.getElementById('memberChart');
+if (ctx) {
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: {{ chart_labels|safe }},
+      datasets: [{
+        label: 'สมาชิกใหม่',
+        data: {{ chart_data|safe }},
+        backgroundColor: 'rgba(37,99,235,.12)',
+        borderColor: '#2563EB',
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: c => ' ' + c.parsed.y + ' คน' }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 12, family: 'Sarabun' } } },
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, precision: 0, font: { size: 12, family: 'Sarabun' } },
+          grid: { color: '#F1F5F9' }
+        }
+      }
+    }
+  });
+}
+</script>
 {% endblock %}

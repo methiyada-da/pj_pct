@@ -39,7 +39,7 @@
      class="sidebar-link {% if active_menu == 'refill_mgmt' %}active{% endif %}">
     <i class="bi bi-coin"></i> การเติมเครดิต
   </a>
-  <a href="#" class="sidebar-link {% if active_menu == 'payment' %}active{% endif %}">
+  <a href="{% url 'admin_panel:payment_mgmt' %}" class="sidebar-link {% if active_menu == 'payment' %}active{% endif %}">
     <i class="bi bi-cash-stack"></i> การชำระเงิน
   </a>
 
