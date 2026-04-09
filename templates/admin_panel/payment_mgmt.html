@@ -1,0 +1,401 @@
+{% extends "admin_panel/base_admin.html" %}
+{% load static %}
+
+{% block title %}การชำระเงิน{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1>การชำระเงิน</h1>
+    <p>ระบบจัดการการถอนเครดิต</p>
+  </div>
+</div>
+
+<!-- ── Summary cards ── -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex justify-content-between align-items-start">
+        <div>
+          <div class="text-muted small mb-1">รอดำเนินการ</div>
+          <div class="fw-bold" style="font-size:1.6rem;">฿{{ pending_cash|floatformat:"2" }}</div>
+          <div class="text-warning small mt-1"><i class="fas fa-clock me-1"></i>รอการจ่าย</div>
+        </div>
+        <div class="rounded-3 d-flex align-items-center justify-content-center"
+             style="width:48px;height:48px;background:#FEF9C3;">
+          <i class="fas fa-hourglass-half text-warning"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex justify-content-between align-items-start">
+        <div>
+          <div class="text-muted small mb-1">จ่ายแล้ว</div>
+          <div class="fw-bold" style="font-size:1.6rem;">฿{{ paid_cash|floatformat:"2" }}</div>
+          <div class="text-success small mt-1"><i class="fas fa-check-circle me-1"></i>ทั้งหมด</div>
+        </div>
+        <div class="rounded-3 d-flex align-items-center justify-content-center"
+             style="width:48px;height:48px;background:#DCFCE7;">
+          <i class="fas fa-check-circle text-success"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex justify-content-between align-items-start">
+        <div>
+          <div class="text-muted small mb-1">ปฏิเสธ</div>
+          <div class="fw-bold" style="font-size:1.6rem;">{{ rejected_count }}</div>
+          <div class="text-danger small mt-1"><i class="fas fa-times-circle me-1"></i>รายการ</div>
+        </div>
+        <div class="rounded-3 d-flex align-items-center justify-content-center"
+             style="width:48px;height:48px;background:#FEE2E2;">
+          <i class="fas fa-times-circle text-danger"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex justify-content-between align-items-start">
+        <div>
+          <div class="text-muted small mb-1">รวมทั้งหมด</div>
+          <div class="fw-bold" style="font-size:1.6rem;">฿{{ paid_cash|floatformat:"0" }}</div>
+          <div class="text-primary small mt-1"><i class="fas fa-info-circle me-1"></i>ยอดที่จ่ายไปแล้ว</div>
+        </div>
+        <div class="rounded-3 d-flex align-items-center justify-content-center"
+             style="width:48px;height:48px;background:#DBEAFE;">
+          <i class="fas fa-wallet text-primary"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Table card ── -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3 px-4">
+    <span class="fw-bold">คำขอถอนเงิน</span>
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <select name="status" class="form-select form-select-sm" style="width:auto;"
+              onchange="this.form.submit()">
+        <option value="">สถานะทั้งหมด</option>
+        <option value="0" {% if status_filter == '0' %}selected{% endif %}>รอดำเนินการ</option>
+        <option value="1" {% if status_filter == '1' %}selected{% endif %}>จ่ายแล้ว</option>
+        <option value="2" {% if status_filter == '2' %}selected{% endif %}>ปฏิเสธ</option>
+      </select>
+      {% if status_filter %}
+        <a href="{% url 'admin_panel:payment_mgmt' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="fas fa-times me-1"></i>ล้าง
+        </a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead style="background:#F8FAFC;">
+        <tr>
+          <th class="px-4 py-3 text-muted small fw-semibold">รหัสการถอน</th>
+          <th class="py-3 text-muted small fw-semibold">ชื่อสมาชิก</th>
+          <th class="py-3 text-muted small fw-semibold">ประเภท</th>
+          <th class="py-3 text-muted small fw-semibold">จำนวนเงินสุทธิ</th>
+          <th class="py-3 text-muted small fw-semibold">ธนาคาร / เลขบัญชี</th>
+          <th class="py-3 text-muted small fw-semibold">สถานะการจ่าย</th>
+          <th class="py-3 text-muted small fw-semibold">หมายเหตุ</th>
+          <th class="py-3 text-muted small fw-semibold">การจัดการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for wd in page %}
+        <tr>
+          <td class="px-4 fw-semibold">WD{{ wd.wd_id|stringformat:"05d" }}</td>
+          <td>{{ wd.member.mb_full_name }}</td>
+          <td>
+            {% if wd.wd_type == 1 %}
+              <span class="badge rounded-pill fw-normal px-2"
+                    style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;">รายได้</span>
+            {% else %}
+              <span class="badge rounded-pill fw-normal px-2"
+                    style="background:#DBEAFE;color:#1E40AF;border:1px solid #BFDBFE;">นำฝาก</span>
+            {% endif %}
+          </td>
+          <td class="fw-bold text-primary">฿{{ wd.wd_net_cash|floatformat:"2" }}</td>
+          <td class="text-muted small">{{ wd.wd_bank_name }}<br>{{ wd.wd_acc_no }}</td>
+          <td>
+            {% if wd.wd_status == 0 %}
+              <span class="badge rounded-pill fw-normal px-3 py-2"
+                    style="background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;">
+                <i class="fas fa-circle me-1" style="font-size:7px;vertical-align:middle;"></i>รอดำเนินการ
+              </span>
+            {% elif wd.wd_status == 1 %}
+              <span class="badge rounded-pill fw-normal px-3 py-2"
+                    style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;">
+                <i class="fas fa-circle me-1" style="font-size:7px;vertical-align:middle;"></i>จ่ายแล้ว
+              </span>
+            {% else %}
+              <span class="badge rounded-pill fw-normal px-3 py-2"
+                    style="background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;">
+                <i class="fas fa-circle me-1" style="font-size:7px;vertical-align:middle;"></i>ปฏิเสธการถอน
+              </span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">{{ wd.wd_cmt|default:"—" }}</td>
+          <td>
+            {% if wd.wd_status == 0 %}
+              <button class="btn btn-sm btn-primary fw-semibold px-3"
+                      onclick="openPayDetail(
+                        '{{ wd.wd_id }}',
+                        '{{ wd.member.mb_full_name|escapejs }}',
+                        '{{ wd.wd_type }}',
+                        '{{ wd.wd_credit }}',
+                        '{{ wd.wd_cash|floatformat:"2" }}',
+                        '{{ wd.wd_fee|floatformat:"2" }}',
+                        '{{ wd.wd_net_cash|floatformat:"2" }}',
+                        '{{ wd.wd_bank_name|escapejs }}',
+                        '{{ wd.wd_acc_name|escapejs }}',
+                        '{{ wd.wd_acc_no }}',
+                        '{{ wd.wd_req_date|date:"d M Y H:i" }}'
+                      )">
+                <i class="fas fa-money-bill-wave me-1"></i>บันทึกการจ่ายเงิน
+              </button>
+            {% else %}
+              <button class="btn btn-sm btn-outline-secondary px-3"
+                      onclick="openViewDetail(
+                        '{{ wd.wd_id }}',
+                        '{{ wd.member.mb_full_name|escapejs }}',
+                        '{{ wd.wd_type }}',
+                        '{{ wd.wd_credit }}',
+                        '{{ wd.wd_cash|floatformat:"2" }}',
+                        '{{ wd.wd_fee|floatformat:"2" }}',
+                        '{{ wd.wd_net_cash|floatformat:"2" }}',
+                        '{{ wd.wd_bank_name|escapejs }}',
+                        '{{ wd.wd_acc_name|escapejs }}',
+                        '{{ wd.wd_acc_no }}',
+                        '{{ wd.wd_req_date|date:"d M Y H:i" }}',
+                        {{ wd.wd_status }},
+                        '{{ wd.wd_cmt|default:""|escapejs }}'
+                      )">
+                <i class="fas fa-eye me-1"></i>ดูรายละเอียด
+              </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center py-5 text-muted">ไม่พบรายการ</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if page.has_other_pages %}
+  <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3 px-4">
+    <span class="text-muted small">
+      แสดง {{ page.start_index }}–{{ page.end_index }} จาก {{ page.paginator.count }} รายการ
+    </span>
+    <div class="d-flex gap-1">
+      {% if page.has_previous %}
+        <a href="?page={{ page.previous_page_number }}&status={{ status_filter }}"
+           class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></a>
+      {% endif %}
+      {% for num in page.paginator.page_range %}
+        {% if page.number == num %}
+          <button class="btn btn-sm btn-primary">{{ num }}</button>
+        {% elif num >= page.number|add:"-2" and num <= page.number|add:"2" %}
+          <a href="?page={{ num }}&status={{ status_filter }}"
+             class="btn btn-sm btn-outline-secondary">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if page.has_next %}
+        <a href="?page={{ page.next_page_number }}&status={{ status_filter }}"
+           class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-right"></i></a>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card-footer bg-white py-3 px-4">
+    <span class="text-muted small">แสดง {{ page.start_index }}–{{ page.end_index }} จาก {{ page.paginator.count }} รายการ</span>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── Detail Modal ── -->
+<div class="modal fade" id="payDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
+    <div class="modal-content border-0 shadow">
+
+      <div class="modal-header" style="background:#2563EB;">
+        <h5 class="modal-title text-white fw-bold">
+          <i class="fas fa-money-bill-wave me-2"></i>รายละเอียดการถอนเงิน: <span id="pdWdId"></span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body p-4">
+
+        <!-- status banner -->
+        <div id="pdStatusBanner" class="d-none rounded-3 p-3 mb-3 text-center fw-semibold"></div>
+
+        <!-- info rows -->
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">ชื่อสมาชิก</span>
+          <span class="fw-semibold small" id="pdName"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">ประเภทเครดิต</span>
+          <span class="fw-semibold small" id="pdType"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">จำนวนเครดิต</span>
+          <span class="fw-semibold small" id="pdCredit"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">ธนาคาร</span>
+          <span class="fw-semibold small" id="pdBank"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">ชื่อบัญชี</span>
+          <span class="fw-semibold small" id="pdAccName"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">เลขที่บัญชี</span>
+          <span class="fw-semibold small" id="pdAccNo"></span>
+        </div>
+        <div class="mb-3 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">วันที่ขอถอน</span>
+          <span class="fw-semibold small" id="pdDate"></span>
+        </div>
+
+        <!-- fee breakdown -->
+        <div class="rounded-3 p-3 mb-3" style="background:#F8FAFC;border:1px solid #E5E7EB;">
+          <div class="d-flex justify-content-between small mb-2">
+            <span class="text-muted">จำนวนเงิน</span>
+            <span id="pdGross"></span>
+          </div>
+          <div class="d-flex justify-content-between small mb-2">
+            <span class="text-muted">ค่าธรรมเนียม</span>
+            <span class="text-danger" id="pdFee"></span>
+          </div>
+          <div class="d-flex justify-content-between fw-bold">
+            <span>ยอดสุทธิที่จ่าย</span>
+            <span class="text-success" id="pdNet"></span>
+          </div>
+        </div>
+
+        <!-- action section (pending only) -->
+        <div id="pdActionSection">
+          <div class="fw-semibold small mb-2">หมายเหตุ</div>
+          <textarea id="pdNote" class="form-control form-control-sm mb-3" rows="2"
+                    placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)..."></textarea>
+        </div>
+
+        <!-- cmt section (done/rejected) -->
+        <div id="pdCmtSection" class="d-none">
+          <div id="pdCmtWrap" class="d-none rounded-3 p-3"
+               style="background:#FEF9C3;border:1px solid #FDE68A;">
+            <div class="fw-semibold small mb-1" style="color:#92400E;">
+              <i class="fas fa-comment-alt me-1"></i>หมายเหตุ
+            </div>
+            <div class="small" id="pdCmt"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <form method="post" id="pdForm" action="{% url 'admin_panel:payment_mgmt' %}">
+          {% csrf_token %}
+          <input type="hidden" name="wd_id"   id="pdFormWdId">
+          <input type="hidden" name="action"  id="pdFormAction">
+          <input type="hidden" name="note"    id="pdFormNote">
+
+          <button type="button" class="btn btn-outline-secondary me-2"
+                  data-bs-dismiss="modal">ปิด</button>
+          <div id="pdActionBtns" class="d-inline-flex gap-2">
+            <button type="button" class="btn btn-danger fw-semibold"
+                    onclick="submitPay('reject')">
+              <i class="fas fa-times-circle me-1"></i>ปฏิเสธ
+            </button>
+            <button type="submit" class="btn btn-success fw-semibold"
+                    onclick="submitPay('pay')">
+              <i class="fas fa-check-circle me-1"></i>บันทึกการจ่าย
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openPayDetail(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, date) {
+  _fillModal(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, date);
+  // pending — show action buttons
+  document.getElementById('pdStatusBanner').classList.add('d-none');
+  document.getElementById('pdActionSection').classList.remove('d-none');
+  document.getElementById('pdCmtSection').classList.add('d-none');
+  document.getElementById('pdActionBtns').classList.remove('d-none');
+  document.getElementById('pdNote').value = '';
+  new bootstrap.Modal(document.getElementById('payDetailModal')).show();
+}
+
+function openViewDetail(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, date, status, cmt) {
+  _fillModal(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, date);
+  // done/rejected — hide action buttons, show status
+  document.getElementById('pdActionSection').classList.add('d-none');
+  document.getElementById('pdActionBtns').classList.add('d-none');
+  document.getElementById('pdCmtSection').classList.remove('d-none');
+
+  const banner = document.getElementById('pdStatusBanner');
+  banner.classList.remove('d-none');
+  if (status === 1) {
+    banner.style.cssText = 'background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-check-circle me-2"></i>จ่ายแล้ว';
+  } else {
+    banner.style.cssText = 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-times-circle me-2"></i>ปฏิเสธการถอน';
+  }
+
+  const cmtWrap = document.getElementById('pdCmtWrap');
+  if (cmt) {
+    document.getElementById('pdCmt').textContent = cmt;
+    cmtWrap.classList.remove('d-none');
+  } else {
+    cmtWrap.classList.add('d-none');
+  }
+
+  new bootstrap.Modal(document.getElementById('payDetailModal')).show();
+}
+
+function _fillModal(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, date) {
+  document.getElementById('pdWdId').textContent    = 'WD' + String(wdId).padStart(5,'0');
+  document.getElementById('pdName').textContent    = name;
+  document.getElementById('pdType').textContent    = type === '1' ? 'เครดิตรายได้' : 'เครดิตนำฝาก';
+  document.getElementById('pdCredit').textContent  = credit + ' เครดิต';
+  document.getElementById('pdBank').textContent    = bank;
+  document.getElementById('pdAccName').textContent = accName;
+  document.getElementById('pdAccNo').textContent   = accNo;
+  document.getElementById('pdDate').textContent    = date;
+  document.getElementById('pdGross').textContent   = '฿' + gross;
+  document.getElementById('pdFee').textContent     = '-฿' + fee;
+  document.getElementById('pdNet').textContent     = '฿' + net;
+  document.getElementById('pdFormWdId').value      = wdId;
+}
+
+function submitPay(action) {
+  document.getElementById('pdFormAction').value = action;
+  document.getElementById('pdFormNote').value   = document.getElementById('pdNote').value;
+  document.getElementById('pdForm').submit();
+}
+</script>
+{% endblock %}

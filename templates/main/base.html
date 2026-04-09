@@ -25,9 +25,8 @@
      style="position:fixed;top:72px;right:16px;z-index:9999;min-width:280px;max-width:380px;">
   {% for message in messages %}
   <div class="toast align-items-center border-0 show mb-2
-              {% if message.tags == 'error' %}text-bg-danger
-              {% elif message.tags == 'warning' %}text-bg-warning
-              {% elif message.tags == 'info' %}text-bg-secondary
+              {% if message.level >= 30 %}text-bg-danger
+              {% elif message.level == 20 %}text-bg-secondary
               {% else %}text-bg-success{% endif %}"
        role="alert" data-bs-autohide="true" data-bs-delay="3500">
     <div class="d-flex">
