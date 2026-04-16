@@ -19,7 +19,7 @@
              href="{% url 'home' %}">หน้าแรก</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="#">ค้นหาติวเตอร์</a>
+          <a class="nav-link" href="{% url 'tutoring:search_tutors' %}">ค้นหาติวเตอร์</a>
         </li>
 
         {% if user.is_authenticated %}

@@ -1,0 +1,372 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}ค้นหาติวเตอร์ — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/search.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<!-- ===== SEARCH HERO ===== -->
+<section class="search-hero">
+  <div class="container">
+
+    <!-- แถวหัวข้อ + เครดิต -->
+    <div class="search-hero-top">
+      <div class="search-hero-title">
+        <h1>ค้นหาติวเตอร์ที่เหมาะกับคุณ</h1>
+        <p>ค้นพบหลักสูตรคุณภาพและติวเตอร์ที่พร้อมช่วยด้วย</p>
+      </div>
+      {% if user.is_authenticated %}
+      <a href="{% url 'credits:credit' %}" class="credit-badge">
+        <i class="fas fa-coins"></i>
+        <span>เครดิต</span>
+        <span class="credit-num">{{ user_credit|default:"0" }}</span>
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Search bar -->
+    <form method="get" action="{% url 'tutoring:search_tutors' %}">
+      <div class="search-bar-wrap">
+        <i class="fas fa-search" style="color:#94A3B8; font-size:.85rem; flex-shrink:0;"></i>
+        <input
+          type="text"
+          name="q"
+          value="{{ q }}"
+          placeholder="ค้นหาชื่อวิชา กลุ่มวิชา หรือชื่อติวเตอร์..."
+          autocomplete="off"
+        >
+        {% if selected_cg %}<input type="hidden" name="cg_id"     value="{{ selected_cg }}">{% endif %}
+        {% if selected_crs %}<input type="hidden" name="crs_id"   value="{{ selected_crs }}">{% endif %}
+        {% if min_price %}<input type="hidden" name="min_price"   value="{{ min_price }}">{% endif %}
+        {% if max_price %}<input type="hidden" name="max_price"   value="{{ max_price }}">{% endif %}
+        {% if min_rating %}<input type="hidden" name="min_rating" value="{{ min_rating }}">{% endif %}
+        <button type="submit" class="btn-search">
+          <i class="fas fa-search me-1"></i>ค้นหา
+        </button>
+      </div>
+    </form>
+
+  </div>
+</section>
+<!-- ===== END HERO ===== -->
+
+
+<!-- ===== SEARCH BODY ===== -->
+<div class="search-body">
+  <div class="container">
+    <div class="row g-3">
+
+      <!-- ── FILTER SIDEBAR ── -->
+      <div class="col-lg-3 col-md-4">
+        <div class="filter-card">
+          <div class="filter-title">
+            <span><i class="fas fa-sliders-h me-2"></i>ตัวกรอง</span>
+            <a href="{% url 'tutoring:search_tutors' %}" class="filter-reset">รีเซ็ตทั้งหมด</a>
+          </div>
+
+          <form method="get" action="{% url 'tutoring:search_tutors' %}" id="filter-form">
+            <!-- ส่ง q ไปด้วย -->
+            {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+
+            <!-- กลุ่มวิชา -->
+            <div class="filter-section">
+              <label class="filter-label">กลุ่มวิชา</label>
+              <select name="cg_id" class="filter-select" id="cg-select">
+                <option value="">-- กลุ่มวิชาทั้งหมด --</option>
+                {% for cg in course_groups %}
+                <option value="{{ cg.cg_id }}" {% if selected_cg == cg.cg_id|stringformat:"s" %}selected{% endif %}>
+                  {{ cg.cg_name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- รายวิชา (dependent dropdown) -->
+            <div class="filter-section">
+              <label class="filter-label">รายวิชา</label>
+              <select name="crs_id" class="filter-select" id="crs-select"
+                      {% if not selected_cg %}disabled{% endif %}>
+                <option value="">-- รายวิชาทั้งหมด --</option>
+                {% for course in courses %}
+                <option value="{{ course.crs_id }}" {% if selected_crs == course.crs_id %}selected{% endif %}>
+                  {{ course.crs_name }}
+                </option>
+                {% endfor %}
+              </select>
+              <p id="crs-hint" style="font-size:.75rem; color:#94A3B8; margin:.35rem 0 0;{% if selected_cg %} display:none;{% endif %}">
+                <i class="fas fa-info-circle me-1"></i>เลือกกลุ่มวิชาก่อน
+              </p>
+            </div>
+
+            <!-- ช่วงราคา (เครดิต) -->
+            <div class="filter-section">
+              <label class="filter-label">ช่วงราคา (เครดิต/ครั้ง)</label>
+              <div class="price-inputs">
+                <input type="number" name="min_price" class="price-input"
+                       placeholder="ต่ำสุด" min="0" value="{{ min_price }}">
+                <span class="price-sep">—</span>
+                <input type="number" name="max_price" class="price-input"
+                       placeholder="สูงสุด" min="0" value="{{ max_price }}">
+              </div>
+            </div>
+
+            <!-- คะแนนรีวิว -->
+            <div class="filter-section">
+              <label class="filter-label">คะแนนรีวิว</label>
+              <label class="rating-option">
+                <input type="radio" name="min_rating" value=""
+                       {% if not min_rating %}checked{% endif %}>
+                <span>ทั้งหมด</span>
+              </label>
+              <label class="rating-option">
+                <input type="radio" name="min_rating" value="4.0"
+                       {% if min_rating == "4.0" %}checked{% endif %}>
+                <span class="stars">★★★★</span>
+                <span class="rating-label">4.0 ขึ้นไป</span>
+              </label>
+              <label class="rating-option">
+                <input type="radio" name="min_rating" value="3.0"
+                       {% if min_rating == "3.0" %}checked{% endif %}>
+                <span class="stars">★★★</span>
+                <span class="rating-label">3.0 ขึ้นไป</span>
+              </label>
+              <p style="font-size:.75rem; color:#94A3B8; margin:.4rem 0 0;">
+                <i class="fas fa-clock me-1"></i>ยังไม่มีรีวิว (ระบบจองยังไม่เปิด)
+              </p>
+            </div>
+
+          </form>
+        </div>
+      </div>
+      <!-- ── END SIDEBAR ── -->
+
+
+      <!-- ── RESULTS ── -->
+      <div class="col-lg-9 col-md-8">
+
+        <!-- Active filter tags -->
+        {% if q or selected_cg or selected_crs or min_price or max_price or min_rating %}
+        <div class="filter-tags">
+          {% if q %}
+          <span class="filter-tag">
+            <i class="fas fa-search" style="font-size:.65rem;"></i>
+            "{{ q }}"
+            <a href="?{% if selected_cg %}cg_id={{ selected_cg }}&{% endif %}{% if selected_crs %}crs_id={{ selected_crs }}&{% endif %}{% if min_price %}min_price={{ min_price }}&{% endif %}{% if max_price %}max_price={{ max_price }}&{% endif %}{% if min_rating %}min_rating={{ min_rating }}{% endif %}">✕</a>
+          </span>
+          {% endif %}
+          {% if selected_cg %}
+          {% for cg in course_groups %}{% if cg.cg_id|stringformat:"s" == selected_cg %}
+          <span class="filter-tag">
+            <i class="fas fa-layer-group" style="font-size:.65rem;"></i>
+            {{ cg.cg_name }}
+            <a href="?{% if q %}q={{ q }}&{% endif %}{% if min_price %}min_price={{ min_price }}&{% endif %}{% if max_price %}max_price={{ max_price }}&{% endif %}{% if min_rating %}min_rating={{ min_rating }}{% endif %}">✕</a>
+          </span>
+          {% endif %}{% endfor %}
+          {% endif %}
+          {% if min_price or max_price %}
+          <span class="filter-tag">
+            <i class="fas fa-coins" style="font-size:.65rem;"></i>
+            {% if min_price %}{{ min_price }}{% else %}0{% endif %} — {% if max_price %}{{ max_price }}{% else %}∞{% endif %} เครดิต
+            <a href="?{% if q %}q={{ q }}&{% endif %}{% if selected_cg %}cg_id={{ selected_cg }}&{% endif %}{% if selected_crs %}crs_id={{ selected_crs }}&{% endif %}{% if min_rating %}min_rating={{ min_rating }}{% endif %}">✕</a>
+          </span>
+          {% endif %}
+          {% if min_rating %}
+          <span class="filter-tag">
+            <i class="fas fa-star" style="font-size:.65rem;"></i>
+            {{ min_rating }}+ ดาว
+            <a href="?{% if q %}q={{ q }}&{% endif %}{% if selected_cg %}cg_id={{ selected_cg }}&{% endif %}{% if selected_crs %}crs_id={{ selected_crs }}&{% endif %}{% if min_price %}min_price={{ min_price }}&{% endif %}{% if max_price %}max_price={{ max_price }}{% endif %}">✕</a>
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Result count -->
+        <div class="result-bar">
+          <p class="result-count mb-0">
+            พบ <strong>{{ result_count }}</strong> หลักสูตร
+          </p>
+        </div>
+
+        <!-- Course grid -->
+        {% if tutorcourses %}
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3">
+          {% for tc in tutorcourses %}
+          {% with member=tc.tut_id.tut_id cg=tc.crs_id.cg_id %}
+          <div class="col">
+            <a href="{% url 'tutoring:course_detail' tc.tutc_id %}" class="course-card-link">
+            <div class="course-card">
+
+              <!-- รูปปก -->
+              <div class="course-card-img">
+                {% if tc.tutc_img %}
+                  <img src="{{ tc.tutc_img.url }}" alt="{{ tc.tutc_name }}">
+                {% else %}
+                  <div class="img-placeholder">
+                    <i class="fas fa-book-open"></i>
+                  </div>
+                {% endif %}
+
+                <!-- Rating badge -->
+                <div class="card-rating-badge">
+                  <i class="fas fa-star"></i>
+                  {% if tc.tut_id.tut_rating %}
+                    {{ tc.tut_id.tut_rating|floatformat:1 }}
+                  {% else %}
+                    ใหม่
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Body -->
+              <div class="course-card-body">
+
+                <!-- กลุ่มวิชา badge -->
+                <span class="course-group-badge
+                  {% with cid=cg.cg_id %}
+                    {% if cid == 1 %}cg-badge-1
+                    {% elif cid == 2 %}cg-badge-2
+                    {% elif cid == 3 %}cg-badge-3
+                    {% elif cid == 4 %}cg-badge-4
+                    {% elif cid == 5 %}cg-badge-5
+                    {% else %}cg-badge-default{% endif %}
+                  {% endwith %}">
+                  {{ cg.cg_name }}
+                </span>
+
+                <!-- ชื่อรายวิชา -->
+                <p class="course-name">{{ tc.tutc_name }}</p>
+
+                <!-- คำอธิบาย -->
+                {% if tc.tutc_desc %}
+                <p class="course-desc">{{ tc.tutc_desc }}</p>
+                {% else %}
+                <p class="course-desc">{{ tc.crs_id.crs_name }}</p>
+                {% endif %}
+
+                <!-- ติวเตอร์ -->
+                <div class="tutor-row">
+                  {% if member.mb_img %}
+                    <img src="{{ member.mb_img.url }}" class="tutor-avatar" alt="{{ member.mb_full_name }}">
+                  {% else %}
+                    <div class="tutor-avatar-placeholder">
+                      {{ member.mb_full_name|first|upper }}
+                    </div>
+                  {% endif %}
+                  <span class="tutor-name">{{ member.mb_full_name }}</span>
+                </div>
+
+                <!-- Footer: ราคา + ปุ่ม -->
+                <div class="course-footer">
+                  <div>
+                    <div class="price-label">ราคา</div>
+                    <div>
+                      {% if tc.lowest_price %}
+                        <span class="price-value">{{ tc.lowest_price }}</span>
+                        <span class="price-unit"> เครดิต/ครั้ง</span>
+                      {% else %}
+                        <span class="price-value">—</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <span class="btn-view">ดูรายละเอียด</span>
+                </div>
+
+              </div>
+            </div>
+            </a>
+          </div>
+          {% endwith %}
+          {% endfor %}
+        </div>
+
+        {% else %}
+        <!-- Empty state -->
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fas fa-search"></i></div>
+          <p class="empty-title">ไม่พบหลักสูตรที่ตรงกัน</p>
+          <p class="empty-desc">ลองเปลี่ยนคำค้นหาหรือปรับตัวกรองใหม่</p>
+          <a href="{% url 'tutoring:search_tutors' %}" class="btn btn-outline-primary btn-sm mt-2">
+            ล้างการค้นหาทั้งหมด
+          </a>
+        </div>
+        {% endif %}
+
+      </div>
+      <!-- ── END RESULTS ── -->
+
+    </div>
+  </div>
+</div>
+<!-- ===== END SEARCH BODY ===== -->
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+(function () {
+  const form      = document.getElementById('filter-form');
+  const cgSelect  = document.getElementById('cg-select');
+  const crsSelect = document.getElementById('crs-select');
+  const hintEl    = document.getElementById('crs-hint');
+  const ajaxUrl   = "{% url 'tutoring:courses_by_group' %}";
+
+  // ── กลุ่มวิชา: โหลด dropdown รายวิชา แล้ว submit ทันที ──
+  cgSelect.addEventListener('change', function () {
+    const cgId = this.value;
+
+    if (!cgId) {
+      crsSelect.innerHTML = '<option value="">-- รายวิชาทั้งหมด --</option>';
+      crsSelect.disabled = true;
+      if (hintEl) hintEl.style.display = 'block';
+      form.submit();
+      return;
+    }
+
+    if (hintEl) hintEl.style.display = 'none';
+    crsSelect.disabled = true;
+    crsSelect.innerHTML = '<option value="">กำลังโหลด...</option>';
+
+    fetch(`${ajaxUrl}?cg_id=${cgId}`)
+      .then(r => r.text())
+      .then(html => {
+        crsSelect.innerHTML = html;
+        crsSelect.disabled  = false;
+        // submit หลังโหลดรายวิชาเสร็จ เพื่อกรองตามกลุ่มที่เลือก
+        form.submit();
+      })
+      .catch(() => {
+        crsSelect.innerHTML = '<option value="">โหลดไม่สำเร็จ</option>';
+        crsSelect.disabled  = false;
+        form.submit();
+      });
+  });
+
+  // ── รายวิชา: submit ทันทีที่เลือก ──
+  crsSelect.addEventListener('change', function () {
+    form.submit();
+  });
+
+  // ── ราคา: submit เมื่อพิมพ์เสร็จ (debounce 600ms) ──
+  let priceTimer;
+  document.querySelectorAll('.price-input').forEach(input => {
+    input.addEventListener('input', function () {
+      clearTimeout(priceTimer);
+      priceTimer = setTimeout(() => form.submit(), 600);
+    });
+  });
+
+  // ── คะแนนรีวิว: submit ทันทีที่เลือก radio ──
+  document.querySelectorAll('input[name="min_rating"]').forEach(radio => {
+    radio.addEventListener('change', function () {
+      form.submit();
+    });
+  });
+
+})();
+</script>
+{% endblock %}

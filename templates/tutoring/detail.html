@@ -1,0 +1,415 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}{{ tc.tutc_name }} — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Breadcrumb ── -->
+<div class="detail-breadcrumb">
+  <div class="container">
+    <a href="{% url 'tutoring:search_tutors' %}">ค้นหาติวเตอร์</a>
+    <span class="sep">/</span>
+    <span>{{ tc.tutc_name }}</span>
+  </div>
+</div>
+
+<div class="detail-body">
+  <div class="container">
+    <div class="row g-3">
+
+      <!-- ════ COL LEFT: ข้อมูลติวเตอร์ ════ -->
+      <div class="col-lg-3 col-md-4">
+        <div class="tutor-card">
+
+          {% if member.mb_img %}
+            <img src="{{ member.mb_img.url }}" class="tutor-avatar-lg" alt="{{ member.mb_full_name }}">
+          {% else %}
+            <div class="tutor-avatar-lg-placeholder">{{ member.mb_full_name|first|upper }}</div>
+          {% endif %}
+
+          <p class="tutor-name-lg">{{ member.mb_full_name }}</p>
+
+          <!-- ปุ่มแชท -->
+          <a href="#" class="btn-chat">
+            <i class="far fa-comment-dots"></i> แชท
+          </a>
+
+          <!-- Rating -->
+          <div class="tutor-rating-row">
+            {% if tutor.tut_rating and tutor.tut_rating > 0 %}
+              <span class="stars-lg">
+                {% with r=tutor.tut_rating %}
+                  {% for i in "12345" %}
+                    {% if forloop.counter <= r|floatformat:"0"|add:"0" %}★{% else %}☆{% endif %}
+                  {% endfor %}
+                {% endwith %}
+              </span>
+              <span class="rating-text">{{ tutor.tut_rating|floatformat:1 }}</span>
+            {% else %}
+              <span class="rating-new"><i class="fas fa-star" style="color:#F59E0B;font-size:.8rem;"></i> ติวเตอร์ใหม่</span>
+            {% endif %}
+          </div>
+
+          <!-- GPAX -->
+          <div class="mb-2">
+            <span class="gpax-badge">
+              <i class="fas fa-graduation-cap"></i> GPAX {{ tutor.tut_gpax }}
+            </span>
+          </div>
+
+          <!-- คณะ / สาขา -->
+          {% if member.mj_id %}
+          <div class="tutor-info-row">
+            <i class="fas fa-university tutor-info-icon"></i>
+            <span>{{ member.mj_id.fac_id.fac_name }}</span>
+          </div>
+          <div class="tutor-info-row">
+            <i class="fas fa-book tutor-info-icon"></i>
+            <span>{{ member.mj_id.mj_name }}</span>
+            {% if member.mj_id.mj_abbr %}
+              <span class="mj-abbr">({{ member.mj_id.mj_abbr }})</span>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <!-- ประสบการณ์สอน (แสดงเฉพาะมีประสบการณ์) -->
+          {% if tutor.tut_has_exp == 1 %}
+          <div class="tutor-info-row">
+            <i class="fas fa-chalkboard-teacher tutor-info-icon"></i>
+            <span>มีประสบการณ์สอน</span>
+          </div>
+          {% if tutor.tut_exp_desc %}
+          <p class="tutor-exp-desc">{{ tutor.tut_exp_desc }}</p>
+          {% endif %}
+          {% endif %}
+
+          <!-- แนะนำตัว -->
+          {% if tutor.tut_desc %}
+          <p class="tutor-section-title">เกี่ยวกับฉัน</p>
+          <p class="tutor-desc">{{ tutor.tut_desc }}</p>
+          {% endif %}
+
+          <!-- ความถนัด -->
+          {% if tutor.tut_skill %}
+          <p class="tutor-section-title">ความถนัด</p>
+          <div class="skill-tags">
+            {% for skill in tutor.tut_skill.split %}
+              <span class="skill-tag">{{ skill }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+        </div>
+
+        <!-- อัตราค่าบริการ ใต้โปรไฟล์ติวเตอร์ -->
+        {% if rates %}
+        <div class="rates-card mt-2">
+          <p class="rates-card-title"><i class="fas fa-coins me-1"></i>อัตราค่าบริการ</p>
+          <p class="rates-card-note">ราคาต่อคน ขึ้นอยู่กับจำนวนผู้เรียนในการจองครั้งนั้น</p>
+          {% for rate in rates %}
+          <div class="rate-row {% if forloop.first and rates|length == 1 %}rate-row-only{% endif %}">
+            <span class="rate-count">
+              <i class="fas fa-users me-1"></i>
+              {% if rate.is_single %}
+                {{ rate.start }} คน
+              {% else %}
+                {{ rate.start }}–{{ rate.end }} คน
+              {% endif %}
+            </span>
+            <span class="rate-price-val">{{ rate.price }} <span class="rate-unit">เครดิต/คน</span></span>
+          </div>
+          {% endfor %}
+          <p class="rates-card-example">
+            <i class="fas fa-info-circle me-1"></i>
+            ยิ่งมีผู้เรียนมาก อัตราต่อคนอาจถูกลง — ระบบคำนวณให้อัตโนมัติ
+          </p>
+        </div>
+        {% endif %}
+
+      </div>
+      <!-- ════ END LEFT ════ -->
+
+
+      <!-- ════ COL MIDDLE ════ -->
+      <div class="col-lg-6 col-md-8">
+
+        <!-- ── Course Info ── -->
+        <div class="course-info-card">
+          <span class="course-group-tag">{{ tc.crs_id.cg_id.cg_name }}</span>
+          <h1 class="course-title-lg">{{ tc.tutc_name }}</h1>
+          <p class="course-sub-name">
+            <i class="fas fa-book me-1"></i>{{ tc.crs_id.crs_name }}
+          </p>
+          {% if tc.tutc_desc %}
+          <p class="course-desc-lg">{{ tc.tutc_desc }}</p>
+          {% endif %}
+          <!-- จำนวนรับสูงสุด -->
+          <div class="course-meta-row">
+            <span><i class="fas fa-users me-1"></i>รับสูงสุด <strong>{{ tc.tutc_max_stu }}</strong> คน/ครั้ง</span>
+          </div>
+        </div>
+
+        <!-- ── เลือกวันและเวลา ── -->
+        <div class="booking-card">
+          <h2 class="booking-card-title">
+            <i class="far fa-calendar-check me-2"></i>เลือกวันและเวลา
+          </h2>
+
+          {% if available_dates %}
+          <form method="post" action="{% url 'tutoring:booking_create' tc.tutc_id %}" id="booking-form">
+            {% csrf_token %}
+
+            <!-- วันที่ -->
+            <p class="booking-section-title">วันที่เปิดสอน</p>
+            <div class="date-grid">
+              {% for sd in available_dates %}
+              <button type="button"
+                      class="date-btn"
+                      data-sd-id="{{ sd.sd_id }}"
+                      data-date-display="{{ sd.sd_date|date:'j M Y' }}"
+                      onclick="selectDate(this)">
+                {{ sd.sd_date|date:"j M" }}
+              </button>
+              {% endfor %}
+            </div>
+
+            <!-- ช่วงเวลา -->
+            <p class="booking-section-title">ช่วงเวลา</p>
+            <div id="slot-area">
+              <p class="no-slot-msg"><i class="fas fa-hand-pointer me-1"></i>เลือกวันที่ก่อน</p>
+            </div>
+
+            <input type="hidden" name="ts_id" id="ts_id_input" value="">
+
+            <!-- JSON ข้อมูล slot (กรอง ts_status=0 แล้วจาก view) -->
+            <script id="slot-data" type="application/json">
+            {
+              {% for sd in available_dates %}"{{ sd.sd_id }}": [{% for slot in sd.time_slots.all %}{% if slot.ts_status == 0 %}{"ts_id": {{ slot.ts_id }}, "start": "{{ slot.ts_start_time|time:'H:i' }}", "end": "{{ slot.ts_end_time|time:'H:i' }}"}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}]{% if not forloop.last %},{% endif %}
+              {% endfor %}
+            }
+            </script>
+
+            <!-- จำนวนผู้เรียน -->
+            <p class="booking-section-title">จำนวนผู้เรียน</p>
+            <div class="stu-count-wrap">
+              <input type="number" name="stu_count" id="stu_count"
+                     class="stu-count-input" value="1" min="1" max="{{ tc.tutc_max_stu }}"
+                     oninput="updateSummary()">
+              <span class="stu-max-hint">รับสูงสุด {{ tc.tutc_max_stu }} คน</span>
+            </div>
+
+            <!-- รายละเอียดเพิ่มเติม -->
+            <p class="booking-section-title">รายละเอียดเพิ่มเติม <span style="font-weight:400;color:var(--pct-muted);">(ไม่บังคับ)</span></p>
+            <textarea name="bk_desc" class="bk-textarea"
+                      placeholder="บอกติวเตอร์ว่าคุณต้องการเน้นเรื่องอะไร..."></textarea>
+
+            <script id="rate-data" type="application/json">
+            [{% for rate in rates %}{"start": {{ rate.start }}, "end": {{ rate.end }}, "price": {{ rate.price }}}{% if not forloop.last %},{% endif %}{% endfor %}]
+            </script>
+
+          </form>
+
+          {% else %}
+          <div class="no-schedule">
+            <i class="far fa-calendar-times"></i>
+            <p class="no-schedule-title">ยังไม่มีช่วงเวลาว่าง</p>
+            <p class="no-schedule-desc">ติวเตอร์ยังไม่ได้เพิ่มตารางสอน หรือเต็มทุกช่วงเวลาแล้ว</p>
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+      <!-- ════ END MIDDLE ════ -->
+
+
+      <!-- ════ COL RIGHT ════ -->
+      <div class="col-lg-3 d-none d-lg-block">
+
+        <!-- สรุปการจอง -->
+        <div class="summary-card">
+          <p class="summary-title"><i class="fas fa-receipt me-2"></i>สรุปการจอง</p>
+
+          <div class="summary-row">
+            <span class="label">วันที่</span>
+            <span class="value" id="sum-date">—</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">เวลา</span>
+            <span class="value" id="sum-time">—</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">ระยะเวลา</span>
+            <span class="value" id="sum-duration">—</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">ผู้เรียน</span>
+            <span class="value" id="sum-count">1 คน</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">อัตรา/คน</span>
+            <span class="value" id="sum-rate">—</span>
+          </div>
+
+          <hr class="summary-divider">
+
+          <div class="summary-total-row">
+            <span class="summary-total-label">ทั้งหมด</span>
+            <span class="summary-total-value" id="sum-total">—</span>
+          </div>
+
+          {% if user.is_authenticated %}
+            {% if available_dates %}
+            <button type="submit" form="booking-form" class="btn-book" id="btn-book" disabled>
+              <i class="fas fa-check-circle me-1"></i>ยืนยันการจอง
+            </button>
+            <p class="credit-avail">เครดิตคงเหลือ <strong>{{ user_credit|default:"0" }}</strong> เครดิต</p>
+            {% endif %}
+          {% else %}
+          <div class="login-prompt">
+            <i class="fas fa-lock me-1"></i>
+            <a href="{% url 'accounts:login' %}?next={{ request.path }}">เข้าสู่ระบบ</a> เพื่อจองเรียน
+          </div>
+          {% endif %}
+
+          <div class="pending-note">
+            <i class="fas fa-clock me-1"></i>
+            ติวเตอร์จะยืนยันภายใน <strong>24 ชั่วโมง</strong>
+            เครดิตจะถูกล็อกไว้ก่อน และตัดจริงเมื่อติวเตอร์รับงานแล้ว
+          </div>
+        </div>
+
+
+      </div>
+      <!-- ════ END RIGHT ════ -->
+
+    </div>
+  </div>
+</div>
+
+<!-- Mobile: sticky bottom bar -->
+{% if user.is_authenticated and available_dates %}
+<div class="mobile-book-bar d-lg-none">
+  <div>
+    <div class="mobile-book-label">ทั้งหมด</div>
+    <div class="mobile-book-total" id="sum-total-mobile">— เครดิต</div>
+  </div>
+  <button type="submit" form="booking-form" class="btn-book btn-book-sm" id="btn-book-mobile" disabled>
+    <i class="fas fa-check-circle me-1"></i>ยืนยันการจอง
+  </button>
+</div>
+{% endif %}
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+(function () {
+  // ── parse data ──
+  let slotData = {}, rateData = [];
+  try { slotData = JSON.parse(document.getElementById('slot-data').textContent); } catch(e){}
+  try { rateData = JSON.parse(document.getElementById('rate-data').textContent); } catch(e){}
+
+  const maxStu = {{ tc.tutc_max_stu }};
+  let selectedDate = null;
+  let selectedSlot = null;
+
+  // ── เลือกวันที่ ──
+  window.selectDate = function(btn) {
+    document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedDate = { sdId: btn.dataset.sdId, display: btn.dataset.dateDisplay };
+    selectedSlot = null;
+    document.getElementById('ts_id_input').value = '';
+    renderSlots(btn.dataset.sdId);
+    updateSummary();
+  };
+
+  // ── render time slots ──
+  function renderSlots(sdId) {
+    const area  = document.getElementById('slot-area');
+    // กรอง: ts_id ต้องมีค่า, start/end ต้องไม่ว่าง
+    const slots = (slotData[sdId] || []).filter(s => s && s.ts_id && s.start && s.end);
+    if (!slots.length) {
+      area.innerHTML = '<p class="no-slot-msg">ไม่มีช่วงเวลาว่างในวันนี้</p>';
+      return;
+    }
+    const grid = document.createElement('div');
+    grid.className = 'slot-grid';
+    slots.forEach(slot => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'slot-btn';
+      btn.textContent = slot.start + ' - ' + slot.end + ' น.';
+      btn.onclick = () => selectSlot(btn, slot);
+      grid.appendChild(btn);
+    });
+    area.innerHTML = '';
+    area.appendChild(grid);
+  }
+
+  // ── เลือก slot ──
+  window.selectSlot = function(btn, slot) {
+    document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedSlot = slot;
+    document.getElementById('ts_id_input').value = slot.ts_id;
+    updateSummary();
+  };
+
+  // ── หา rate ตามจำนวนคน (ใช้ช่วง start–end) ──
+  function getRate(count) {
+    if (!rateData.length) return null;
+    // หา rate ที่ count อยู่ในช่วง start–end
+    const match = rateData.find(r => count >= r.start && count <= r.end);
+    return match || rateData[rateData.length - 1];
+  }
+
+  // ── อัปเดต summary ──
+  window.updateSummary = function() {
+    const raw = parseInt(document.getElementById('stu_count')?.value) || 1;
+    const stu = Math.min(Math.max(raw, 1), maxStu);
+    const rate  = getRate(stu);
+    const total = rate ? rate.price * stu : null;
+    const ready = selectedDate && selectedSlot && rate;
+
+    setText('sum-date',     selectedDate ? selectedDate.display : '—');
+    setText('sum-time',     selectedSlot ? selectedSlot.start + ' - ' + selectedSlot.end + ' น.' : '—');
+    setText('sum-count',    stu + ' คน');
+    setText('sum-rate',     rate ? rate.price + ' เครดิต/คน' : '—');
+    setText('sum-total',    total !== null ? total + ' เครดิต' : '—');
+    setText('sum-total-mobile', total !== null ? total + ' เครดิต' : '— เครดิต');
+
+    if (selectedSlot) {
+      const [sh, sm] = selectedSlot.start.split(':').map(Number);
+      const [eh, em] = selectedSlot.end.split(':').map(Number);
+      const mins = (eh*60+em) - (sh*60+sm);
+      setText('sum-duration', mins >= 60
+        ? Math.floor(mins/60) + ' ชั่วโมง' + (mins%60 ? ' ' + mins%60 + ' นาที' : '')
+        : mins + ' นาที');
+    } else {
+      setText('sum-duration', '—');
+    }
+
+    setDisabled('btn-book', !ready);
+    setDisabled('btn-book-mobile', !ready);
+  };
+
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+  function setDisabled(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = val;
+  }
+
+  document.getElementById('stu_count')?.addEventListener('input', updateSummary);
+})();
+</script>
+{% endblock %}
