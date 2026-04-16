@@ -1,0 +1,250 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}ถอนเครดิต — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<style>
+  .credit-type-card {
+    border: 2px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    background: #fff;
+  }
+  .credit-type-card.selected {
+    border-color: #2563EB;
+    background: #EFF6FF;
+  }
+  .credit-type-card input[type=radio] { display: none; }
+  .fee-box {
+    background: #F8FAFC;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    padding: 16px 20px;
+  }
+  .fee-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    padding: 6px 0;
+    border-bottom: 1px solid #F1F5F9;
+  }
+  .fee-row:last-child { border-bottom: none; }
+  .fee-total { font-weight: 700; font-size: 15px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-light min-vh-100 py-4 px-2 px-md-3">
+  <div class="container" style="max-width:820px;">
+
+    <!-- breadcrumb -->
+    <nav class="mb-3" style="font-size:13px;">
+      <a href="{% url 'credits:credit' %}" class="text-muted text-decoration-none">เครดิต</a>
+      <span class="text-muted mx-1">›</span>
+      <span class="fw-semibold">การถอนเครดิต</span>
+    </nav>
+
+    <h4 class="fw-bold mb-1">คำขอถอนเงิน</h4>
+    <p class="text-muted small mb-4">ขอถอนเงินเครดิตของคุณไปยังบัญชีธนาคาร</p>
+
+    <form method="post" id="withdrawForm">
+      {% csrf_token %}
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+
+          <!-- ─── ประเภทเครดิต ─── -->
+          <h6 class="fw-bold mb-3">ประเภทเครดิต</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-6">
+              <label class="credit-type-card d-block {% if not prev.wd_type or prev.wd_type == '0' %}selected{% endif %}" id="cardDeposit">
+                <input type="radio" name="wd_type" value="0" {% if not prev.wd_type or prev.wd_type == '0' %}checked{% endif %}>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center"
+                       style="width:32px;height:32px;background:#DBEAFE;">
+                    <i class="fas fa-vault" style="color:#2563EB;font-size:13px;"></i>
+                  </div>
+                  <span class="fw-semibold small">เครดิตนำฝาก</span>
+                </div>
+                <div class="fw-bold" style="font-size:20px;">
+                  {{ available_deposit }}<span class="text-muted fw-normal fs-6 ms-1">P</span>
+                </div>
+                <div class="text-muted" style="font-size:11px;">
+                  ค่าธรรมเนียม {{ deposit_fee_pct|floatformat:"0" }}%
+                </div>
+              </label>
+            </div>
+            <div class="col-6">
+              <label class="credit-type-card d-block {% if prev.wd_type == '1' %}selected{% endif %}" id="cardIncome">
+                <input type="radio" name="wd_type" value="1" {% if prev.wd_type == '1' %}checked{% endif %}>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center"
+                       style="width:32px;height:32px;background:#DCFCE7;">
+                    <i class="fas fa-arrow-trend-up" style="color:#16A34A;font-size:13px;"></i>
+                  </div>
+                  <span class="fw-semibold small">เครดิตรายได้</span>
+                </div>
+                <div class="fw-bold" style="font-size:20px;">
+                  {{ available_income }}<span class="text-muted fw-normal fs-6 ms-1">P</span>
+                </div>
+                <div class="text-muted" style="font-size:11px;">
+                  ค่าธรรมเนียม {{ income_fee_pct|floatformat:"0" }}%
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- ─── จำนวนเครดิต + จำนวนเงิน ─── -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">จำนวนเงินที่ถอน (เครดิต)</label>
+              <div class="input-group">
+                <input type="number" name="wd_credit" id="wdCredit"
+                       class="form-control" placeholder="0.00"
+                       min="1" step="1" required
+                       value="{{ prev.wd_credit|default:'' }}">
+                <span class="input-group-text text-muted small">CR</span>
+              </div>
+              <div class="text-muted mt-1" style="font-size:12px;">
+                คงเหลือ: <span id="availableDisplay">{{ available_deposit }}</span> CR
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold small">จำนวนเงินที่จะได้รับ (บาท)</label>
+              <div class="input-group">
+                <input type="text" id="wdCashDisplay" class="form-control fw-bold text-primary"
+                       value="0.00" readonly style="background:#F9FAFB;">
+                <span class="input-group-text text-muted small">THB</span>
+              </div>
+              <div class="text-primary mt-1" style="font-size:12px;">
+                1 เครดิต = {{ crd_val|floatformat:"2" }} บาท
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── รายละเอียดบัญชีธนาคาร ─── -->
+          <h6 class="fw-bold mb-3">
+            <i class="fas fa-university text-primary me-2"></i>รายละเอียดบัญชีธนาคาร
+          </h6>
+          <div class="rounded-3 border p-3 mb-4" style="background:#F8FAFC;">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small">ชื่อธนาคาร</label>
+                <select name="bank_name" class="form-select" required
+                        oninvalid="this.setCustomValidity('กรุณาเลือกธนาคาร')"
+                        oninput="this.setCustomValidity('')">
+                  <option value="">— เลือกธนาคาร —</option>
+                  {% for val, label in bank_choices %}
+                    <option value="{{ val }}" {% if prev.bank_name == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small">ชื่อบัญชีธนาคาร</label>
+                <input type="text" name="acc_name" class="form-control"
+                       placeholder="{{ member.mb_full_name }}" required
+                       value="{{ prev.acc_name|default:'' }}"
+                       oninvalid="this.setCustomValidity('กรุณากรอกชื่อบัญชี')"
+                       oninput="this.setCustomValidity('')">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small">เลขที่บัญชี</label>
+                <input type="text" name="acc_no" class="form-control"
+                       placeholder="XXX-X-XXXXX-X" required
+                       value="{{ prev.acc_no|default:'' }}"
+                       oninvalid="this.setCustomValidity('กรุณากรอกเลขที่บัญชี')"
+                       oninput="this.setCustomValidity('')">
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── รายละเอียดค่าธรรมเนียม ─── -->
+          <h6 class="fw-semibold small text-muted mb-3">รายละเอียดค่าธรรมเนียมการถอนเงิน</h6>
+          <div class="fee-box mb-4">
+            <div class="fee-row">
+              <span class="text-muted">จำนวนเงิน</span>
+              <span id="feeGross">0.00 บาท</span>
+            </div>
+            <div class="fee-row">
+              <span class="text-muted">ค่าธรรมเนียมการดำเนินการ</span>
+              <span id="feeFee">0.00 บาท</span>
+            </div>
+            <div class="fee-row fee-total">
+              <span>ยอดรวมหักลดหย่อน</span>
+              <span class="text-danger" id="feeNet">0 บาท</span>
+            </div>
+          </div>
+
+          <!-- ─── Actions ─── -->
+          <div class="d-flex gap-3">
+            <a href="{% url 'credits:credit' %}"
+               class="btn btn-outline-secondary px-4 py-2 fw-semibold d-flex align-items-center gap-2">
+              <i class="fas fa-arrow-left"></i> ย้อนกลับ
+            </a>
+            <button type="submit" class="btn btn-primary flex-fill py-2 fw-bold">
+              <i class="fas fa-shield-alt me-2"></i>ยืนยันคำขอถอนเงิน
+            </button>
+          </div>
+
+          <div class="alert alert-info small mt-3 mb-0">
+            <i class="fas fa-info-circle me-1"></i>
+            การถอนเงินจะดำเนินการภายใน 3-5 วันทำการ
+            กรุณาตรวจสอบข้อมูลบัญชีให้ถูกต้องเพื่อหลีกเลี่ยงความล่าช้า
+          </div>
+
+        </div>
+      </div>
+    </form>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const crdVal         = {{ crd_val }};
+  const depositFee     = {{ deposit_fee_pct }} / 100;
+  const incomeFee      = {{ income_fee_pct  }} / 100;
+  const availDeposit   = {{ available_deposit }};
+  const availIncome    = {{ available_income  }};
+
+  let currentType = {{ prev.wd_type|default:'0' }};  // restore from prev or default 0
+
+  // toggle card selection
+  document.querySelectorAll('input[name="wd_type"]').forEach(radio => {
+    radio.addEventListener('change', function () {
+      currentType = parseInt(this.value);
+      document.getElementById('cardDeposit').classList.toggle('selected', currentType === 0);
+      document.getElementById('cardIncome').classList.toggle('selected',  currentType === 1);
+      document.getElementById('availableDisplay').textContent =
+        currentType === 1 ? availIncome : availDeposit;
+      recalc();
+    });
+  });
+
+  document.getElementById('wdCredit').addEventListener('input', recalc);
+
+  // restore available display ตามประเภทที่เลือก
+  document.getElementById('availableDisplay').textContent =
+    currentType === 1 ? availIncome : availDeposit;
+
+  // คำนวณใหม่ถ้ามีค่าจาก prev
+  if (document.getElementById('wdCredit').value) recalc();
+
+  function recalc() {
+    const credits = parseInt(document.getElementById('wdCredit').value) || 0;
+    const fee_pct = currentType === 1 ? incomeFee : depositFee;
+    const gross   = credits * crdVal;
+    const fee     = gross * fee_pct;
+    const net     = gross - fee;
+
+    document.getElementById('wdCashDisplay').value      = gross.toFixed(2);
+    document.getElementById('feeGross').textContent     = gross.toFixed(2) + ' บาท';
+    document.getElementById('feeFee').textContent       = fee.toFixed(2)   + ' บาท';
+    document.getElementById('feeNet').textContent       = net.toFixed(2)   + ' บาท';
+  }
+</script>
+{% endblock %}
