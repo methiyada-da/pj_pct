@@ -1,0 +1,4 @@
+<option value="">-- รายวิชาทั้งหมด --</option>
+{% for course in courses %}
+<option value="{{ course.crs_id }}">{{ course.crs_name }}</option>
+{% endfor %}

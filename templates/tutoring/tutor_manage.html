@@ -15,16 +15,16 @@
       <i class="fas fa-chalkboard-teacher me-1"></i> ติวเตอร์
     </span>
     <h1 class="fw-bold mb-1" style="font-size:1.9rem; letter-spacing:-.02em;">จัดการข้อมูลติวเตอร์</h1>
-    <p class="mb-3" style="opacity:.8; font-size:.92rem;">ดูแลคอร์สเรียน ตารางเวลา และคำขอจองของคุณ</p>
+    <p class="mb-3" style="opacity:.8; font-size:.92rem;">จัดการคอร์สเรียน ตารางเวลา และคำขอจองเรียน</p>
 
     {% if tutor %}
       {% if tutor.tut_status == 1 %}
         <span class="badge rounded-pill px-3 py-2 bg-success bg-opacity-75 fw-semibold" style="font-size:.8rem;">
-          <i class="fas fa-circle me-1" style="font-size:.5rem; vertical-align:middle;"></i> อนุมัติแล้ว — พร้อมรับนักเรียน
+          <i class="fas fa-circle me-1" style="font-size:.5rem; vertical-align:middle;"></i> ติวเตอร์ได้รับการอนุมัติแล้ว
         </span>
       {% elif tutor.tut_status == 0 %}
         <span class="badge rounded-pill px-3 py-2 bg-warning text-dark fw-semibold" style="font-size:.8rem;">
-          <i class="fas fa-circle me-1" style="font-size:.5rem; vertical-align:middle;"></i> รอการตรวจสอบจากทีมงาน
+          <i class="fas fa-circle me-1" style="font-size:.5rem; vertical-align:middle;"></i> รอการตรวจสอบจาก Admin
         </span>
       {% elif tutor.tut_status == 2 %}
         <span class="badge rounded-pill px-3 py-2 bg-danger fw-semibold" style="font-size:.8rem;">
@@ -52,7 +52,7 @@
       <div class="vr"></div>
       <div class="text-center">
         <div class="fw-bold text-primary" style="font-size:1.5rem; line-height:1;">{{ total_student_count|default:"0" }}</div>
-        <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem; letter-spacing:.05em;">นักเรียนทั้งหมด</div>
+        <div class="text-muted text-uppercase fw-semibold" style="font-size:.72rem; letter-spacing:.05em;">ผู้เรียนทั้งหมด</div>
       </div>
     </div>
   </div>
@@ -80,7 +80,7 @@
               </div>
               <div class="flex-fill">
                 <div class="fw-bold" style="font-size:.97rem;">คอร์สเรียนของฉัน</div>
-                <p class="text-muted mb-0 small">ดูและจัดการคอร์สที่เปิดสอนทั้งหมด</p>
+                <p class="text-muted mb-0 small">จัดการคอร์สที่เปิดสอนทั้งหมด</p>
               </div>
               <i class="fas fa-chevron-right text-muted"></i>
             </div>
@@ -94,7 +94,7 @@
               </div>
               <div class="flex-fill">
                 <div class="fw-bold" style="font-size:.97rem;">เพิ่มคอร์สเรียนใหม่</div>
-                <p class="text-muted mb-0 small">สร้างคอร์สสอน ตั้งราคา และตารางเวลา</p>
+                <p class="text-muted mb-0 small">สร้างคอร์สสอน และตารางเวลา</p>
               </div>
               <i class="fas fa-chevron-right text-muted"></i>
             </div>
@@ -117,7 +117,7 @@
                     <span class="badge bg-danger rounded-pill ms-1" style="font-size:.68rem;">{{ pending_booking_count }}</span>
                   {% endif %}
                 </div>
-                <p class="text-muted mb-0 small">ตรวจสอบและยืนยันคำขอจากนักเรียน</p>
+                <p class="text-muted mb-0 small">ตรวจสอบและยืนยันคำขอจากผู้เรียน</p>
               </div>
               <i class="fas fa-chevron-right text-muted"></i>
             </div>
@@ -155,7 +155,7 @@
               </div>
               <div class="flex-fill">
                 <div class="fw-bold" style="font-size:.97rem;">โปรไฟล์ติวเตอร์</div>
-                <p class="text-muted mb-0 small">แก้ไข GPA ทักษะ ประสบการณ์ และข้อมูลส่วนตัว</p>
+                <p class="text-muted mb-0 small">แก้ไข GPA ทักษะ ประสบการณ์ </p>
               </div>
               <i class="fas fa-chevron-right text-muted"></i>
             </div>
