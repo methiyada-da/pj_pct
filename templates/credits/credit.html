@@ -7,7 +7,6 @@
 <div class="bg-light min-vh-100 py-4 px-2 px-md-3">
   <div class="container" style="max-width:1060px;">
 
-    <!-- ── Page header ── -->
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
       <h4 class="fw-bold mb-0">เครดิต</h4>
       <div class="d-flex gap-2">
@@ -20,7 +19,6 @@
       </div>
     </div>
 
-    <!-- ── Summary cards ── -->
     <div class="row g-3 mb-4">
 
       <div class="col-6 col-lg-3">
@@ -94,82 +92,197 @@
 
     </div>
 
-    <!-- ── Transaction history ── -->
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0 shadow-sm mb-4">
       <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3 px-4">
         <span class="fw-bold">รายการความเคลื่อนไหว</span>
-        <a href="#" class="text-primary small fw-semibold text-decoration-none">ดูทั้งหมด</a>
       </div>
 
-      {% if page_obj.object_list %}
+      {% if refills %}
         <ul class="list-group list-group-flush">
-          {% for tx in page_obj %}
-          <li class="list-group-item px-4 py-3">
+          {% for rf in refills %}
+          <li class="list-group-item px-4 py-3" style="cursor:pointer;"
+              onclick="openRefillDetail(
+                '{{ rf.rf_id|stringformat:"05d" }}',
+                '{{ rf.rf_money|floatformat:"2" }}',
+                '{{ rf.rf_credit }}',
+                '{{ rf.rf_date|date:"j M Y - H:i" }}',
+                {{ rf.rf_status }},
+                '{{ rf.display_cmt|default:""|escapejs }}',
+                '{% if rf.rf_slip %}{{ rf.rf_slip.url }}{% endif %}',
+                '{{ rf.extracted_bank|default:""|escapejs }}'
+              )">
             <div class="d-flex align-items-center gap-3">
 
-              <!-- Icon -->
               <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                   style="width:42px;height:42px;
-                   {% if tx.type == 'topup' %}background:#DCFCE7;color:#16A34A;
-                   {% elif tx.type == 'withdraw' %}background:#FEE2E2;color:#EF4444;
-                   {% else %}background:#DBEAFE;color:#2563EB;{% endif %}
-                   font-size:18px;">
-                {% if tx.type == 'topup' %}<i class="fas fa-plus-circle"></i>
-                {% elif tx.type == 'withdraw' %}<i class="fas fa-minus-circle"></i>
-                {% else %}<i class="fas fa-book-open"></i>{% endif %}
+                   style="width:42px;height:42px;background:#DCFCE7;color:#16A34A;font-size:18px;">
+                <i class="fas fa-plus-circle"></i>
               </div>
 
-              <!-- Info -->
               <div class="flex-grow-1">
-                <div class="fw-semibold" style="font-size:14px;">{{ tx.title }}</div>
-                <div class="text-muted" style="font-size:12px;">{{ tx.sub }}</div>
+                <div class="fw-semibold" style="font-size:14px;">เติมเครดิต</div>
+                <div class="text-muted" style="font-size:12px;">ผ่าน Mobile Banking</div>
               </div>
 
-              <!-- Amount + date -->
-              <div class="text-end flex-shrink-0">
-                <div class="fw-bold"
-                     style="font-size:15px;color:{% if tx.sign == '+' %}#16A34A{% else %}#EF4444{% endif %};">
-                  {{ tx.sign }}{{ tx.amount }} P
+              <div class="text-end flex-shrink-0 d-flex align-items-center gap-4">
+                <div>
+                  {% if rf.rf_status == 0 %}
+                    <span class="badge rounded-pill fw-normal px-2 py-1"
+                          style="background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;font-size:11px;">
+                      <i class="fas fa-clock me-1"></i>รอดำเนินการ
+                    </span>
+                  {% elif rf.rf_status == 1 %}
+                    <span class="badge rounded-pill fw-normal px-2 py-1"
+                          style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;font-size:11px;">
+                      <i class="fas fa-check-circle me-1"></i>อนุมัติแล้ว
+                    </span>
+                  {% else %}
+                    <span class="badge rounded-pill fw-normal px-2 py-1"
+                          style="background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;font-size:11px;">
+                      <i class="fas fa-times-circle me-1"></i>ปฏิเสธ
+                    </span>
+                  {% endif %}
                 </div>
-                <div class="text-muted" style="font-size:12px;">{{ tx.date|date:"j M Y - H:i" }}</div>
+                <div>
+                  <div class="fw-bold" style="font-size:15px;color:{% if rf.rf_status == 2 %}#EF4444{% else %}#16A34A{% endif %};">
+                    +{{ rf.rf_credit }} P
+                  </div>
+                  <div class="text-muted" style="font-size:12px;">{{ rf.rf_date|date:"j M Y - H:i" }}</div>
+                </div>
               </div>
 
             </div>
           </li>
           {% endfor %}
         </ul>
-
-        <!-- Pagination -->
-        {% if page_obj.has_other_pages %}
-        <div class="card-footer bg-white border-top">
-          <nav>
-            <ul class="pagination pagination-sm justify-content-center mb-0">
-              <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">‹</a>
-              </li>
-              {% for num in page_obj.paginator.page_range %}
-                {% if page_obj.number == num %}
-                  <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
-                  <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-                {% endif %}
-              {% endfor %}
-              <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}">›</a>
-              </li>
-            </ul>
-          </nav>
-        </div>
-        {% endif %}
-
       {% else %}
         <div class="text-center text-muted py-5">
-          <i class="fas fa-receipt mb-3 d-block" style="font-size:40px;"></i>
+          <i class="fas fa-receipt mb-3 d-block" style="font-size:40px;opacity:.3;"></i>
           <p class="mb-0">ยังไม่มีรายการความเคลื่อนไหว</p>
         </div>
       {% endif %}
-
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="refillDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0 px-4 pt-4">
+        <div>
+          <h6 class="fw-bold mb-0">รายละเอียดการเติมเครดิต</h6>
+          <div class="text-muted small" id="rdRfId"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+
+        <div id="rdStatusBanner" class="rounded-3 p-3 mb-3 text-center fw-semibold"></div>
+
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">จำนวนเงิน</span>
+          <span class="fw-bold text-primary small" id="rdMoney"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">จำนวนเครดิต</span>
+          <span class="fw-semibold small" id="rdCredit"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">วันที่แจ้งเติม</span>
+          <span class="fw-semibold small" id="rdDate"></span>
+        </div>
+        <div class="mb-3 d-flex justify-content-between border-bottom pb-2 d-none" id="rdBankRow">
+          <span class="text-muted small">ธนาคารที่โอน</span>
+          <span class="fw-semibold small text-end" id="rdBank"></span>
+        </div>
+
+        <div id="rdRejectSection" class="d-none mb-3">
+          <div class="rounded-3 p-3" style="background:#FEE2E2;border:1px solid #FECACA;">
+            <div class="fw-semibold small mb-1" style="color:#991B1B;">
+              <i class="fas fa-exclamation-circle me-1"></i>เหตุผลที่ปฏิเสธ
+            </div>
+            <div class="small" style="color:#7F1D1D;" id="rdRejectReason"></div>
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <div class="text-muted small fw-semibold mb-2">สลิปการโอนเงิน</div>
+          <div class="rounded-3 border overflow-hidden text-center"
+               style="background:#F8FAFC;min-height:120px;display:flex;align-items:center;justify-content:center;">
+            <img id="rdSlipImg" src="" alt="slip"
+                 style="max-width:100%;max-height:280px;object-fit:contain;display:none;">
+            <div id="rdSlipNone" class="text-muted small p-4">
+              <i class="fas fa-image d-block mb-1" style="font-size:28px;opacity:.3;"></i>ไม่มีสลิป
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openRefillDetail(rfId, money, credit, date, status, cmt, slipUrl, bank) {
+  document.getElementById('rdRfId').textContent   = 'RF' + rfId;
+  document.getElementById('rdMoney').textContent  = '฿' + money;
+  document.getElementById('rdDate').textContent   = date;
+
+  // Credit color
+  const rdCredit = document.getElementById('rdCredit');
+  rdCredit.textContent = '+' + credit + ' P';
+  rdCredit.style.color = status === 2 ? '#EF4444' : '#16A34A';
+
+  // Status banner
+  const banner = document.getElementById('rdStatusBanner');
+  if (status === 0) {
+    banner.style.cssText = 'background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-clock me-2"></i>รอดำเนินการ';
+  } else if (status === 1) {
+    banner.style.cssText = 'background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-check-circle me-2"></i>อนุมัติแล้ว';
+  } else {
+    banner.style.cssText = 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-times-circle me-2"></i>ปฏิเสธ';
+  }
+
+  // Bank info
+  const rdBank    = document.getElementById('rdBank');
+  const rdBankRow = document.getElementById('rdBankRow');
+  if (bank) {
+    rdBank.textContent = bank;
+    rdBankRow.classList.remove('d-none');
+  } else {
+    rdBankRow.classList.add('d-none');
+  }
+
+  // Reject reason
+  const rejectSec = document.getElementById('rdRejectSection');
+  if (status === 2 && cmt) {
+    rejectSec.classList.remove('d-none');
+    document.getElementById('rdRejectReason').textContent = cmt;
+  } else {
+    rejectSec.classList.add('d-none');
+  }
+
+  // Slip
+  const img  = document.getElementById('rdSlipImg');
+  const none = document.getElementById('rdSlipNone');
+  if (slipUrl) {
+    img.src = slipUrl;
+    img.style.display = 'block';
+    none.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    none.style.display = 'block';
+  }
+
+  new bootstrap.Modal(document.getElementById('refillDetailModal')).show();
+}
+</script>
 {% endblock %}

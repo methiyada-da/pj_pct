@@ -3,19 +3,43 @@ from django.contrib.auth.models import User
 from .models import System
 
 
+BANK_CHOICES = [
+    ('',                        '— เลือกธนาคาร —'),
+    ('ธนาคารกรุงเทพ',           'ธนาคารกรุงเทพ'),
+    ('ธนาคารกสิกรไทย',          'ธนาคารกสิกรไทย'),
+    ('ธนาคารไทยพาณิชย์',        'ธนาคารไทยพาณิชย์'),
+    ('ธนาคารกรุงไทย',           'ธนาคารกรุงไทย'),
+    ('ธนาคารกรุงศรีอยุธยา',     'ธนาคารกรุงศรีอยุธยา'),
+    ('ธนาคารทหารไทยธนชาต',      'ธนาคารทหารไทยธนชาต'),
+    ('ธนาคารออมสิน',             'ธนาคารออมสิน'),
+    ('ธนาคารเพื่อการเกษตรฯ',    'ธนาคารเพื่อการเกษตรฯ'),
+    ('ธนาคารอาคารสงเคราะห์',    'ธนาคารอาคารสงเคราะห์'),
+    ('ธนาคารซีไอเอ็มบี ไทย',   'ธนาคารซีไอเอ็มบี ไทย'),
+    ('ธนาคารแลนด์ แอนด์ เฮ้าส์', 'ธนาคารแลนด์ แอนด์ เฮ้าส์'),
+    ('ธนาคารยูโอบี',             'ธนาคารยูโอบี'),
+]
+
+
 class SystemForm(forms.ModelForm):
     """ฟอร์มแก้ไขข้อมูลระบบ"""
+
+    bank_name = forms.ChoiceField(
+        choices=BANK_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='ชื่อธนาคาร',
+    )
+
     class Meta:
         model = System
         fields = [
-            'uni_name', 'bank_name', 'acc_name', 'acc_no',
+            'uni_name', 'bank_name', 'acc_name', 'acc_no', 'promptpay_id',
             'crd_val', 'deposit_withdraw_fee_pct', 'income_withdraw_fee_pct',
         ]
         widgets = {
             'uni_name'                : forms.TextInput(attrs={'class': 'form-control'}),
-            'bank_name'               : forms.TextInput(attrs={'class': 'form-control'}),
             'acc_name'                : forms.TextInput(attrs={'class': 'form-control'}),
             'acc_no'                  : forms.TextInput(attrs={'class': 'form-control'}),
+            'promptpay_id'            : forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'เช่น 0812345678 หรือ 1234567890123'}),
             'crd_val'                 : forms.NumberInput(attrs={'class': 'form-control'}),
             'deposit_withdraw_fee_pct': forms.NumberInput(attrs={'class': 'form-control'}),
             'income_withdraw_fee_pct' : forms.NumberInput(attrs={'class': 'form-control'}),
@@ -25,6 +49,7 @@ class SystemForm(forms.ModelForm):
             'bank_name'               : 'ชื่อธนาคาร',
             'acc_name'                : 'ชื่อบัญชี',
             'acc_no'                  : 'เลขที่บัญชี',
+            'promptpay_id'            : 'หมายเลขพร้อมเพย์',
             'crd_val'                 : 'มูลค่าเครดิต',
             'deposit_withdraw_fee_pct': 'ค่าธรรมเนียมถอนนำฝาก (%)',
             'income_withdraw_fee_pct' : 'ค่าธรรมเนียมถอนรายได้ (%)',
