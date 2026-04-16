@@ -1,0 +1,409 @@
+/* =============================================================
+   detail.css — หน้ารายละเอียดคอร์สและจองเรียน
+   ============================================================= */
+
+/* ── Breadcrumb ── */
+.detail-breadcrumb {
+  background: #fff;
+  border-bottom: 1px solid var(--pct-border);
+  padding: .6rem 0;
+  font-size: .82rem;
+  color: var(--pct-muted);
+}
+.detail-breadcrumb a { color: var(--pct-primary); text-decoration: none; }
+.detail-breadcrumb a:hover { text-decoration: underline; }
+.detail-breadcrumb .sep { margin: 0 .4rem; }
+
+/* ── Page body ── */
+.detail-body {
+  background: var(--pct-bg);
+  min-height: 80vh;
+  padding: 1.5rem 0 3rem;
+}
+
+/* ── LEFT CARD: tutor profile ── */
+.tutor-card {
+  background: #fff;
+  border: 1px solid var(--pct-border);
+  border-radius: 16px;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+.tutor-avatar-lg {
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--pct-primary-lt);
+  margin: 0 auto .75rem;
+  display: block;
+}
+.tutor-avatar-lg-placeholder {
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  background: var(--pct-primary);
+  color: #fff;
+  font-size: 2rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto .75rem;
+}
+.tutor-name-lg {
+  font-size: 1.1rem; font-weight: 700;
+  color: var(--pct-text); margin-bottom: .25rem;
+}
+.btn-chat {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: var(--pct-primary-lt);
+  color: var(--pct-primary);
+  border: 1px solid #BFDBFE;
+  border-radius: 8px;
+  padding: .35rem .9rem;
+  font-size: .82rem; font-weight: 600;
+  text-decoration: none;
+  transition: background .2s;
+  margin-bottom: .75rem;
+}
+.btn-chat:hover { background: #BFDBFE; color: var(--pct-primary); }
+
+.tutor-rating-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: .35rem; margin-bottom: 1rem;
+}
+.stars-lg { color: #F59E0B; font-size: .9rem; }
+.rating-text { font-size: .85rem; font-weight: 700; }
+.rating-new { font-size: .78rem; color: var(--pct-muted); }
+
+.tutor-section-title {
+  font-size: .72rem; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--pct-muted); text-align: left;
+  margin: 1rem 0 .4rem;
+}
+.tutor-desc {
+  font-size: .82rem; color: var(--pct-text);
+  line-height: 1.7; text-align: left; margin: 0;
+}
+.skill-tags { display: flex; flex-wrap: wrap; gap: .35rem; text-align: left; }
+.skill-tag {
+  background: var(--pct-bg);
+  border: 1px solid var(--pct-border);
+  border-radius: 6px;
+  padding: .2rem .6rem;
+  font-size: .75rem; color: var(--pct-text);
+}
+
+/* GPAX badge */
+.gpax-badge {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: #D1FAE5; color: #065F46;
+  border-radius: 999px; padding: .2rem .75rem;
+  font-size: .78rem; font-weight: 600;
+}
+
+/* ── MIDDLE: course info + booking ── */
+.course-info-card,
+.booking-card {
+  background: #fff;
+  border: 1px solid var(--pct-border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.course-cover {
+  width: 100%; height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+.course-cover-placeholder {
+  width: 100%; height: 200px;
+  background: #EFF6FF;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem; color: #BFDBFE;
+  margin-bottom: 1rem;
+}
+
+.course-group-tag {
+  display: inline-block;
+  font-size: .7rem; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: .2rem .65rem; border-radius: 999px;
+  background: var(--pct-primary-lt); color: var(--pct-primary);
+  margin-bottom: .5rem;
+}
+.course-title-lg {
+  font-size: 1.3rem; font-weight: 700;
+  color: var(--pct-text); margin-bottom: .4rem; line-height: 1.4;
+}
+.course-sub-name {
+  font-size: .82rem; color: var(--pct-muted); margin-bottom: .75rem;
+}
+.course-desc-lg {
+  font-size: .875rem; color: var(--pct-text);
+  line-height: 1.75; margin-bottom: 1rem;
+}
+
+/* ── Rates table ── */
+.rates-title {
+  font-size: .82rem; font-weight: 700; color: var(--pct-text);
+  margin-bottom: .5rem;
+}
+.rate-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .4rem .75rem;
+  border-radius: 8px; margin-bottom: .3rem;
+  background: var(--pct-bg);
+  font-size: .85rem;
+}
+.rate-row:last-child { margin-bottom: 0; }
+.rate-count { color: var(--pct-muted); }
+.rate-price { font-weight: 700; color: var(--pct-primary); }
+.rate-total { font-size: .75rem; color: var(--pct-muted); }
+
+/* ── Booking form ── */
+.booking-section-title {
+  font-size: .78rem; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--pct-muted); margin-bottom: .6rem;
+}
+
+/* วันที่ */
+.date-grid {
+  display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem;
+}
+.date-btn {
+  background: #fff;
+  border: 1.5px solid var(--pct-border);
+  border-radius: 8px;
+  padding: .35rem .85rem;
+  font-size: .82rem; font-family: inherit;
+  color: var(--pct-text); cursor: pointer;
+  transition: all .15s;
+}
+.date-btn:hover { border-color: var(--pct-primary); color: var(--pct-primary); }
+.date-btn.active {
+  background: var(--pct-primary);
+  border-color: var(--pct-primary);
+  color: #fff; font-weight: 600;
+}
+
+/* time slots */
+.slot-grid {
+  display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem;
+}
+.slot-btn {
+  background: #fff;
+  border: 1.5px solid var(--pct-border);
+  border-radius: 8px;
+  padding: .35rem .9rem;
+  font-size: .82rem; font-family: inherit;
+  color: var(--pct-text); cursor: pointer;
+  transition: all .15s;
+}
+.slot-btn:hover:not(:disabled) { border-color: var(--pct-primary); color: var(--pct-primary); }
+.slot-btn.active {
+  background: var(--pct-primary);
+  border-color: var(--pct-primary);
+  color: #fff; font-weight: 600;
+}
+.slot-btn:disabled {
+  background: #F1F5F9; color: #CBD5E1;
+  border-color: var(--pct-border); cursor: not-allowed;
+}
+.no-slot-msg {
+  font-size: .82rem; color: var(--pct-muted);
+  padding: .4rem 0;
+}
+
+/* จำนวนผู้เรียน */
+.stu-count-wrap {
+  display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem;
+}
+.stu-count-input {
+  width: 80px;
+  border: 1.5px solid var(--pct-border);
+  border-radius: 8px;
+  padding: .4rem .6rem;
+  font-size: .9rem; font-family: inherit;
+  text-align: center; color: var(--pct-text);
+  transition: border-color .2s;
+}
+.stu-count-input:focus { outline: none; border-color: var(--pct-primary); }
+.stu-max-hint { font-size: .78rem; color: var(--pct-muted); }
+
+/* textarea */
+.bk-textarea {
+  width: 100%;
+  border: 1.5px solid var(--pct-border);
+  border-radius: 8px;
+  padding: .6rem .75rem;
+  font-size: .85rem; font-family: inherit;
+  color: var(--pct-text); resize: vertical; min-height: 80px;
+  transition: border-color .2s;
+}
+.bk-textarea:focus { outline: none; border-color: var(--pct-primary); }
+
+/* ── RIGHT: summary card ── */
+.summary-card {
+  background: #fff;
+  border: 1px solid var(--pct-border);
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+.summary-title {
+  font-size: .95rem; font-weight: 700;
+  color: var(--pct-text); margin-bottom: 1rem;
+  padding-bottom: .6rem;
+  border-bottom: 1px solid var(--pct-border);
+}
+.summary-row {
+  display: flex; justify-content: space-between;
+  font-size: .85rem; margin-bottom: .5rem;
+}
+.summary-row .label { color: var(--pct-muted); }
+.summary-row .value { font-weight: 500; color: var(--pct-text); }
+.summary-divider { border: none; border-top: 1px solid var(--pct-border); margin: .75rem 0; }
+.summary-total-row {
+  display: flex; justify-content: space-between;
+  align-items: baseline; margin-bottom: 1rem;
+}
+.summary-total-label { font-size: .9rem; font-weight: 700; color: var(--pct-text); }
+.summary-total-value { font-size: 1.4rem; font-weight: 700; color: var(--pct-primary); }
+
+.btn-book {
+  width: 100%;
+  background: var(--pct-primary);
+  color: #fff; border: none;
+  border-radius: 10px;
+  padding: .7rem;
+  font-size: .95rem; font-weight: 600; font-family: inherit;
+  transition: background .2s;
+  cursor: pointer;
+}
+.btn-book:hover:not(:disabled) { background: var(--pct-primary-dk); }
+.btn-book:disabled {
+  background: #CBD5E1; cursor: not-allowed;
+}
+
+.pending-note {
+  background: #FFF7ED;
+  border: 1px solid #FED7AA;
+  border-radius: 8px;
+  padding: .6rem .75rem;
+  font-size: .78rem; color: #92400E;
+  margin-top: .75rem;
+  line-height: 1.6;
+}
+.pending-note i { color: #F59E0B; }
+
+.credit-avail {
+  font-size: .78rem; color: var(--pct-muted);
+  text-align: center; margin-top: .5rem;
+}
+.credit-avail strong { color: var(--pct-text); }
+
+/* login prompt */
+.login-prompt {
+  background: var(--pct-primary-lt);
+  border-radius: 10px;
+  padding: .85rem 1rem;
+  text-align: center;
+  font-size: .85rem; color: var(--pct-primary);
+  margin-top: .5rem;
+}
+.login-prompt a { font-weight: 700; color: var(--pct-primary); }
+
+/* ── Responsive ── */
+@media (max-width: 991px) {
+  .tutor-card, .summary-card { position: static; margin-bottom: 1rem; }
+}
+@media (max-width: 575px) {
+  .course-title-lg { font-size: 1.1rem; }
+}
+
+/* ── tutor info rows ── */
+.tutor-info-row {
+  display: flex; align-items: flex-start; gap: .4rem;
+  font-size: .82rem; color: var(--pct-text);
+  text-align: left; margin-bottom: .3rem;
+}
+.tutor-info-icon { color: var(--pct-muted); font-size: .78rem; margin-top: .1rem; flex-shrink: 0; }
+.mj-abbr { color: var(--pct-muted); margin-left: .2rem; }
+.tutor-exp-desc {
+  font-size: .78rem; color: var(--pct-muted);
+  line-height: 1.6; text-align: left;
+  margin: .2rem 0 .5rem;
+  padding-left: 1.1rem;
+}
+
+/* ── course card: ไม่มีรูปปก ── */
+.course-meta-row {
+  font-size: .82rem; color: var(--pct-muted);
+  margin-top: .5rem;
+}
+
+/* ── booking card title ── */
+.booking-card-title {
+  font-size: 1rem; font-weight: 700;
+  color: var(--pct-text); margin-bottom: 1.1rem;
+}
+
+/* ── no schedule ── */
+.no-schedule {
+  text-align: center; padding: 2.5rem 1rem;
+  color: var(--pct-muted);
+}
+.no-schedule i { font-size: 2.2rem; color: #CBD5E1; display: block; margin-bottom: .75rem; }
+.no-schedule-title { font-size: .95rem; font-weight: 600; color: var(--pct-text); margin-bottom: .3rem; }
+.no-schedule-desc  { font-size: .82rem; }
+
+/* ── rates card (แยกออกจาก summary) ── */
+.rates-card {
+  background: #fff;
+  border: 1px solid var(--pct-border);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  margin-top: .75rem;
+}
+.rates-card-title {
+  font-size: .82rem; font-weight: 700;
+  color: var(--pct-text); margin-bottom: .65rem;
+}
+.rate-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .35rem .5rem;
+  border-radius: 6px;
+  font-size: .82rem;
+  margin-bottom: .25rem;
+  background: var(--pct-bg);
+}
+.rate-count { color: var(--pct-muted); }
+.rate-price-val { font-weight: 700; color: var(--pct-primary); }
+.rate-unit { font-weight: 400; color: var(--pct-muted); font-size: .75rem; }
+
+/* ── mobile sticky bar ── */
+.mobile-book-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #fff;
+  border-top: 1px solid var(--pct-border);
+  padding: .65rem 1rem;
+  z-index: 999;
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+}
+.mobile-book-label { font-size: .72rem; color: var(--pct-muted); }
+.mobile-book-total { font-size: 1rem; font-weight: 700; color: var(--pct-primary); }
+.btn-book-sm { width: auto; padding: .5rem 1.25rem; font-size: .85rem; }
+
+/* ── rates card note & example ── */
+.rates-card-note {
+  font-size: .75rem; color: var(--pct-muted);
+  margin-bottom: .6rem; line-height: 1.5;
+}
+.rates-card-example {
+  font-size: .72rem; color: var(--pct-muted);
+  margin-top: .5rem; margin-bottom: 0;
+  padding-top: .5rem;
+  border-top: 1px solid var(--pct-border);
+  line-height: 1.5;
+}

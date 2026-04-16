@@ -23,6 +23,15 @@ def _member_context(member):
 @login_required
 def register_tutor(request):
     member = request.user.member
+
+    # ── ตรวจสอบรูปโปรไฟล์ก่อนเข้าหน้าสมัครติวเตอร์ ──
+    if not member.mb_img:
+        messages.warning(
+            request,
+            'คุณยังไม่มีรูปโปรไฟล์ กรุณาอัปโหลดรูปโปรไฟล์ก่อนสมัครเป็นติวเตอร์ เพื่อความน่าเชื่อถือของคุณ'
+        )
+        return redirect('accounts:profile')
+
     tutor  = Tutor.objects.filter(tut_id=member).first()
 
     initial = {}
@@ -126,8 +135,22 @@ def manage_course(request, tutc_id=None):
 
     if tutc_id:
         tutc  = get_object_or_404(TutorCourse, tutc_id=tutc_id, tut_id=tutor)
-        rates = TutorRate.objects.filter(tutc_id=tutc)
-        schedule_dates_with_slots = ScheduleDate.objects.filter(tutc_id=tutc).prefetch_related('time_slots')
+        rates = TutorRate.objects.filter(tutc_id=tutc).order_by('tut_rate_stu_count')
+        _sds  = list(
+            ScheduleDate.objects.filter(tutc_id=tutc)
+            .prefetch_related('time_slots')
+            .order_by('sd_date')
+        )
+        # แนบ weekday (0=จ … 6=อา) ให้แต่ละ sd
+        for sd in _sds:
+            sd.weekday = sd.sd_date.weekday()
+        schedule_dates_with_slots = _sds
+        # จัดกลุ่มตาม weekday โดยใช้ dict (ไม่ขึ้นกับลำดับ)
+        _wd_map = {}
+        for sd in _sds:
+            _wd_map.setdefault(sd.weekday, []).append(sd)
+        # เรียงกลุ่มตามลำดับวันในสัปดาห์ (จ→อา)
+        grouped_schedule = sorted(_wd_map.items(), key=lambda x: x[0])
 
     course_groups = CourseGroup.objects.all().order_by('cg_name')
 
@@ -148,13 +171,48 @@ def manage_course(request, tutc_id=None):
         ]
         has_any_date = len(new_dates) > 0 or len(existing_sd_ids) > 0
 
-        # ── ตรวจ rate ──
+        # ── ตรวจ rate (tiered pricing) ──
         stu_counts  = request.POST.getlist('rate_stu_count[]')
         per_persons = request.POST.getlist('rate_per_person[]')
-        valid_rates = [
-            (sc, pp) for sc, pp in zip(stu_counts, per_persons)
-            if sc.strip() and pp.strip() and int(sc) >= 1 and int(pp) >= 0
-        ]
+
+        # parse เรทที่กรอกครบถ้วน
+        valid_rates = []
+        for sc, pp in zip(stu_counts, per_persons):
+            sc_s, pp_s = sc.strip(), pp.strip()
+            if sc_s and pp_s and int(sc_s) >= 1 and int(pp_s) >= 0:
+                valid_rates.append((int(sc_s), int(pp_s)))
+
+        # validate tiered pricing logic
+        rate_errors = []
+        if not valid_rates:
+            rate_errors.append('กรุณากรอกอัตราค่าติวอย่างน้อย 1 เรท')
+        else:
+            max_stu_int = int(tutc_max_stu) if tutc_max_stu and tutc_max_stu.isdigit() and int(tutc_max_stu) >= 1 else 0
+            first_price = valid_rates[0][1]
+
+            for i, (stu, price) in enumerate(valid_rates):
+                # จำนวนคนต้องมากกว่าแถวก่อนหน้า
+                if i > 0 and stu <= valid_rates[i - 1][0]:
+                    rate_errors.append(f'เรทที่ {i+1}: จำนวนคนต้องมากกว่าเรทก่อนหน้า ({valid_rates[i-1][0]} คน)')
+                    break
+
+                # จำนวนคนต้องไม่เกิน max
+                if max_stu_int > 0 and stu > max_stu_int:
+                    rate_errors.append(f'เรทที่ {i+1}: จำนวนคนต้องไม่เกิน {max_stu_int} คน (จำนวนรับสูงสุด)')
+                    break
+
+                # เครดิต: ถ้าเรทแรก=0(ฟรี) เรทที่2 เป็นอะไรก็ได้ แต่เรทที่3+ ต้อง < ก่อนหน้า
+                # ถ้าเรทแรก>=1 ทุกเรทถัดไปต้อง < ก่อนหน้า
+                if i > 0:
+                    prev_price = valid_rates[i - 1][1]
+                    if first_price == 0 and i == 1:
+                        pass  # เรทที่ 2 หลังจากฟรี → ใส่อะไรก็ได้
+                    else:
+                        if price >= prev_price:
+                            rate_errors.append(
+                                f'เรทที่ {i+1}: เครดิตต้องต่ำกว่าเรทก่อนหน้า ({prev_price} เครดิต)'
+                            )
+                            break
 
         # ── ตรวจ time slots อย่างน้อย 1 ช่วงในแต่ละวัน และทุก slot ต้องกรอกครบคู่ ──
         has_all_slots   = True
@@ -236,11 +294,12 @@ def manage_course(request, tutc_id=None):
             errors.append(slot_error_msg or 'แต่ละวันต้องมีช่วงเวลาอย่างน้อย 1 ช่วง')
         if not valid_rates:
             errors.append('กรุณากรอกอัตราค่าติวอย่างน้อย 1 เรท')
+        elif rate_errors:
+            errors.extend(rate_errors)
 
         if errors:
             for err in errors:
                 messages.error(request, err)
-            # ส่ง context กลับไปให้ฟอร์มแสดงข้อมูลที่กรอกไว้
             return render(request, 'tutoring/manage_course.html', {
                 **_member_context(member),
                 'tutor'                    : tutor,
@@ -248,6 +307,8 @@ def manage_course(request, tutc_id=None):
                 'rates'                    : rates,
                 'course_groups'            : course_groups,
                 'schedule_dates_with_slots': schedule_dates_with_slots,
+                'grouped_schedule'         : grouped_schedule if tutc_id else [],
+                'weekday_labels'           : ['จ','อ','พ','พฤ','ศ','ส','อา'],
             })
 
         course = get_object_or_404(Course, crs_id=crs_id_val)
@@ -283,17 +344,14 @@ def manage_course(request, tutc_id=None):
             )
             messages.success(request, 'เพิ่มคอร์สเรียบร้อยแล้ว')
 
-        # ── อัปเดต Rates ──
+        # ── อัปเดต Rates (เรียงตามจำนวนคน) ──
         TutorRate.objects.filter(tutc_id=tutc).delete()
-        stu_counts  = request.POST.getlist('rate_stu_count[]')
-        per_persons = request.POST.getlist('rate_per_person[]')
-        for sc, pp in zip(stu_counts, per_persons):
-            if sc and pp:
-                TutorRate.objects.create(
-                    tutc_id             = tutc,
-                    tut_rate_stu_count  = int(sc),
-                    tut_rate_per_person = int(pp),
-                )
+        for stu, price in sorted(valid_rates, key=lambda x: x[0]):
+            TutorRate.objects.create(
+                tutc_id             = tutc,
+                tut_rate_stu_count  = stu,
+                tut_rate_per_person = price,
+            )
 
         # ── อัปเดต Schedule Dates + Time Slots ──
         # วันที่มีอยู่แล้ว (sd_id ที่ส่งมาจาก POST)
@@ -321,22 +379,31 @@ def manage_course(request, tutc_id=None):
                 if s and e:
                     TimeSlot.objects.create(sd_id=sd, ts_start_time=s, ts_end_time=e)
 
-        # วันที่ใหม่
+        # วันที่ใหม่ — จับคู่ new_date[] กับ ts_start_new_XXXX[] ตามลำดับ
         new_dates = request.POST.getlist('new_date[]')
-        for date_str in new_dates:
+
+        # รวบรวม suffix ทั้งหมดของ new dates (เรียงตามลำดับที่ปรากฏใน POST)
+        new_suffixes = []
+        seen_suffixes = set()
+        for key in sorted(request.POST.keys()):
+            if key.startswith('ts_start_new_'):
+                suffix = key[len('ts_start_new_'):].rstrip('[]')
+                if suffix not in seen_suffixes:
+                    seen_suffixes.add(suffix)
+                    new_suffixes.append(suffix)
+
+        # จับคู่ new_date[i] กับ suffix[i]
+        for i, date_str in enumerate(new_dates):
             if not date_str:
                 continue
             sd = ScheduleDate.objects.create(sd_date=date_str, tutc_id=tutc)
-            # หา key แบบ ts_start_new_XXXX[]
-            for key in request.POST:
-                if key.startswith('ts_start_new_'):
-                    suffix = key[len('ts_start_new_'):].rstrip('[]')
-                    starts = request.POST.getlist(key)
-                    ends   = request.POST.getlist(f'ts_end_new_{suffix}[]')
-                    for s, e in zip(starts, ends):
-                        if s and e:
-                            TimeSlot.objects.create(sd_id=sd, ts_start_time=s, ts_end_time=e)
-                    break
+            if i < len(new_suffixes):
+                suffix = new_suffixes[i]
+                starts = request.POST.getlist(f'ts_start_new_{suffix}[]')
+                ends   = request.POST.getlist(f'ts_end_new_{suffix}[]')
+                for s, e in zip(starts, ends):
+                    if s and e:
+                        TimeSlot.objects.create(sd_id=sd, ts_start_time=s, ts_end_time=e)
 
         return redirect('tutoring:tutor_course_list')
 
@@ -347,6 +414,8 @@ def manage_course(request, tutc_id=None):
         'rates'                   : rates,
         'course_groups'           : course_groups,
         'schedule_dates_with_slots': schedule_dates_with_slots,
+        'grouped_schedule'        : grouped_schedule if tutc_id else [],
+        'weekday_labels'          : ['จ','อ','พ','พฤ','ศ','ส','อา'],
     })
 
 
