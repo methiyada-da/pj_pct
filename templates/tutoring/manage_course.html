@@ -153,53 +153,135 @@
         <i class="fas fa-calendar-alt"></i>
       </div>
       <h2 class="h6 fw-bold mb-0">การจัดตารางเวลา</h2>
-    </div>
-    <div class="card-body p-4">
-      <div class="d-flex gap-2 align-items-center mb-3">
-        <input type="date" id="newDateInput" class="form-control" style="max-width:180px;">
-        <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="addDateSlot()">
-          <i class="fas fa-plus me-1"></i> เพิ่มวัน
+      <div class="ms-auto d-flex gap-2">
+        <button type="button" id="btnModeManual"
+                class="btn btn-sm btn-primary px-3"
+                onclick="switchMode('manual')">
+          <i class="fas fa-plus me-1"></i> เพิ่มทีละวัน
+        </button>
+        <button type="button" id="btnModeRepeat"
+                class="btn btn-sm btn-outline-primary px-3"
+                onclick="switchMode('repeat')">
+          <i class="fas fa-redo me-1"></i> ทำซ้ำรายสัปดาห์
         </button>
       </div>
+    </div>
+    <div class="card-body p-4">
 
+      <!-- ── โหมดเพิ่มทีละวัน (manual) ── -->
+      <div id="panelManual">
+        <div class="d-flex gap-2 align-items-center mb-3">
+          <input type="date" id="newDateInput" class="form-control" style="max-width:180px;">
+          <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="addDateSlot()">
+            <i class="fas fa-plus me-1"></i> เพิ่มวัน
+          </button>
+        </div>
+      </div>
+
+      <!-- ── โหมดทำซ้ำรายสัปดาห์ (repeat) ── -->
+      <div id="panelRepeat" class="d-none">
+        <div class="bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 p-3 mb-3">
+
+          <!-- เลือกวันในสัปดาห์ -->
+          <p class="fw-semibold small mb-2">เลือกวันที่ต้องการสอน</p>
+          <div class="d-flex gap-2 flex-wrap mb-3" id="weekdayPills">
+            {% for d in weekday_labels %}
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary rounded-pill weekday-pill"
+                    data-day="{{ forloop.counter0 }}"
+                    onclick="toggleWeekday(this)">{{ d }}</button>
+            {% endfor %}
+          </div>
+
+          <!-- ช่วงวันที่ -->
+          <p class="fw-semibold small mb-2">ช่วงวันที่</p>
+          <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
+            <span class="text-muted small">ตั้งแต่</span>
+            <input type="date" id="repeatStart" class="form-control form-control-sm" style="width:160px;"
+                   onchange="document.getElementById('repeatEnd').min = this.value || todayStr;">
+            <span class="text-muted small">ถึง</span>
+            <input type="date" id="repeatEnd" class="form-control form-control-sm" style="width:160px;">
+          </div>
+
+          <!-- slot template -->
+          <p class="fw-semibold small mb-2">ช่วงเวลา (ใช้กับทุกวันที่สร้าง)</p>
+          <div id="repeatSlotList" class="mb-2"></div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" style="border-style:dashed;" onclick="addRepeatSlot()">
+            <i class="fas fa-plus me-1"></i> เพิ่มช่วงเวลา
+          </button>
+
+          <!-- ปุ่มสร้าง -->
+          <div class="mt-3 d-flex align-items-center gap-3">
+            <button type="button" class="btn btn-primary px-4" onclick="doRepeatGenerate()">
+              <i class="fas fa-magic me-1"></i> สร้างวันทั้งหมด
+            </button>
+            <span id="repeatSummary" class="text-muted small"></span>
+          </div>
+          <div id="repeatError" class="text-danger small mt-2 d-none"></div>
+        </div>
+      </div>
+
+      <!-- ── รายการวันที่ (ทั้ง 2 โหมดใช้ร่วมกัน) ── -->
       <div id="slotContainer">
-        {% for sd in schedule_dates_with_slots %}
-          <div class="mb-3 slot-day-group" data-sdid="{{ sd.sd_id }}">
-            <input type="hidden" name="existing_sd[]" value="{{ sd.sd_id }}">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="text-muted fw-bold" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.06em;">
-                {{ sd.sd_date|date:'D d/m/Y' }}
+        {% if grouped_schedule %}
+          {% for weekday, sds in grouped_schedule %}
+            {% with wd=weekday %}
+            <!-- Section header วันในสัปดาห์ -->
+            <div class="repeat-day-section-header d-flex align-items-center gap-2 mt-3 mb-2"
+                 data-py-day="{{ weekday }}">
+              <span class="badge rounded-pill px-3 py-2"
+                    style="background:#EEF4FF; color:#3B5BDB; font-size:.75rem; font-weight:600; letter-spacing:.03em;">
+                <i class="fas fa-calendar-week me-1"></i>
+                {% if wd == 0 %}วันจันทร์{% elif wd == 1 %}วันอังคาร{% elif wd == 2 %}วันพุธ{% elif wd == 3 %}วันพฤหัสบดี{% elif wd == 4 %}วันศุกร์{% elif wd == 5 %}วันเสาร์{% else %}วันอาทิตย์{% endif %}
               </span>
-              <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0"
-                      style="width:28px; height:28px;"
-                      onclick="this.closest('.slot-day-group').remove()" title="ลบวันนี้">
-                <i class="fas fa-trash-alt" style="font-size:.7rem;"></i>
+              <span class="text-muted small section-day-count">{{ sds|length }} วัน</span>
+              <hr class="flex-fill my-0" style="border-color:#dee2e6;">
+              <button type="button" class="btn btn-link text-danger p-0"
+                      style="font-size:.75rem; white-space:nowrap;"
+                      onclick="removeDaySection({{ weekday }})">
+                <i class="fas fa-trash-alt me-1"></i>ลบทั้งกลุ่ม
               </button>
             </div>
-            {% for ts in sd.time_slots.all %}
-            <div class="slot-row d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 mb-2">
-              <input type="text" name="ts_start_{{ sd.sd_id }}[]"
-                     class="form-control form-control-sm time-input flex-fill" value="{{ ts.ts_start_time|time:'H:i' }}"
-                     placeholder="09:00" maxlength="5" inputmode="numeric">
-              <span class="text-muted small">—</span>
-              <input type="text" name="ts_end_{{ sd.sd_id }}[]"
-                     class="form-control form-control-sm time-input flex-fill" value="{{ ts.ts_end_time|time:'H:i' }}"
-                     placeholder="10:00" maxlength="5" inputmode="numeric">
-              <button type="button" class="btn btn-link text-secondary p-0"
-                      onclick="this.closest('.slot-row').remove()" title="ลบ">
-                <i class="fas fa-times"></i>
+            {% for sd in sds %}
+            <div class="mb-3 slot-day-group" data-sdid="{{ sd.sd_id }}" data-py-day="{{ weekday }}" data-date="{{ sd.sd_date|date:'Y-m-d' }}">
+              <input type="hidden" name="existing_sd[]" value="{{ sd.sd_id }}">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted fw-bold" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.06em;">
+                  {{ sd.sd_date|date:'D d/m/Y' }}
+                </span>
+                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0"
+                        style="width:28px; height:28px;"
+                        onclick="removeSingleDay(this)" title="ลบวันนี้">
+                  <i class="fas fa-trash-alt" style="font-size:.7rem;"></i>
+                </button>
+              </div>
+              {% for ts in sd.time_slots.all %}
+              <div class="slot-row d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 mb-2">
+                <input type="text" name="ts_start_{{ sd.sd_id }}[]"
+                       class="form-control form-control-sm time-input flex-fill" value="{{ ts.ts_start_time|time:'H:i' }}"
+                       placeholder="09:00" maxlength="5" inputmode="numeric">
+                <span class="text-muted small">—</span>
+                <input type="text" name="ts_end_{{ sd.sd_id }}[]"
+                       class="form-control form-control-sm time-input flex-fill" value="{{ ts.ts_end_time|time:'H:i' }}"
+                       placeholder="10:00" maxlength="5" inputmode="numeric">
+                <button type="button" class="btn btn-link text-secondary p-0"
+                        onclick="this.closest('.slot-row').remove()" title="ลบ">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              {% endfor %}
+              <button type="button" class="btn btn-outline-secondary btn-sm w-100 border-dashed mt-1"
+                      style="border-style:dashed;"
+                      onclick="addSlot({{ sd.sd_id }}, this)">
+                <i class="fas fa-plus me-1"></i> เพิ่มช่วงเวลา
               </button>
             </div>
             {% endfor %}
-            <button type="button" class="btn btn-outline-secondary btn-sm w-100 border-dashed mt-1"
-                    style="border-style:dashed;"
-                    onclick="addSlot({{ sd.sd_id }}, this)">
-              <i class="fas fa-plus me-1"></i> เพิ่มช่วงเวลา
-            </button>
-          </div>
-        {% empty %}
+            {% endwith %}
+          {% endfor %}
+        {% else %}
           <p class="text-muted small" id="emptySlotMsg">ยังไม่มีวันที่กำหนด — เลือกวันด้านบนเพื่อเริ่มต้น</p>
-        {% endfor %}
+        {% endif %}
       <div class="invalid-feedback d-block mt-1" id="err_slots" style="display:none!important;"></div>
       </div>
     </div>
@@ -210,7 +292,7 @@
 <!-- Right Panel -->
 <div class="col-lg-4">
 
-  <!-- ④ ราคา -->
+  <!-- ④ ราคา (ระบบเรทแบบช่วง) -->
   <div class="card border rounded-4 shadow-sm mb-4">
     <div class="card-header bg-white border-bottom rounded-top-4 d-flex align-items-center gap-2 py-3 px-4">
       <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success"
@@ -220,17 +302,22 @@
       <h2 class="h6 fw-bold mb-0">รายละเอียดราคา</h2>
     </div>
     <div class="card-body p-4">
-      <p class="text-muted small mb-1">กำหนดราคาตามจำนวนนักเรียนต่อ session</p>
-      <p class="text-muted small mb-3"><i class="fas fa-coins text-warning me-1"></i> 1 เครดิต = 10 บาท</p>
+      <p class="text-muted small mb-1">กำหนดราคาตามจำนวนนักเรียนต่อ session <strong>(แบบช่วง)</strong></p>
+      <p class="text-muted small mb-1"><i class="fas fa-coins text-warning me-1"></i> 1 เครดิต = 10 บาท</p>
+      <p class="text-muted small mb-3"><i class="fas fa-info-circle text-primary me-1"></i> เรทแรก = ราคาเริ่มต้น, เรทถัดไป = เมื่อจำนวนคนถึงเกณฑ์จะใช้ราคานั้นแทน</p>
       <div id="rateContainer">
         {% if rates %}
           {% for rate in rates %}
-          <div class="rate-row bg-light border rounded-3 p-3 mb-3">
+          <div class="rate-row bg-light border rounded-3 p-3 mb-3 position-relative">
+            <div class="rate-tier-badge position-absolute top-0 start-0 translate-middle-y ms-3">
+              <span class="badge bg-primary bg-opacity-75 rounded-pill" style="font-size:.65rem;">เรทที่ {{ forloop.counter }}</span>
+            </div>
             <div class="row g-2 align-items-center">
               <div class="col">
-                <label class="form-label fw-semibold small mb-1">จำนวนนักเรียน <span class="text-danger">*</span></label>
+                <label class="form-label fw-semibold small mb-1">ตั้งแต่ (คน) <span class="text-danger">*</span></label>
                 <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu"
                        min="1" value="{{ rate.tut_rate_stu_count }}" placeholder="เช่น 1">
+                <div class="invalid-feedback rate-stu-feedback"></div>
               </div>
               <div class="col">
                 <label class="form-label fw-semibold small mb-1">เครดิต/คน <span class="text-danger">*</span></label>
@@ -241,10 +328,10 @@
                     <i class="fas fa-coins"></i>
                   </span>
                 </div>
+                <div class="invalid-feedback rate-price-feedback"></div>
               </div>
               <div class="col-auto pt-3">
-                <button type="button" class="btn btn-link text-danger p-0"
-                        onclick="this.closest('.rate-row').remove()">
+                <button type="button" class="btn btn-link text-danger p-0" onclick="removeRate(this)">
                   <i class="fas fa-trash-alt"></i>
                 </button>
               </div>
@@ -252,11 +339,15 @@
           </div>
           {% endfor %}
         {% else %}
-          <div class="rate-row bg-light border rounded-3 p-3 mb-3">
+          <div class="rate-row bg-light border rounded-3 p-3 mb-3 position-relative">
+            <div class="rate-tier-badge position-absolute top-0 start-0 translate-middle-y ms-3">
+              <span class="badge bg-primary bg-opacity-75 rounded-pill" style="font-size:.65rem;">เรทที่ 1</span>
+            </div>
             <div class="row g-2 align-items-center">
               <div class="col">
-                <label class="form-label fw-semibold small mb-1">จำนวนนักเรียน <span class="text-danger">*</span></label>
+                <label class="form-label fw-semibold small mb-1">ตั้งแต่ (คน) <span class="text-danger">*</span></label>
                 <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu" min="1" placeholder="เช่น 1">
+                <div class="invalid-feedback rate-stu-feedback"></div>
               </div>
               <div class="col">
                 <label class="form-label fw-semibold small mb-1">เครดิต/คน <span class="text-danger">*</span></label>
@@ -266,6 +357,7 @@
                     <i class="fas fa-coins"></i>
                   </span>
                 </div>
+                <div class="invalid-feedback rate-price-feedback"></div>
               </div>
             </div>
           </div>
@@ -283,8 +375,10 @@
     <div class="card-body p-3">
       <p class="fw-bold small mb-2"><i class="fas fa-lightbulb text-warning me-1"></i> เคล็ดลับราคา</p>
       <ul class="mb-0 ps-3 text-muted" style="font-size:.78rem; line-height:1.8;">
-        <li>ตั้งเรทหลายแบบเพื่อรองรับหลายขนาดกลุ่ม</li>
-        <li>กลุ่มใหญ่ควรถูกกว่ากลุ่มเล็ก</li>
+        <li>เรทแรก = ราคาพื้นฐาน (เช่น 1 คน 10 เครดิต)</li>
+        <li>เรทถัดไป = "ส่วนลดเมื่อกลุ่มใหญ่ขึ้น" เครดิตต้องต่ำกว่าเรทก่อนหน้า</li>
+        <li>ยกเว้นเรทแรก = 0 (ฟรี) เรทถัดไปจะกรอกเท่าไหร่ก็ได้ แต่ต้องลดลงเรื่อยๆ</li>
+        <li>จำนวนคนในเรทสุดท้ายต้องไม่เกินจำนวนรับสูงสุด</li>
         <li>ราคา 0 = ฟรีค่าบริการ</li>
       </ul>
     </div>
@@ -405,23 +499,10 @@ document.getElementById('courseForm').addEventListener('submit', function(e) {
     else clearErr('err_slots');
   }
 
-  // 6. rate
-  const rateRows = document.querySelectorAll('.rate-row');
-  let hasValidRate = false;
-  rateRows.forEach(row => {
-    const stu   = row.querySelector('.rate-stu');
-    const price = row.querySelector('.rate-price');
-    if (!stu || !price) return;
-    const stuOk   = stu.value   && parseInt(stu.value) >= 1;
-    const priceOk = price.value !== '' && parseInt(price.value) >= 0;
-    if (!stuOk)   { stu.classList.add('is-invalid');   valid = false; }
-    else            stu.classList.remove('is-invalid');
-    if (!priceOk) { price.classList.add('is-invalid'); valid = false; }
-    else            price.classList.remove('is-invalid');
-    if (stuOk && priceOk) hasValidRate = true;
-  });
-  if (!hasValidRate) {
-    showErr('err_rate', 'กรุณากรอกอัตราค่าติวอย่างน้อย 1 เรทให้ครบถ้วน');
+  // 6. rate — tiered pricing validation
+  const rateValidation = validateRateTiers();
+  if (!rateValidation.valid) {
+    showErr('err_rate', rateValidation.error);
     valid = false;
   } else {
     clearErr('err_rate');
@@ -487,37 +568,184 @@ function addSlot(sdId, btn) {
   row.querySelectorAll('.time-input').forEach(initTimeInput);
 }
 
-// ── Add New Date ──
+// ── Add New Date (เพิ่มทีละวัน) — กรุ๊ปเข้ากลุ่มวันเดียวกัน ──
 let newDateCounter = 9000;
 function addDateSlot() {
   const inp = document.getElementById('newDateInput');
   const dateStr = inp.value;
   if (!dateStr) return;
+
+  // ตรวจวันซ้ำ
+  if (isDateExists(dateStr)) {
+    alert('วันนี้มีอยู่แล้ว');
+    return;
+  }
+
+  const dateObj = new Date(dateStr + 'T00:00:00');
+  const pyDay = (dateObj.getDay() + 6) % 7; // 0=จ … 6=อา
+
   newDateCounter++;
   const sdId = `new_${newDateCounter}`;
-  const dateObj = new Date(dateStr + 'T00:00:00');
-  const label = dateObj.toLocaleDateString('th-TH', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' });
+
+  // สร้าง slot-day-group
+  const group = createDayGroup(sdId, dateStr, pyDay, true);
+
+  // เพิ่ม slot เวลาว่าง 1 ช่วง
+  const addSlotBtn = group.querySelector('button[onclick*="addSlot"]');
+  addSlot(sdId, addSlotBtn);
+
+  // แทรกเข้ากลุ่มวันที่ถูกต้อง
+  insertIntoWeekdaySection(pyDay, group);
+
+  const empty = document.getElementById('emptySlotMsg');
+  if (empty) empty.remove();
+  inp.value = '';
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── Helper: ตรวจวันซ้ำ ──
+// ══════════════════════════════════════════════════════════════
+function isDateExists(dateStr) {
+  // เช็ค new_date[] hidden inputs
+  const newDates = [...document.querySelectorAll('#slotContainer input[name="new_date[]"]')].map(i => i.value);
+  if (newDates.includes(dateStr)) return true;
+  // เช็ค existing dates (จาก data attribute)
+  const existingDates = [...document.querySelectorAll('#slotContainer .slot-day-group[data-date]')].map(i => i.dataset.date);
+  if (existingDates.includes(dateStr)) return true;
+  return false;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── Helper: สร้าง slot-day-group element ──
+// ══════════════════════════════════════════════════════════════
+function createDayGroup(sdId, dateStr, pyDay, isNew) {
+  const DAY_TH_SHORT = ['จ','อ','พ','พฤ','ศ','ส','อา'];
+  const MONTH_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const d = new Date(dateStr + 'T00:00:00');
+  const label = `${DAY_TH_SHORT[pyDay]}. ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear() + 543}`;
+  const newBadge = isNew ? '<span class="badge bg-success bg-opacity-75 ms-1" style="font-size:.6rem;">ใหม่</span>' : '';
+
   const group = document.createElement('div');
   group.className = 'mb-3 slot-day-group';
   group.dataset.sdid = sdId;
+  group.dataset.pyDay = pyDay;
+  group.dataset.date = dateStr;
   group.innerHTML = `
     <input type="hidden" name="new_date[]" value="${dateStr}">
     <div class="d-flex align-items-center justify-content-between mb-2">
-      <span class="text-muted fw-bold" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.06em;">${label}</span>
-      <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0" style="width:28px;height:28px;"
-              onclick="this.closest('.slot-day-group').remove()">
+      <span class="text-muted fw-bold" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.06em;">
+        ${label} ${newBadge}
+      </span>
+      <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0"
+              style="width:28px; height:28px;"
+              onclick="removeSingleDay(this)">
         <i class="fas fa-trash-alt" style="font-size:.7rem;"></i>
       </button>
     </div>
-    <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-1" style="border-style:dashed;"
+    <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-1"
+            style="border-style:dashed;"
             onclick="addSlot('${sdId}', this)">
       <i class="fas fa-plus me-1"></i> เพิ่มช่วงเวลา
     </button>`;
-  const empty = document.getElementById('emptySlotMsg');
-  if (empty) empty.remove();
-  document.getElementById('slotContainer').appendChild(group);
-  addSlot(sdId, group.querySelector('button[onclick]'));
-  inp.value = '';
+  return group;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── Helper: แทรกวันเข้ากลุ่มวันในสัปดาห์ที่ถูกต้อง ──
+// ══════════════════════════════════════════════════════════════
+function insertIntoWeekdaySection(pyDay, groupEl) {
+  const container = document.getElementById('slotContainer');
+
+  // หา section header ของ pyDay นี้
+  let header = container.querySelector(`.repeat-day-section-header[data-py-day="${pyDay}"]`);
+
+  if (header) {
+    // กลุ่มมีอยู่แล้ว → หาตำแหน่งสุดท้ายของกลุ่มนี้แล้วแทรกต่อท้าย
+    let lastInGroup = header;
+    let next = header.nextElementSibling;
+    while (next && next.classList.contains('slot-day-group') && next.dataset.pyDay == pyDay) {
+      lastInGroup = next;
+      next = next.nextElementSibling;
+    }
+    lastInGroup.after(groupEl);
+
+    // อัปเดต count
+    updateSectionCount(pyDay);
+  } else {
+    // ยังไม่มีกลุ่มนี้ → สร้าง header ใหม่แล้วหาตำแหน่งที่ถูกต้อง (เรียงตาม pyDay)
+    header = createSectionHeader(pyDay);
+
+    // หาว่าต้องแทรกก่อน header ไหน (เรียง pyDay น้อยไปมาก)
+    const allHeaders = [...container.querySelectorAll('.repeat-day-section-header')];
+    let insertBefore = null;
+    for (const h of allHeaders) {
+      if (parseInt(h.dataset.pyDay) > pyDay) {
+        insertBefore = h;
+        break;
+      }
+    }
+
+    if (insertBefore) {
+      container.insertBefore(groupEl, insertBefore);
+      container.insertBefore(header, groupEl);
+    } else {
+      container.appendChild(header);
+      container.appendChild(groupEl);
+    }
+
+    updateSectionCount(pyDay);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── Helper: สร้าง section header ──
+// ══════════════════════════════════════════════════════════════
+function createSectionHeader(pyDay) {
+  const DAY_TH_FULL = ['วันจันทร์','วันอังคาร','วันพุธ','วันพฤหัสบดี','วันศุกร์','วันเสาร์','วันอาทิตย์'];
+  const header = document.createElement('div');
+  header.className = 'repeat-day-section-header d-flex align-items-center gap-2 mt-3 mb-2';
+  header.dataset.pyDay = pyDay;
+  header.innerHTML = `
+    <span class="badge rounded-pill px-3 py-2"
+          style="background:#EEF4FF; color:#3B5BDB; font-size:.75rem; font-weight:600; letter-spacing:.03em;">
+      <i class="fas fa-calendar-week me-1"></i>${DAY_TH_FULL[pyDay]}
+    </span>
+    <span class="text-muted small section-day-count"></span>
+    <hr class="flex-fill my-0" style="border-color:#dee2e6;">
+    <button type="button" class="btn btn-link text-danger p-0"
+            style="font-size:.75rem; white-space:nowrap;"
+            onclick="removeDaySection(${pyDay})">
+      <i class="fas fa-trash-alt me-1"></i>ลบทั้งกลุ่ม
+    </button>`;
+  return header;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── Helper: อัปเดต count ใน section header ──
+// ══════════════════════════════════════════════════════════════
+function updateSectionCount(pyDay) {
+  const container = document.getElementById('slotContainer');
+  const header = container.querySelector(`.repeat-day-section-header[data-py-day="${pyDay}"]`);
+  if (!header) return;
+  const count = container.querySelectorAll(`.slot-day-group[data-py-day="${pyDay}"]`).length;
+  const countEl = header.querySelector('.section-day-count');
+  if (countEl) countEl.textContent = `${count} วัน`;
+}
+
+// ── ลบวันเดียว (อัปเดต count + ลบ header ถ้าไม่มีวันเหลือ) ──
+function removeSingleDay(btn) {
+  const group = btn.closest('.slot-day-group');
+  const pyDay = group.dataset.pyDay;
+  group.remove();
+  // ตรวจว่ายังเหลือวันในกลุ่มไหม
+  const container = document.getElementById('slotContainer');
+  const remaining = container.querySelectorAll(`.slot-day-group[data-py-day="${pyDay}"]`).length;
+  if (remaining === 0) {
+    const header = container.querySelector(`.repeat-day-section-header[data-py-day="${pyDay}"]`);
+    if (header) header.remove();
+  } else {
+    updateSectionCount(pyDay);
+  }
 }
 
 // ── 24-Hour Time Input Auto-Format ──
@@ -559,16 +787,141 @@ const _timeObserver = new MutationObserver(mutations => {
 });
 _timeObserver.observe(document.getElementById('slotContainer'), { childList: true, subtree: true });
 
+// ── Tiered Rate Validation ──
+function validateRateTiers() {
+  const rows = document.querySelectorAll('#rateContainer .rate-row');
+  if (rows.length === 0) return { valid: false, error: 'กรุณากรอกอัตราค่าติวอย่างน้อย 1 เรท' };
+
+  const maxStuEl = document.querySelector('[name=tutc_max_stu]');
+  const maxStu = maxStuEl ? parseInt(maxStuEl.value) || 0 : 0;
+
+  let prevStuCount = 0;
+  let prevPrice = null;   // null = ยังไม่มีเรทก่อนหน้า
+  let firstPrice = null;  // เก็บราคาเรทแรก
+  let allValid = true;
+  let errorMsg = '';
+
+  rows.forEach((row, idx) => {
+    const stuInput = row.querySelector('.rate-stu');
+    const priceInput = row.querySelector('.rate-price');
+    const stuFb = row.querySelector('.rate-stu-feedback');
+    const priceFb = row.querySelector('.rate-price-feedback');
+    if (!stuInput || !priceInput) return;
+
+    // clear previous
+    stuInput.classList.remove('is-invalid');
+    priceInput.classList.remove('is-invalid');
+    if (stuFb) stuFb.textContent = '';
+    if (priceFb) priceFb.textContent = '';
+
+    const stuVal = stuInput.value.trim();
+    const priceVal = priceInput.value.trim();
+
+    // ต้องกรอก
+    if (!stuVal || parseInt(stuVal) < 1) {
+      stuInput.classList.add('is-invalid');
+      if (stuFb) stuFb.textContent = 'กรุณากรอกจำนวนคน (≥ 1)';
+      allValid = false;
+      return;
+    }
+    if (priceVal === '' || parseInt(priceVal) < 0) {
+      priceInput.classList.add('is-invalid');
+      if (priceFb) priceFb.textContent = 'กรุณากรอกเครดิต (≥ 0)';
+      allValid = false;
+      return;
+    }
+
+    const stu = parseInt(stuVal);
+    const price = parseInt(priceVal);
+
+    // จำนวนคนต้องมากกว่าแถวก่อนหน้า
+    if (idx > 0 && stu <= prevStuCount) {
+      stuInput.classList.add('is-invalid');
+      if (stuFb) stuFb.textContent = `ต้องมากกว่า ${prevStuCount} คน`;
+      allValid = false;
+    }
+
+    // จำนวนคนต้องไม่เกิน max
+    if (maxStu > 0 && stu > maxStu) {
+      stuInput.classList.add('is-invalid');
+      if (stuFb) stuFb.textContent = `ต้องไม่เกิน ${maxStu} คน (จำนวนรับสูงสุด)`;
+      allValid = false;
+    }
+
+    // เครดิต validation
+    if (idx === 0) {
+      firstPrice = price;
+    } else {
+      // ถ้าเรทแรก = 0 (ฟรี): เรทที่ 2 เป็นอะไรก็ได้ แต่เรทที่ 3+ ต้อง < เรทก่อนหน้า
+      // ถ้าเรทแรก >= 1: เรทถัดไปทุกเรทต้อง < เรทก่อนหน้า
+      if (firstPrice === 0 && idx === 1) {
+        // เรทที่ 2 หลังจากฟรี → ใส่อะไรก็ได้ (≥ 0)
+      } else {
+        if (prevPrice !== null && price >= prevPrice) {
+          priceInput.classList.add('is-invalid');
+          if (priceFb) priceFb.textContent = `ต้องต่ำกว่า ${prevPrice} เครดิต`;
+          allValid = false;
+        }
+      }
+    }
+
+    prevStuCount = stu;
+    prevPrice = price;
+  });
+
+  if (!allValid) {
+    errorMsg = 'กรุณาตรวจสอบเรทราคาตามเงื่อนไขที่ระบุ';
+  }
+
+  return { valid: allValid, error: errorMsg };
+}
+
+// ── Real-time validation on rate change ──
+document.getElementById('rateContainer').addEventListener('input', function(e) {
+  if (e.target.classList.contains('rate-stu') || e.target.classList.contains('rate-price')) {
+    validateRateTiers();
+    updateRateBadges();
+  }
+});
+
+// ── Update tier badges ──
+function updateRateBadges() {
+  const rows = document.querySelectorAll('#rateContainer .rate-row');
+  rows.forEach((row, idx) => {
+    const badge = row.querySelector('.rate-tier-badge');
+    if (badge) {
+      badge.innerHTML = `<span class="badge bg-primary bg-opacity-75 rounded-pill" style="font-size:.65rem;">เรทที่ ${idx + 1}</span>`;
+    }
+  });
+}
+
+// ── Remove Rate Row ──
+function removeRate(btn) {
+  const row = btn.closest('.rate-row');
+  const container = document.getElementById('rateContainer');
+  // ต้องมีอย่างน้อย 1 เรท
+  if (container.querySelectorAll('.rate-row').length <= 1) return;
+  row.remove();
+  updateRateBadges();
+  validateRateTiers();
+}
+
 // ── Add Rate Row ──
 function addRate() {
   const container = document.getElementById('rateContainer');
+  const rows = container.querySelectorAll('.rate-row');
+  const idx = rows.length + 1;
   const div = document.createElement('div');
-  div.className = 'rate-row bg-light border rounded-3 p-3 mb-3';
+  div.className = 'rate-row bg-light border rounded-3 p-3 mb-3 position-relative';
   div.innerHTML = `
+    <div class="rate-tier-badge position-absolute top-0 start-0 translate-middle-y ms-3">
+      <span class="badge bg-primary bg-opacity-75 rounded-pill" style="font-size:.65rem;">เรทที่ ${idx}</span>
+    </div>
     <div class="row g-2 align-items-center">
       <div class="col">
-        <label class="form-label fw-semibold small mb-1">จำนวนนักเรียน <span class="text-danger">*</span></label>
-        <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu" min="1" placeholder="เช่น 1">
+        <label class="form-label fw-semibold small mb-1">ตั้งแต่ (คน) <span class="text-danger">*</span></label>
+        <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu" min="1" placeholder="เช่น ${idx}">
+        <div class="invalid-feedback rate-stu-feedback"></div>
       </div>
       <div class="col">
         <label class="form-label fw-semibold small mb-1">เครดิต/คน <span class="text-danger">*</span></label>
@@ -578,14 +931,192 @@ function addRate() {
             <i class="fas fa-coins"></i>
           </span>
         </div>
+        <div class="invalid-feedback rate-price-feedback"></div>
       </div>
       <div class="col-auto pt-3">
-        <button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('.rate-row').remove()">
+        <button type="button" class="btn btn-link text-danger p-0" onclick="removeRate(this)">
           <i class="fas fa-trash-alt"></i>
         </button>
       </div>
     </div>`;
   container.appendChild(div);
 }
+// ══════════════════════════════════════════════════════════════
+// ── Repeat Schedule (แบบ A) ────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+
+// ── สลับโหมด manual / repeat ──
+function switchMode(mode) {
+  const isRepeat = mode === 'repeat';
+  document.getElementById('panelManual').classList.toggle('d-none', isRepeat);
+  document.getElementById('panelRepeat').classList.toggle('d-none', !isRepeat);
+  document.getElementById('btnModeManual').className =
+    isRepeat ? 'btn btn-sm btn-outline-primary px-3' : 'btn btn-sm btn-primary px-3';
+  document.getElementById('btnModeRepeat').className =
+    isRepeat ? 'btn btn-sm btn-primary px-3' : 'btn btn-sm btn-outline-primary px-3';
+}
+
+// ── toggle วันในสัปดาห์ ──
+function toggleWeekday(btn) {
+  btn.classList.toggle('btn-outline-secondary');
+  btn.classList.toggle('btn-primary');
+}
+
+function getSelectedWeekdays() {
+  return [...document.querySelectorAll('.weekday-pill.btn-primary')]
+    .map(b => parseInt(b.dataset.day));
+}
+
+// ── repeat slot template ──
+let repeatSlotCounter = 0;
+function addRepeatSlot(startVal = '', endVal = '') {
+  repeatSlotCounter++;
+  const id = repeatSlotCounter;
+  const row = document.createElement('div');
+  row.className = 'repeat-slot-row d-flex align-items-center gap-2 mb-2';
+  row.dataset.rid = id;
+  row.innerHTML = `
+    <input type="text" class="form-control form-control-sm time-input flex-fill repeat-slot-start"
+           placeholder="09:00" maxlength="5" inputmode="numeric" value="${startVal}">
+    <span class="text-muted small">—</span>
+    <input type="text" class="form-control form-control-sm time-input flex-fill repeat-slot-end"
+           placeholder="10:00" maxlength="5" inputmode="numeric" value="${endVal}">
+    <button type="button" class="btn btn-link text-secondary p-0" onclick="this.closest('.repeat-slot-row').remove()">
+      <i class="fas fa-times"></i>
+    </button>`;
+  document.getElementById('repeatSlotList').appendChild(row);
+  row.querySelectorAll('.time-input').forEach(initTimeInput);
+}
+
+function getRepeatSlots() {
+  return [...document.querySelectorAll('.repeat-slot-row')].map(row => ({
+    start: row.querySelector('.repeat-slot-start').value.trim(),
+    end  : row.querySelector('.repeat-slot-end').value.trim(),
+  }));
+}
+
+// ── สร้างวันแบบ repeat (JS ล้วน ไม่ call API) — เรียงกลุ่มตามวันในสัปดาห์ ──
+function doRepeatGenerate() {
+  const errEl     = document.getElementById('repeatError');
+  const summaryEl = document.getElementById('repeatSummary');
+  errEl.classList.add('d-none');
+  summaryEl.textContent = '';
+
+  const weekdays = getSelectedWeekdays();
+  const startStr = document.getElementById('repeatStart').value;
+  const endStr   = document.getElementById('repeatEnd').value;
+  const slots    = getRepeatSlots();
+
+  // validate
+  if (!weekdays.length)     { showRepeatError('กรุณาเลือกอย่างน้อย 1 วันในสัปดาห์'); return; }
+  if (!startStr || !endStr) { showRepeatError('กรุณาระบุช่วงวันที่'); return; }
+  if (startStr > endStr)    { showRepeatError('วันเริ่มต้นต้องไม่เกินวันสิ้นสุด'); return; }
+  if (!slots.length)        { showRepeatError('กรุณาเพิ่มช่วงเวลาอย่างน้อย 1 ช่วง'); return; }
+
+  const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+  for (const sl of slots) {
+    if (!timeRe.test(sl.start) || !timeRe.test(sl.end)) {
+      showRepeatError(`รูปแบบเวลาไม่ถูกต้อง (${sl.start} - ${sl.end})`); return;
+    }
+    if (sl.end <= sl.start) {
+      showRepeatError(`เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น (${sl.start} - ${sl.end})`); return;
+    }
+  }
+
+  const diffDays = (new Date(endStr + 'T00:00:00') - new Date(startStr + 'T00:00:00')) / 86400000;
+  if (diffDays > 365) { showRepeatError('ช่วงวันที่ต้องไม่เกิน 1 ปี'); return; }
+
+  // JS getDay(): 0=อา,1=จ…6=ส  ←→  python day: 0=จ…6=อา
+  const jsWeekdays = weekdays.map(d => (d + 1) % 7);
+
+  // ── step 1: collect วันทั้งหมดแยกตาม pyDay ──
+  const byDay = new Map();
+  weekdays.forEach(d => byDay.set(d, []));
+
+  let cur = new Date(startStr + 'T00:00:00');
+  const endDate = new Date(endStr + 'T00:00:00');
+
+  while (cur <= endDate) {
+    const jsDay  = cur.getDay();
+    const pyDay  = (jsDay + 6) % 7;
+    const dateStr = cur.toISOString().slice(0, 10);
+
+    if (jsWeekdays.includes(jsDay) && !isDateExists(dateStr)) {
+      byDay.get(pyDay).push(dateStr);
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  // ── step 2: inject ผ่าน shared helpers (กรุ๊ปเข้ากลุ่มเดิมอัตโนมัติ) ──
+  const empty = document.getElementById('emptySlotMsg');
+  if (empty) empty.remove();
+
+  let totalCreated = 0, totalSkipped = 0;
+
+  weekdays.forEach(pyDay => {
+    const dates = byDay.get(pyDay);
+    if (dates.length === 0) return;
+
+    dates.forEach(dateStr => {
+      newDateCounter++;
+      const sdId = `new_${newDateCounter}`;
+
+      // สร้าง group พร้อม slot เวลา
+      const group = createDayGroup(sdId, dateStr, pyDay, true);
+
+      // เพิ่ม slot เวลาตาม template
+      const addSlotBtn = group.querySelector('button[onclick*="addSlot"]');
+      slots.forEach(sl => {
+        const row = document.createElement('div');
+        row.className = 'slot-row d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 mb-2';
+        row.innerHTML = `
+          <input type="text" name="ts_start_${sdId}[]"
+                 class="form-control form-control-sm time-input flex-fill"
+                 value="${sl.start}" maxlength="5" inputmode="numeric">
+          <span class="text-muted small">—</span>
+          <input type="text" name="ts_end_${sdId}[]"
+                 class="form-control form-control-sm time-input flex-fill"
+                 value="${sl.end}" maxlength="5" inputmode="numeric">
+          <button type="button" class="btn btn-link text-secondary p-0"
+                  onclick="this.closest('.slot-row').remove()">
+            <i class="fas fa-times"></i>
+          </button>`;
+        group.insertBefore(row, addSlotBtn);
+        row.querySelectorAll('.time-input').forEach(initTimeInput);
+      });
+
+      // แทรกเข้ากลุ่มวันที่ถูกต้อง
+      insertIntoWeekdaySection(pyDay, group);
+      totalCreated++;
+    });
+  });
+
+  summaryEl.textContent = totalCreated > 0
+    ? `✓ สร้างแล้ว ${totalCreated} วัน`
+    : 'ไม่มีวันใหม่ (วันทั้งหมดมีอยู่แล้ว)';
+}
+
+// ── ลบทั้ง section (header + วันทั้งหมดในกลุ่ม) ──
+function removeDaySection(pyDay) {
+  const container = document.getElementById('slotContainer');
+  container.querySelectorAll(`.repeat-day-section-header[data-py-day="${pyDay}"]`).forEach(el => el.remove());
+  container.querySelectorAll(`.slot-day-group[data-py-day="${pyDay}"]`).forEach(el => el.remove());
+}
+
+function showRepeatError(msg) {
+  const el = document.getElementById('repeatError');
+  el.textContent = msg;
+  el.classList.remove('d-none');
+  document.getElementById('repeatSummary').textContent = '';
+}
+
+// ── set min date = วันนี้ ──
+const todayStr = new Date().toISOString().slice(0, 10);
+document.getElementById('repeatStart').min = todayStr;
+document.getElementById('repeatEnd').min   = todayStr;
+document.getElementById('newDateInput').min = todayStr;
+
+// เริ่มต้น: เพิ่ม slot template ว่าง 1 ช่วง
+addRepeatSlot('09:00', '10:00');
 </script>
 {% endblock %}
