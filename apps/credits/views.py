@@ -46,68 +46,64 @@ def credit_view(request):
     member = request.user.member
     system = _get_system()
 
-    refills_qs = Refill.objects.filter(member=member).order_by('-rf_date')
-    refills = []
-    
-    for r in refills_qs:
-        r.extracted_bank = ""
-        r.display_cmt = r.rf_cmt if r.rf_cmt else ""
+    tx_list = []
 
-        # ถ้าในหมายเหตุมีคำว่า "โอนจาก:" ให้ตัดเอาเฉพาะชื่อธนาคารมา
+    for r in Refill.objects.filter(member=member).order_by('-rf_date'):
+        extracted_bank = ''
+        display_cmt    = ''
         if r.rf_cmt and r.rf_cmt.startswith('โอนจาก:'):
             parts = r.rf_cmt.split('|')
-            r.extracted_bank = parts[0].replace('โอนจาก:', '').strip()
-
-            # ดึง admin note จาก part ที่ 3 (format: "โอนจาก:... | วันที่:... | หมายเหตุ: ...")
-            admin_note = ''
+            extracted_bank = parts[0].replace('โอนจาก:', '').strip()
             for p in parts[2:]:
                 p = p.strip()
                 if p.startswith('หมายเหตุ:'):
-                    admin_note = p.replace('หมายเหตุ:', '', 1).strip()
+                    display_cmt = p.replace('หมายเหตุ:', '', 1).strip()
+            if r.rf_status != 2:
+                display_cmt = ''
+        elif r.rf_cmt and r.rf_status == 2:
+            display_cmt = r.rf_cmt
 
-            r.display_cmt = admin_note if r.rf_status == 2 else ""
-        
-        refills.append(r)
-
-    withdrawals = Withdrawals.objects.filter(member=member).values(
-        'wd_id', 'wd_req_date', 'wd_credit', 'wd_status', 'wd_bank_name'
-    )
-
-    tx_list = []
-    for r in refills:
         tx_list.append({
-            'type'  : 'topup',
-            'title' : 'เติมเครดิต',
-            'sub'   : 'ผ่าน Mobile Banking',
-            'amount': r.rf_credit,
-            'sign'  : '+',
-            'date'  : r.rf_date,
-            'status': r.rf_status,
+            'kind'          : 'topup',
+            'rf_id'         : r.rf_id,
+            'amount'        : r.rf_credit,
+            'money'         : r.rf_money,
+            'date'          : r.rf_date,
+            'status'        : r.rf_status,
+            'slip_url'      : r.rf_slip.url if r.rf_slip else '',
+            'extracted_bank': extracted_bank,
+            'display_cmt'   : display_cmt,
         })
-    for w in withdrawals:
+
+    for w in Withdrawals.objects.filter(member=member).order_by('-wd_req_date'):
         tx_list.append({
-            'type'  : 'withdraw',
-            'title' : 'ถอนเครดิต',
-            'sub'   : f'ถอนเข้าบัญชี{w["wd_bank_name"]}',
-            'amount': w['wd_credit'],
-            'sign'  : '-',
-            'date'  : w['wd_req_date'],
-            'status': w['wd_status'],
+            'kind'      : 'withdraw',
+            'wd_id'     : w.wd_id,
+            'amount'    : w.wd_credit,
+            'net_cash'  : w.wd_net_cash,
+            'bank_name' : w.wd_bank_name,
+            'date'      : w.wd_req_date,
+            'status'    : w.wd_status,
+            'wd_cmt'    : w.wd_cmt or '',
         })
 
     tx_list.sort(key=lambda x: x['date'], reverse=True)
 
-    paginator = Paginator(tx_list, 10)
+    kind_filter = request.GET.get('kind', '')
+    if kind_filter in ('topup', 'withdraw', 'income'):
+        tx_list = [t for t in tx_list if t['kind'] == kind_filter]
+
+    paginator = Paginator(tx_list, 15)
     page_obj  = paginator.get_page(request.GET.get('page', 1))
 
     available = member.mb_deposit_crd + member.mb_income_crd - member.mb_locked_crd
 
     return render(request, 'credits/credit.html', {
-        'member'   : member,
-        'available': available,
-        'page_obj' : page_obj,
-        'system'   : system,
-        'refills'  : refills,
+        'member'      : member,
+        'available'   : available,
+        'page_obj'    : page_obj,
+        'system'      : system,
+        'kind_filter' : kind_filter,
     })
 
 
@@ -174,6 +170,20 @@ def topup_view(request):
         for err in errors:
             messages.error(request, err)
 
+        # ส่งข้อมูลที่กรอกไปแล้วกลับมาด้วย
+        qr_img = None
+        if system and system.promptpay_id:
+            qr_img = _generate_promptpay_qr(system.promptpay_id, amount=0)
+        return render(request, 'credits/topup.html', {
+            'member'      : member,
+            'system'      : system,
+            'bank_choices': BANK_CHOICES,
+            'crd_val'     : crd_val,
+            'qr_img'      : qr_img,
+            'promptpay_id': system.promptpay_id if system and system.promptpay_id else '',
+            'prev'        : request.POST,
+        })
+
     qr_img = None
     if system and system.promptpay_id:
         qr_img = _generate_promptpay_qr(system.promptpay_id, amount=0)
@@ -185,4 +195,106 @@ def topup_view(request):
         'crd_val'     : crd_val,
         'qr_img'      : qr_img,
         'promptpay_id': system.promptpay_id if system and system.promptpay_id else '',
+        'prev'        : {},
+    })
+
+
+@login_required
+def withdraw_view(request):
+    member = request.user.member
+    system = _get_system()
+    crd_val = float(system.crd_val) if system and system.crd_val else 10.0
+
+    # อัตราค่าธรรมเนียมตามประเภท (%)
+    deposit_fee_pct = float(system.deposit_withdraw_fee_pct) if system else 0
+    income_fee_pct  = float(system.income_withdraw_fee_pct)  if system else 0
+
+    available_deposit = member.mb_deposit_crd - member.mb_locked_crd
+    available_income  = member.mb_income_crd
+    if available_deposit < 0:
+        available_deposit = 0
+
+    if request.method == 'POST':
+        wd_type    = request.POST.get('wd_type', '0')
+        wd_credit  = request.POST.get('wd_credit', '0').strip()
+        bank_name  = request.POST.get('bank_name', '').strip()
+        acc_name   = request.POST.get('acc_name', '').strip()
+        acc_no     = request.POST.get('acc_no', '').strip()
+
+        errors = []
+        try:
+            wd_type_i  = int(wd_type)
+            wd_credit_i = int(wd_credit)
+            if wd_credit_i <= 0:
+                errors.append('กรุณากรอกจำนวนเครดิตที่ต้องการถอน')
+        except (ValueError, TypeError):
+            errors.append('จำนวนเครดิตไม่ถูกต้อง')
+            wd_credit_i = 0
+            wd_type_i = 0
+
+        if not bank_name:
+            errors.append('กรุณากรอกชื่อธนาคาร')
+        if not acc_name:
+            errors.append('กรุณากรอกชื่อบัญชีธนาคาร')
+        if not acc_no:
+            errors.append('กรุณากรอกเลขที่บัญชี')
+
+        if not errors:
+            avail = available_income if wd_type_i == 1 else available_deposit
+            if wd_credit_i > avail:
+                errors.append(f'เครดิตไม่เพียงพอ (มีอยู่ {avail} เครดิต)')
+
+        if not errors:
+            fee_pct  = income_fee_pct if wd_type_i == 1 else deposit_fee_pct
+            wd_cash  = round(wd_credit_i * crd_val, 2)
+            wd_fee   = round(wd_cash * fee_pct / 100, 2)
+            wd_net   = round(wd_cash - wd_fee, 2)
+
+            Withdrawals.objects.create(
+                wd_req_date = timezone.now(),
+                wd_type     = wd_type_i,
+                wd_credit   = wd_credit_i,
+                wd_cash     = wd_cash,
+                wd_bank_name= bank_name,
+                wd_acc_name = acc_name,
+                wd_acc_no   = acc_no,
+                wd_fee      = wd_fee,
+                wd_net_cash = wd_net,
+                wd_status   = 0,
+                member      = member,
+            )
+            # หักเครดิตทันทีเมื่อส่งคำขอ
+            if wd_type_i == 1:
+                member.mb_income_crd  = max(0, member.mb_income_crd  - wd_credit_i)
+            else:
+                member.mb_deposit_crd = max(0, member.mb_deposit_crd - wd_credit_i)
+            member.save(update_fields=['mb_income_crd', 'mb_deposit_crd'])
+            messages.success(request, 'ส่งคำขอถอนเครดิตเรียบร้อยแล้ว ระบบจะดำเนินการภายใน 3-5 วันทำการ')
+            return redirect('credits:credit')
+
+        for err in errors:
+            messages.error(request, err)
+
+        return render(request, 'credits/withdraw.html', {
+            'member'           : member,
+            'system'           : system,
+            'crd_val'          : crd_val,
+            'bank_choices'     : BANK_CHOICES,
+            'available_deposit': available_deposit,
+            'available_income' : available_income,
+            'deposit_fee_pct'  : deposit_fee_pct,
+            'income_fee_pct'   : income_fee_pct,
+            'prev'             : request.POST,
+        })
+
+    return render(request, 'credits/withdraw.html', {
+        'member'           : member,
+        'system'           : system,
+        'crd_val'          : crd_val,
+        'bank_choices'     : BANK_CHOICES,
+        'available_deposit': available_deposit,
+        'available_income' : available_income,
+        'deposit_fee_pct'  : deposit_fee_pct,
+        'income_fee_pct'   : income_fee_pct,
+        'prev'             : {},
     })
