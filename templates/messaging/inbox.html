@@ -1,0 +1,87 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}ข้อความ — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/messaging.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="msg-page">
+  <div class="container">
+    <div class="msg-layout">
+
+      <!-- ════ SIDEBAR: inbox list ════ -->
+      <aside class="msg-sidebar">
+        <div class="msg-sidebar-header">
+          <h1 class="msg-sidebar-title">ข้อความ</h1>
+        </div>
+
+        {% if inbox_data %}
+          <ul class="inbox-list">
+            {% for item in inbox_data %}
+            <li class="inbox-item {% if item.unread > 0 %}inbox-item--unread{% endif %}">
+              <a href="{% url 'messaging:chat_with' item.other.pk %}" class="inbox-link">
+
+                <!-- รูปโปรไฟล์ -->
+                <div class="inbox-avatar-wrap">
+                  {% if item.other.mb_img %}
+                    <img src="{{ item.other.mb_img.url }}" class="inbox-avatar" alt="{{ item.other.mb_full_name }}">
+                  {% else %}
+                    <div class="inbox-avatar inbox-avatar--placeholder">
+                      {{ item.other.mb_full_name|first|upper }}
+                    </div>
+                  {% endif %}
+                  {% if item.unread > 0 %}
+                    <span class="inbox-badge">{{ item.unread }}</span>
+                  {% endif %}
+                </div>
+
+                <!-- ข้อมูล -->
+                <div class="inbox-info">
+                  <div class="inbox-name-row">
+                    <span class="inbox-name">{{ item.other.mb_full_name }}</span>
+                    {% if item.last_msg %}
+                      <span class="inbox-time">{{ item.last_msg.msg_sent_time|date:"j M" }}</span>
+                    {% endif %}
+                  </div>
+                  <div class="inbox-preview">
+                    {% if item.last_msg %}
+                      {% if item.last_msg.msg_img and not item.last_msg.msg %}
+                        <i class="far fa-image me-1"></i>รูปภาพ
+                      {% elif item.last_msg.msg %}
+                        {{ item.last_msg.msg|truncatechars:45 }}
+                      {% endif %}
+                    {% else %}
+                      <span style="color:var(--pct-muted);font-style:italic;">ยังไม่มีข้อความ</span>
+                    {% endif %}
+                  </div>
+                </div>
+
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="inbox-empty">
+            <i class="far fa-comment-dots"></i>
+            <p>ยังไม่มีการสนทนา</p>
+            <small>เริ่มแชทได้จากหน้าติวเตอร์</small>
+          </div>
+        {% endif %}
+      </aside>
+      <!-- ════ END SIDEBAR ════ -->
+
+      <!-- ════ PLACEHOLDER (desktop): เลือกแชทจาก list ════ -->
+      <main class="msg-main msg-main--empty d-none d-md-flex">
+        <div class="msg-empty-state">
+          <i class="far fa-comment-dots"></i>
+          <p>เลือกการสนทนาจากรายการทางซ้าย</p>
+        </div>
+      </main>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
