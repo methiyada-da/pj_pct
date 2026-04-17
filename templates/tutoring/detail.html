@@ -267,8 +267,9 @@
             <button type="submit" form="booking-form" class="btn-book" id="btn-book" disabled>
               <i class="fas fa-check-circle me-1"></i>ยืนยันการจอง
             </button>
-            <p class="credit-avail">เครดิตคงเหลือ <strong>{{ user_credit|default:"0" }}</strong> เครดิต</p>
             {% endif %}
+
+
           {% else %}
           <div class="login-prompt">
             <i class="fas fa-lock me-1"></i>
@@ -281,7 +282,25 @@
             ติวเตอร์จะยืนยันภายใน <strong>24 ชั่วโมง</strong>
             เครดิตจะถูกล็อกไว้ก่อน และตัดจริงเมื่อติวเตอร์รับงานแล้ว
           </div>
+
         </div>
+
+        {% if user.is_authenticated %}
+        <div class="credit-card mt-3">
+          <div class="credit-card-header">
+            <i class="fas fa-wallet me-2"></i>เครดิตของฉัน
+          </div>
+          <div class="credit-card-body">
+            <div class="credit-balance">
+              <span class="credit-balance-num">{{ user_credit|default:"0" }}</span>
+              <span class="credit-balance-unit">เครดิต</span>
+            </div>
+            <a href="{% url 'credits:credit' %}" class="btn-credit-link">
+              <i class="fas fa-coins me-1"></i>จัดการเครดิต
+            </a>
+          </div>
+        </div>
+        {% endif %}
 
 
       </div>

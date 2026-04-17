@@ -382,10 +382,11 @@ def manage_course(request, tutc_id=None):
         # วันที่ใหม่ — จับคู่ new_date[] กับ ts_start_new_XXXX[] ตามลำดับ
         new_dates = request.POST.getlist('new_date[]')
 
-        # รวบรวม suffix ทั้งหมดของ new dates (เรียงตามลำดับที่ปรากฏใน POST)
+        # รวบรวม suffix ทั้งหมดของ new dates ตามลำดับจริงใน POST (ไม่ sort)
+        # Django MultiValueDict เก็บลำดับ key ตามที่ browser ส่งมา
         new_suffixes = []
         seen_suffixes = set()
-        for key in sorted(request.POST.keys()):
+        for key in request.POST:
             if key.startswith('ts_start_new_'):
                 suffix = key[len('ts_start_new_'):].rstrip('[]')
                 if suffix not in seen_suffixes:
