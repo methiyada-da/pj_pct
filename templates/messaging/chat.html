@@ -1,0 +1,378 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}แชทกับ {{ other.mb_full_name }} — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/messaging.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="msg-page">
+  <div class="container">
+    <div class="msg-layout">
+
+      <!-- ════ SIDEBAR: inbox list ════ -->
+      <aside class="msg-sidebar">
+        <div class="msg-sidebar-header">
+          <h1 class="msg-sidebar-title">ข้อความ</h1>
+        </div>
+
+        {% if inbox_data %}
+          <ul class="inbox-list">
+            {% for item in inbox_data %}
+            <li class="inbox-item {% if item.unread > 0 %}inbox-item--unread{% endif %}">
+              <a href="{% url 'messaging:chat_with' item.other.pk %}"
+                 class="inbox-link {% if item.other.pk == other.pk %}inbox-link--active{% endif %}">
+
+                <div class="inbox-avatar-wrap">
+                  {% if item.other.mb_img %}
+                    <img src="{{ item.other.mb_img.url }}" class="inbox-avatar" alt="">
+                  {% else %}
+                    <div class="inbox-avatar inbox-avatar--placeholder">
+                      {{ item.other.mb_full_name|first|upper }}
+                    </div>
+                  {% endif %}
+                  {% if item.unread > 0 %}
+                    <span class="inbox-badge">{{ item.unread }}</span>
+                  {% endif %}
+                </div>
+
+                <div class="inbox-info">
+                  <div class="inbox-name-row">
+                    <span class="inbox-name">{{ item.other.mb_full_name }}</span>
+                    {% if item.last_msg %}
+                      <span class="inbox-time">{{ item.last_msg.msg_sent_time|date:"j M" }}</span>
+                    {% endif %}
+                  </div>
+                  <div class="inbox-preview">
+                    {% if item.last_msg %}
+                      {% if item.last_msg.msg_img and not item.last_msg.msg %}
+                        <i class="far fa-image me-1"></i>รูปภาพ
+                      {% elif item.last_msg.msg %}
+                        {{ item.last_msg.msg|truncatechars:35 }}
+                      {% endif %}
+                    {% else %}
+                      <span style="font-style:italic;">ยังไม่มีข้อความ</span>
+                    {% endif %}
+                  </div>
+                </div>
+
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="inbox-empty">
+            <i class="far fa-comment-dots"></i>
+            <p>ยังไม่มีการสนทนา</p>
+          </div>
+        {% endif %}
+      </aside>
+      <!-- ════ END SIDEBAR ════ -->
+
+      <!-- ════ CHAT MAIN ════ -->
+      <main class="msg-main">
+
+        <!-- ── Chat Header ── -->
+        <div class="chat-header">
+          <a href="{% url 'messaging:inbox' %}" class="chat-back d-md-none">
+            <i class="fas fa-arrow-left"></i>
+          </a>
+          {% if other.mb_img %}
+            <img src="{{ other.mb_img.url }}" class="chat-header-avatar" alt="{{ other.mb_full_name }}">
+          {% else %}
+            <div class="chat-header-avatar chat-header-avatar--placeholder">
+              {{ other.mb_full_name|first|upper }}
+            </div>
+          {% endif %}
+          <div class="chat-header-info">
+            <span class="chat-header-name">{{ other.mb_full_name }}</span>
+          </div>
+        </div>
+
+        <!-- ── Messages ── -->
+        <div class="chat-body" id="chat-body">
+
+          {% if chat_messages %}
+            {% for msg in chat_messages %}
+
+              {# ── Date Separator — ขึ้นเฉพาะเมื่อวันเปลี่ยน ── #}
+              {% if msg.show_date_sep %}
+                <div class="date-sep"><span>{{ msg.msg_sent_time|date:"j F Y" }}</span></div>
+              {% endif %}
+
+              {# ── Message Row ── #}
+              <div class="msg-row {% if msg.sender == me %}msg-row--me{% else %}msg-row--other{% endif %}"
+                   data-msg-id="{{ msg.msg_id }}">
+
+                {% if msg.sender != me %}
+                  {% if msg.sender.mb_img %}
+                    <img src="{{ msg.sender.mb_img.url }}" class="msg-avatar" alt="">
+                  {% else %}
+                    <div class="msg-avatar msg-avatar--placeholder">{{ msg.sender.mb_full_name|first|upper }}</div>
+                  {% endif %}
+                {% endif %}
+
+                <div class="msg-bubble-wrap">
+                  {% if msg.msg_img %}
+                    <div class="msg-img-wrap">
+                      <img src="{{ msg.msg_img.url }}" class="msg-img" alt="รูปภาพ"
+                           onclick="openLightbox('{{ msg.msg_img.url }}')">
+                    </div>
+                  {% endif %}
+                  {% if msg.msg %}
+                    <div class="msg-bubble">{{ msg.msg }}</div>
+                  {% endif %}
+                  <div class="msg-meta">
+                    <span class="msg-time">{{ msg.msg_sent_time|date:"H:i" }}</span>
+                    {% if msg.sender == me %}
+                      <span class="msg-read {% if msg.msg_is_read == 1 %}msg-read--done{% endif %}"
+                            title="{% if msg.msg_is_read == 1 %}อ่านแล้ว{% else %}ยังไม่อ่าน{% endif %}">
+                        <i class="fas fa-check{% if msg.msg_is_read == 1 %}-double{% endif %}"></i>
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="chat-no-msg" id="chat-no-msg">
+              <i class="far fa-comment-dots"></i>
+              <p>เริ่มการสนทนาได้เลย</p>
+            </div>
+          {% endif %}
+
+        </div><!-- /chat-body -->
+
+        <!-- ── Input Area ── -->
+        <div class="chat-footer">
+          <form method="post" enctype="multipart/form-data" id="chat-form">
+            {% csrf_token %}
+            <div class="img-preview-wrap d-none" id="img-preview-wrap">
+              <div class="img-preview-inner">
+                <img id="img-preview" src="" alt="preview">
+                <button type="button" class="img-preview-remove" onclick="removeImage()">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chat-input-row">
+              <button type="button" class="chat-attach-btn"
+                      onclick="document.getElementById('msg-img-input').click()">
+                <i class="fas fa-image"></i>
+              </button>
+              {{ form.msg_img }}
+              {{ form.msg }}
+              <button type="submit" class="chat-send-btn">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+            {% if form.non_field_errors %}
+              <p class="chat-form-error">{{ form.non_field_errors.0 }}</p>
+            {% endif %}
+          </form>
+        </div>
+
+      </main>
+      <!-- ════ END CHAT ════ -->
+
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()"><i class="fas fa-times"></i></button>
+  <img src="" id="lightbox-img" alt="">
+</div>
+
+<script id="chat-meta" type="application/json">
+{
+  "pollUrl": "{% url 'messaging:poll' inbox.ib_id %}",
+  "myId":    {{ me.pk }}
+}
+</script>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+(function () {
+  const chatBody = document.getElementById('chat-body');
+  let meta = {};
+  try { meta = JSON.parse(document.getElementById('chat-meta').textContent); } catch(e) {}
+
+  function scrollBottom(force) {
+    if (!chatBody) return;
+    const nearBottom = chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight < 80;
+    if (force || nearBottom) chatBody.scrollTop = chatBody.scrollHeight;
+  }
+  scrollBottom(true);
+
+  // ── Auto-resize textarea ──
+  const textarea = document.getElementById('msg-textarea');
+  if (textarea) {
+    textarea.addEventListener('input', function () {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+    textarea.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('chat-form').submit();
+      }
+    });
+  }
+
+  // ── Image preview ──
+  const imgInput = document.getElementById('msg-img-input');
+  if (imgInput) {
+    imgInput.addEventListener('change', function () {
+      const file = this.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        alert('ขนาดรูปภาพต้องไม่เกิน 5 MB');
+        this.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('img-preview').src = e.target.result;
+        document.getElementById('img-preview-wrap').classList.remove('d-none');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  window.removeImage = function () {
+    document.getElementById('msg-img-input').value = '';
+    document.getElementById('img-preview').src = '';
+    document.getElementById('img-preview-wrap').classList.add('d-none');
+  };
+
+  window.openLightbox = function (url) {
+    document.getElementById('lightbox-img').src = url;
+    document.getElementById('lightbox').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  };
+  window.closeLightbox = function () {
+    document.getElementById('lightbox').classList.remove('active');
+    document.body.style.overflow = '';
+  };
+
+  // ── Polling ──
+  const MONTHS = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                  'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  }
+  function fmtDateLabel(iso) {
+    const d = new Date(iso);
+    return `${d.getDate()} ${MONTHS[d.getMonth()+1]} ${d.getFullYear()}`;
+  }
+  function isSameDay(a, b) {
+    const da = new Date(a), db = new Date(b);
+    return da.getFullYear()===db.getFullYear() && da.getMonth()===db.getMonth() && da.getDate()===db.getDate();
+  }
+  function makeDateSep(iso) {
+    const el = document.createElement('div');
+    el.className = 'date-sep';
+    el.innerHTML = `<span>${fmtDateLabel(iso)}</span>`;
+    return el;
+  }
+  function makeMsgRow(msg) {
+    const isMe = String(msg.sender_id) === String(meta.myId);
+    const row  = document.createElement('div');
+    row.className = `msg-row ${isMe ? 'msg-row--me' : 'msg-row--other'}`;
+    row.dataset.msgId = msg.msg_id;
+    if (!isMe) {
+      if (msg.sender_img) {
+        const img = document.createElement('img');
+        img.src = msg.sender_img; img.className = 'msg-avatar';
+        row.appendChild(img);
+      } else {
+        const av = document.createElement('div');
+        av.className = 'msg-avatar msg-avatar--placeholder';
+        av.textContent = (msg.sender_name || '?')[0].toUpperCase();
+        row.appendChild(av);
+      }
+    }
+    const bw = document.createElement('div');
+    bw.className = 'msg-bubble-wrap';
+    if (msg.msg_img_url) {
+      const iw = document.createElement('div'); iw.className = 'msg-img-wrap';
+      const im = document.createElement('img');
+      im.src = msg.msg_img_url; im.className = 'msg-img'; im.alt = 'รูปภาพ';
+      im.onclick = () => openLightbox(msg.msg_img_url);
+      iw.appendChild(im); bw.appendChild(iw);
+    }
+    if (msg.msg) {
+      const b = document.createElement('div');
+      b.className = 'msg-bubble'; b.textContent = msg.msg; bw.appendChild(b);
+    }
+    const md = document.createElement('div'); md.className = 'msg-meta';
+    md.innerHTML = `<span class="msg-time">${fmtTime(msg.msg_sent_time)}</span>`;
+    if (isMe) {
+      const read = String(msg.msg_is_read) === '1';
+      const rs = document.createElement('span');
+      rs.className = `msg-read${read ? ' msg-read--done' : ''}`;
+      rs.title = read ? 'อ่านแล้ว' : 'ยังไม่อ่าน';
+      rs.innerHTML = `<i class="fas fa-check${read ? '-double' : ''}"></i>`;
+      md.appendChild(rs);
+    }
+    bw.appendChild(md); row.appendChild(bw);
+    return row;
+  }
+  function updateReceipts(msgs) {
+    msgs.forEach(msg => {
+      if (String(msg.msg_is_read) !== '1') return;
+      const row = chatBody.querySelector(`[data-msg-id="${msg.msg_id}"]`);
+      if (!row) return;
+      const rs = row.querySelector('.msg-read');
+      if (rs && !rs.classList.contains('msg-read--done')) {
+        rs.classList.add('msg-read--done');
+        rs.title = 'อ่านแล้ว';
+        rs.innerHTML = '<i class="fas fa-check-double"></i>';
+      }
+    });
+  }
+
+  let lastMsgId = (() => {
+    const rows = chatBody.querySelectorAll('[data-msg-id]');
+    return rows.length ? Math.max(...[...rows].map(r => parseInt(r.dataset.msgId) || 0)) : 0;
+  })();
+  let lastMsgTime = null;
+
+  async function poll() {
+    if (!meta.pollUrl) return;
+    try {
+      const res  = await fetch(`${meta.pollUrl}?after=${lastMsgId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.messages) return;
+      updateReceipts(data.messages);
+      const newMsgs = data.messages.filter(m => parseInt(m.msg_id) > lastMsgId);
+      if (!newMsgs.length) return;
+      const noMsg = document.getElementById('chat-no-msg');
+      if (noMsg) noMsg.remove();
+      const wasAtBottom = chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight < 80;
+      newMsgs.forEach((msg, idx) => {
+        const prevIso = idx === 0 ? lastMsgTime : newMsgs[idx-1].msg_sent_time;
+        if (!prevIso || !isSameDay(prevIso, msg.msg_sent_time)) {
+          chatBody.appendChild(makeDateSep(msg.msg_sent_time));
+        }
+        chatBody.appendChild(makeMsgRow(msg));
+        lastMsgTime = msg.msg_sent_time;
+        lastMsgId   = Math.max(lastMsgId, parseInt(msg.msg_id));
+      });
+      if (wasAtBottom) scrollBottom(false);
+    } catch(e) { /* silent */ }
+  }
+
+  if (meta.pollUrl) setInterval(poll, 5000);
+})();
+</script>
+{% endblock %}

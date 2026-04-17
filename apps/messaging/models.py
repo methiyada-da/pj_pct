@@ -19,19 +19,37 @@ class Inbox(models.Model):
     )
 
     class Meta:
-        db_table      = 'inbox'
-        verbose_name  = "ข้อมูลกล่องข้อความ"
+        db_table        = 'inbox'
+        verbose_name    = "ข้อมูลกล่องข้อความ"
         unique_together = [['member1', 'member2']]
 
     def __str__(self):
         return f"Inbox | {self.member1.mb_full_name} ↔ {self.member2.mb_full_name}"
 
+    def get_other_member(self, me):
+        """คืน Member อีกฝั่งที่ไม่ใช่ตัวเอง"""
+        return self.member2 if self.member1 == me else self.member1
+
+    def unread_count_for(self, me):
+        """จำนวนข้อความที่ me ยังไม่ได้อ่าน"""
+        return self.message_set.filter(msg_is_read=0).exclude(sender=me).count()
+
+    def last_message(self):
+        """ข้อความล่าสุดใน inbox นี้"""
+        return self.message_set.order_by('-msg_sent_time').first()
+
 
 # 4.3.1.15 ตารางข้อมูลรายการข้อความ
 class Message(models.Model):
     msg_id        = models.AutoField(primary_key=True, verbose_name="ลำดับข้อความ")
-    msg_sent_time = models.DateTimeField(verbose_name="วันเวลาที่ส่ง")
-    msg           = models.TextField(verbose_name="ข้อความ")
+    msg_sent_time = models.DateTimeField(auto_now_add=True, verbose_name="วันเวลาที่ส่ง")
+    msg           = models.TextField(blank=True, verbose_name="ข้อความ")
+    msg_img       = models.ImageField(
+        upload_to='chat/',
+        blank=True,
+        null=True,
+        verbose_name="รูปภาพในข้อความ"
+    )
     msg_is_read   = models.IntegerField(default=0, verbose_name="สถานะการอ่าน (0=ยังไม่อ่าน, 1=อ่านแล้ว)")
     sender        = models.ForeignKey(
         Member,

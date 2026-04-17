@@ -1,0 +1,485 @@
+/* =============================================================
+   messaging.css — หน้าแชท Puean Chuay Tu
+   ============================================================= */
+
+/* ── Layout ── */
+.msg-page {
+  background: var(--pct-bg);
+  min-height: calc(100vh - var(--nav-height));
+  padding: 1.5rem 0;
+}
+.msg-layout {
+  display: flex;
+  gap: 0;
+  background: #fff;
+  border: 1px solid var(--pct-border);
+  border-radius: 16px;
+  overflow: hidden;
+  height: calc(100vh - var(--nav-height) - 3rem);
+  min-height: 500px;
+}
+
+/* ── Sidebar ── */
+.msg-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--pct-border);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+.msg-sidebar-header {
+  padding: 1.1rem 1.25rem .75rem;
+  border-bottom: 1px solid var(--pct-border);
+}
+.msg-sidebar-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--pct-text);
+  margin: 0;
+}
+
+/* inbox list */
+.inbox-list {
+  list-style: none;
+  padding: .4rem 0;
+  margin: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.inbox-item {
+  border-bottom: 1px solid transparent;
+}
+.inbox-item--unread .inbox-name {
+  font-weight: 700;
+}
+.inbox-item--unread .inbox-preview {
+  color: var(--pct-text);
+  font-weight: 500;
+}
+.inbox-link {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  padding: .75rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background .15s;
+}
+.inbox-link:hover { background: var(--pct-bg); }
+
+/* avatar */
+.inbox-avatar-wrap { position: relative; flex-shrink: 0; }
+.inbox-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--pct-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 700;
+}
+.inbox-avatar--placeholder {
+  background: var(--pct-primary);
+  color: #fff;
+}
+.inbox-badge {
+  position: absolute;
+  top: -3px; right: -3px;
+  background: #EF4444;
+  color: #fff;
+  border-radius: 999px;
+  font-size: .65rem;
+  font-weight: 700;
+  min-width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #fff;
+}
+
+/* info */
+.inbox-info { flex: 1; min-width: 0; }
+.inbox-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: .15rem;
+}
+.inbox-name {
+  font-size: .875rem;
+  color: var(--pct-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.inbox-time {
+  font-size: .72rem;
+  color: var(--pct-muted);
+  flex-shrink: 0;
+}
+.inbox-preview {
+  font-size: .78rem;
+  color: var(--pct-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* empty state sidebar */
+.inbox-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: 2rem;
+  color: var(--pct-muted);
+  text-align: center;
+}
+.inbox-empty i { font-size: 2.5rem; color: #CBD5E1; }
+.inbox-empty p { font-size: .9rem; font-weight: 600; margin: 0; }
+.inbox-empty small { font-size: .78rem; }
+
+/* back link */
+.inbox-list-hint { padding: .75rem 1.1rem; }
+.inbox-back-link {
+  font-size: .85rem;
+  color: var(--pct-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.inbox-back-link:hover { text-decoration: underline; }
+
+/* ── Main Chat Area ── */
+.msg-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.msg-main--empty {
+  align-items: center;
+  justify-content: center;
+}
+.msg-empty-state {
+  text-align: center;
+  color: var(--pct-muted);
+}
+.msg-empty-state i { font-size: 3rem; color: #CBD5E1; display: block; margin-bottom: .75rem; }
+.msg-empty-state p { font-size: .95rem; }
+
+/* ── Chat Header ── */
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .85rem 1.25rem;
+  border-bottom: 1px solid var(--pct-border);
+  background: #fff;
+  flex-shrink: 0;
+}
+.chat-back {
+  color: var(--pct-muted);
+  font-size: 1rem;
+  text-decoration: none;
+  margin-right: .25rem;
+}
+.chat-back:hover { color: var(--pct-primary); }
+.chat-header-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--pct-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem; font-weight: 700;
+}
+.chat-header-avatar--placeholder {
+  background: var(--pct-primary);
+  color: #fff;
+}
+.chat-header-name {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--pct-text);
+}
+
+/* ── Chat Body ── */
+.chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  background: var(--pct-bg);
+}
+.chat-no-msg {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--pct-muted);
+  text-align: center;
+}
+.chat-no-msg i { font-size: 2.5rem; color: #CBD5E1; margin-bottom: .5rem; }
+.chat-no-msg p { font-size: .875rem; }
+
+/* ── Message Row ── */
+.msg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: .5rem;
+}
+.msg-row--me { flex-direction: row-reverse; }
+
+/* avatar ในแชท */
+.msg-avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--pct-border);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 700;
+}
+.msg-avatar--placeholder {
+  background: var(--pct-primary);
+  color: #fff;
+}
+
+/* bubble wrap */
+.msg-bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 65%;
+}
+.msg-row--me .msg-bubble-wrap { align-items: flex-end; }
+.msg-row--other .msg-bubble-wrap { align-items: flex-start; }
+
+/* bubble */
+.msg-bubble {
+  background: #fff;
+  border: 1px solid var(--pct-border);
+  border-radius: 14px 14px 14px 4px;
+  padding: .5rem .85rem;
+  font-size: .875rem;
+  color: var(--pct-text);
+  line-height: 1.6;
+  word-break: break-word;
+}
+.msg-row--me .msg-bubble {
+  background: var(--pct-primary);
+  color: #fff;
+  border: none;
+  border-radius: 14px 14px 4px 14px;
+}
+
+/* รูปในแชท */
+.msg-img-wrap { margin-bottom: .2rem; }
+.msg-img {
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: 10px;
+  cursor: zoom-in;
+  border: 1px solid var(--pct-border);
+  display: block;
+}
+
+/* เวลา */
+.msg-time {
+  font-size: .68rem;
+  color: var(--pct-muted);
+  margin-top: .25rem;
+  padding: 0 .2rem;
+}
+
+/* ── Chat Footer ── */
+.chat-footer {
+  border-top: 1px solid var(--pct-border);
+  padding: .75rem 1rem;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+/* preview ก่อนส่ง */
+.img-preview-wrap {
+  margin-bottom: .6rem;
+}
+.img-preview-inner {
+  position: relative;
+  display: inline-block;
+}
+.img-preview-inner img {
+  max-height: 100px;
+  border-radius: 8px;
+  border: 1px solid var(--pct-border);
+  display: block;
+}
+.img-preview-remove {
+  position: absolute;
+  top: -6px; right: -6px;
+  width: 22px; height: 22px;
+  background: #EF4444;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: .65rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+
+/* input row */
+.chat-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: .5rem;
+}
+.chat-attach-btn {
+  width: 38px; height: 38px;
+  background: var(--pct-bg);
+  border: 1.5px solid var(--pct-border);
+  border-radius: 50%;
+  color: var(--pct-muted);
+  font-size: .9rem;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all .15s;
+}
+.chat-attach-btn:hover {
+  border-color: var(--pct-primary);
+  color: var(--pct-primary);
+}
+.msg-input {
+  flex: 1;
+  border: 1.5px solid var(--pct-border);
+  border-radius: 20px;
+  padding: .55rem 1rem;
+  font-size: .875rem;
+  font-family: inherit;
+  color: var(--pct-text);
+  resize: none;
+  line-height: 1.5;
+  max-height: 120px;
+  transition: border-color .2s;
+}
+.msg-input:focus {
+  outline: none;
+  border-color: var(--pct-primary);
+}
+.chat-send-btn {
+  width: 38px; height: 38px;
+  background: var(--pct-primary);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: .9rem;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background .15s;
+}
+.chat-send-btn:hover { background: var(--pct-primary-dk); }
+.chat-form-error {
+  font-size: .78rem;
+  color: #EF4444;
+  margin: .4rem 0 0;
+}
+
+/* ── Lightbox ── */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .88);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox.active { display: flex; }
+.lightbox img {
+  max-width: 90vw;
+  max-height: 88vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.lightbox-close {
+  position: absolute;
+  top: 1.2rem; right: 1.5rem;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 38px; height: 38px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.lightbox-close:hover { background: rgba(255,255,255,.25); }
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .msg-layout {
+    border-radius: 12px;
+    height: calc(100vh - var(--nav-height) - 2rem);
+  }
+  .msg-sidebar { width: 100%; border-right: none; }
+  .msg-main { width: 100%; }
+}
+
+/* ── Date Separator ── */
+.date-sep {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin: .75rem 0;
+  color: var(--pct-muted);
+  font-size: .72rem;
+}
+.date-sep::before,
+.date-sep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--pct-border);
+}
+.date-sep span {
+  background: var(--pct-bg);
+  padding: .2rem .75rem;
+  border-radius: 999px;
+  border: 1px solid var(--pct-border);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* ── msg-meta: เวลา + read receipt ── */
+.msg-meta {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  margin-top: .2rem;
+}
+.msg-row--me .msg-meta { justify-content: flex-end; }
+.msg-row--other .msg-meta { justify-content: flex-start; }
+
+/* Read receipt icon */
+.msg-read {
+  font-size: .68rem;
+  color: var(--pct-muted);
+  line-height: 1;
+}
+.msg-read--done {
+  color: #3B82F6; /* อ่านแล้ว = สีฟ้า */
+}
+
+/* ── Active inbox item (แชทที่กำลังเปิดอยู่) ── */
+.inbox-link--active {
+  background: var(--pct-primary-lt);
+  border-right: 3px solid var(--pct-primary);
+}
+.inbox-link--active .inbox-name {
+  color: var(--pct-primary);
+}
