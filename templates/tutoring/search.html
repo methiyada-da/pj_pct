@@ -4,7 +4,7 @@
 {% block title %}ค้นหาติวเตอร์ — Puean Chuay Tu{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/search.css' %}">
+<link rel="stylesheet" href="{% static 'css/search.css' %}?v={% now 'U' %}">
 {% endblock %}
 
 {% block content %}
@@ -219,6 +219,18 @@
                     ใหม่
                   {% endif %}
                 </div>
+
+                <!-- Tutor overlay บนรูป -->
+                <div class="card-tutor-overlay">
+                  {% if member.mb_img %}
+                    <img src="{{ member.mb_img.url }}" class="card-tutor-avatar" alt="{{ member.mb_full_name }}">
+                  {% else %}
+                    <div class="card-tutor-avatar card-tutor-placeholder">
+                      {{ member.mb_full_name|first|upper }}
+                    </div>
+                  {% endif %}
+                  <span class="card-tutor-name">{{ member.mb_full_name }}</span>
+                </div>
               </div>
 
               <!-- Body -->
@@ -243,30 +255,20 @@
                 <!-- คำอธิบาย -->
                 {% if tc.tutc_desc %}
                 <p class="course-desc">{{ tc.tutc_desc }}</p>
-                {% else %}
-                <p class="course-desc">{{ tc.crs_id.crs_name }}</p>
                 {% endif %}
-
-                <!-- ติวเตอร์ -->
-                <div class="tutor-row">
-                  {% if member.mb_img %}
-                    <img src="{{ member.mb_img.url }}" class="tutor-avatar" alt="{{ member.mb_full_name }}">
-                  {% else %}
-                    <div class="tutor-avatar-placeholder">
-                      {{ member.mb_full_name|first|upper }}
-                    </div>
-                  {% endif %}
-                  <span class="tutor-name">{{ member.mb_full_name }}</span>
-                </div>
 
                 <!-- Footer: ราคา + ปุ่ม -->
                 <div class="course-footer">
                   <div>
                     <div class="price-label">ราคา</div>
                     <div>
-                      {% if tc.lowest_price %}
-                        <span class="price-value">{{ tc.lowest_price }}</span>
-                        <span class="price-unit"> เครดิต/ครั้ง</span>
+                      {% if tc.lowest_price is not None %}
+                        {% if tc.lowest_price == 0 %}
+                          <span class="price-value" style="color:#16a34a;">ฟรี</span>
+                        {% else %}
+                          <span class="price-value">{{ tc.lowest_price }}</span>
+                          <span class="price-unit"> เครดิต/ครั้ง</span>
+                        {% endif %}
                       {% else %}
                         <span class="price-value">—</span>
                       {% endif %}
