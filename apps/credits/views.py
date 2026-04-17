@@ -27,12 +27,45 @@ def _get_system():
     return System.objects.first()
 
 
+def _promptpay_payload(target: str, amount: float = 0) -> str:
+    """สร้าง EMV QR payload ของ PromptPay โดยไม่ใช้ library ภายนอก"""
+    import re
+
+    # แปลงเบอร์โทร 0XXXXXXXXX → 0066XXXXXXXXX
+    if re.match(r'^0\d{9}$', target):
+        target = '0066' + target[1:]
+
+    def tlv(tag: int, val: str) -> str:
+        return f"{tag:02d}{len(val):02d}{val}"
+
+    merchant_info = tlv(0, 'A000000677010111') + tlv(1, target)
+
+    parts = (
+        tlv(0, '01')
+        + tlv(1, '12' if amount else '11')
+        + tlv(29, merchant_info)
+        + tlv(53, '764')
+    )
+    if amount:
+        parts += tlv(54, f"{amount:.2f}")
+    parts += tlv(58, 'TH') + '6304'
+
+    # CRC-16/CCITT-FALSE
+    crc = 0xFFFF
+    for b in parts.encode('ascii'):
+        crc ^= b << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) if crc & 0x8000 else (crc << 1)
+            crc &= 0xFFFF
+
+    return parts + f"{crc:04X}"
+
+
 def _generate_promptpay_qr(promptpay_id, amount=0):
     """สร้าง PromptPay QR base64 สำหรับแสดงในหน้าเว็บ"""
     try:
         import qrcode
-        from promptpay import qrcode as pp_qr
-        payload = pp_qr.generate_payload(promptpay_id, amount=float(amount))
+        payload = _promptpay_payload(promptpay_id, amount=float(amount))
         img = qrcode.make(payload)
         buf = io.BytesIO()
         img.save(buf, format='PNG')
