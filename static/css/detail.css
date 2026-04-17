@@ -407,3 +407,63 @@
   border-top: 1px solid var(--pct-border);
   line-height: 1.5;
 }
+
+
+/* ── Credit Card ── */
+.credit-card {
+  background: #fff;
+  border: 1px solid var(--pct-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.credit-card-header {
+  padding: .55rem 1rem;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--pct-muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--pct-border);
+  background: var(--pct-bg);
+}
+.credit-card-body {
+  padding: .85rem 1rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.credit-balance {
+  display: flex;
+  align-items: baseline;
+  gap: .35rem;
+}
+.credit-balance-num {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--pct-primary);
+  line-height: 1;
+}
+.credit-balance-unit {
+  font-size: .82rem;
+  color: var(--pct-muted);
+  font-weight: 500;
+}
+.btn-credit-link {
+  display: inline-flex;
+  align-items: center;
+  padding: .35rem .8rem;
+  border-radius: 2rem;
+  background: var(--pct-primary-lt);
+  color: var(--pct-primary);
+  font-size: .78rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  border: 1px solid #BFDBFE;
+  transition: background .15s;
+}
+.btn-credit-link:hover {
+  background: #BFDBFE;
+  color: var(--pct-primary);
+}
