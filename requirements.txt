@@ -1,11 +1,7 @@
 asgiref==3.11.1
-colorama==0.4.6
 Django==6.0.3
-libscrc==1.8.1
 mysqlclient==2.2.8
-packaging==26.0
 pillow==12.1.1
-promptpay==1.1.9
 PyMySQL==1.1.2
 qrcode==8.2
 sqlparse==0.5.5
