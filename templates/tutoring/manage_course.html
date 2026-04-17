@@ -1036,64 +1036,102 @@ function doRepeatGenerate() {
   let cur = new Date(startStr + 'T00:00:00');
   const endDate = new Date(endStr + 'T00:00:00');
 
+  // แยก: วันใหม่ vs วันที่มีอยู่แล้ว
   while (cur <= endDate) {
     const jsDay  = cur.getDay();
     const pyDay  = (jsDay + 6) % 7;
     const dateStr = cur.toISOString().slice(0, 10);
-
-    if (jsWeekdays.includes(jsDay) && !isDateExists(dateStr)) {
+    if (jsWeekdays.includes(jsDay)) {
       byDay.get(pyDay).push(dateStr);
     }
     cur.setDate(cur.getDate() + 1);
   }
 
-  // ── step 2: inject ผ่าน shared helpers (กรุ๊ปเข้ากลุ่มเดิมอัตโนมัติ) ──
+  // ── step 2: inject วันใหม่ / เพิ่ม slot ในวันเดิม ──
   const empty = document.getElementById('emptySlotMsg');
   if (empty) empty.remove();
 
-  let totalCreated = 0, totalSkipped = 0;
+  let totalCreated = 0, totalUpdated = 0;
 
   weekdays.forEach(pyDay => {
     const dates = byDay.get(pyDay);
     if (dates.length === 0) return;
 
     dates.forEach(dateStr => {
-      newDateCounter++;
-      const sdId = `new_${newDateCounter}`;
+      if (isDateExists(dateStr)) {
+        // ── วันมีอยู่แล้ว: เพิ่ม slot เข้าไปใน group เดิม ──
+        const existingGroup = [...document.querySelectorAll('#slotContainer .slot-day-group')]
+          .find(g => g.dataset.date === dateStr);
+        if (existingGroup) {
+          const addSlotBtn = existingGroup.querySelector('button[onclick*="addSlot"]');
+          const sdId = existingGroup.dataset.sdid;
 
-      // สร้าง group พร้อม slot เวลา
-      const group = createDayGroup(sdId, dateStr, pyDay, true);
+          // ดึง slot ที่มีอยู่แล้วใน group นี้ (start-end pairs)
+          const existingSlots = new Set(
+            [...existingGroup.querySelectorAll('.slot-row')].map(row => {
+              const inputs = row.querySelectorAll('input[type="text"]');
+              return inputs[0]?.value.trim() + '-' + inputs[1]?.value.trim();
+            })
+          );
 
-      // เพิ่ม slot เวลาตาม template
-      const addSlotBtn = group.querySelector('button[onclick*="addSlot"]');
-      slots.forEach(sl => {
-        const row = document.createElement('div');
-        row.className = 'slot-row d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 mb-2';
-        row.innerHTML = `
-          <input type="text" name="ts_start_${sdId}[]"
-                 class="form-control form-control-sm time-input flex-fill"
-                 value="${sl.start}" maxlength="5" inputmode="numeric">
-          <span class="text-muted small">—</span>
-          <input type="text" name="ts_end_${sdId}[]"
-                 class="form-control form-control-sm time-input flex-fill"
-                 value="${sl.end}" maxlength="5" inputmode="numeric">
-          <button type="button" class="btn btn-link text-secondary p-0"
-                  onclick="this.closest('.slot-row').remove()">
-            <i class="fas fa-times"></i>
-          </button>`;
-        group.insertBefore(row, addSlotBtn);
-        row.querySelectorAll('.time-input').forEach(initTimeInput);
-      });
-
-      // แทรกเข้ากลุ่มวันที่ถูกต้อง
-      insertIntoWeekdaySection(pyDay, group);
-      totalCreated++;
+          let addedCount = 0;
+          slots.forEach(sl => {
+            const key = sl.start + '-' + sl.end;
+            if (existingSlots.has(key)) return; // ซ้ำ → ข้าม
+            const row = document.createElement('div');
+            row.className = 'slot-row d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 mb-2';
+            row.innerHTML = `
+              <input type="text" name="ts_start_${sdId}[]"
+                     class="form-control form-control-sm time-input flex-fill"
+                     value="${sl.start}" maxlength="5" inputmode="numeric">
+              <span class="text-muted small">—</span>
+              <input type="text" name="ts_end_${sdId}[]"
+                     class="form-control form-control-sm time-input flex-fill"
+                     value="${sl.end}" maxlength="5" inputmode="numeric">
+              <button type="button" class="btn btn-link text-secondary p-0"
+                      onclick="this.closest('.slot-row').remove()">
+                <i class="fas fa-times"></i>
+              </button>`;
+            existingGroup.insertBefore(row, addSlotBtn);
+            row.querySelectorAll('.time-input').forEach(initTimeInput);
+            addedCount++;
+          });
+          if (addedCount > 0) totalUpdated++;
+        }
+      } else {
+        // ── วันใหม่: สร้าง group ใหม่ ──
+        newDateCounter++;
+        const sdId = `new_${newDateCounter}`;
+        const group = createDayGroup(sdId, dateStr, pyDay, true);
+        const addSlotBtn = group.querySelector('button[onclick*="addSlot"]');
+        slots.forEach(sl => {
+          const row = document.createElement('div');
+          row.className = 'slot-row d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 mb-2';
+          row.innerHTML = `
+            <input type="text" name="ts_start_${sdId}[]"
+                   class="form-control form-control-sm time-input flex-fill"
+                   value="${sl.start}" maxlength="5" inputmode="numeric">
+            <span class="text-muted small">—</span>
+            <input type="text" name="ts_end_${sdId}[]"
+                   class="form-control form-control-sm time-input flex-fill"
+                   value="${sl.end}" maxlength="5" inputmode="numeric">
+            <button type="button" class="btn btn-link text-secondary p-0"
+                    onclick="this.closest('.slot-row').remove()">
+              <i class="fas fa-times"></i>
+            </button>`;
+          group.insertBefore(row, addSlotBtn);
+          row.querySelectorAll('.time-input').forEach(initTimeInput);
+        });
+        insertIntoWeekdaySection(pyDay, group);
+        totalCreated++;
+      }
     });
   });
 
-  summaryEl.textContent = totalCreated > 0
-    ? `✓ สร้างแล้ว ${totalCreated} วัน`
-    : 'ไม่มีวันใหม่ (วันทั้งหมดมีอยู่แล้ว)';
+  let summary = [];
+  if (totalCreated > 0)  summary.push(`✓ สร้างใหม่ ${totalCreated} วัน`);
+  if (totalUpdated > 0)  summary.push(`+ เพิ่มสล็อตใน ${totalUpdated} วันเดิม`);
+  summaryEl.textContent = summary.length ? summary.join(', ') : 'ไม่มีการเปลี่ยนแปลง';
 }
 
 // ── ลบทั้ง section (header + วันทั้งหมดในกลุ่ม) ──

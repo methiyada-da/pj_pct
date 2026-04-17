@@ -437,29 +437,47 @@
   .course-card-img { height: 140px; }
 }
 
-/* ── Card เป็น link ทั้งใบ ── */
-.course-card-link {
-  text-decoration: none;
-  color: inherit;
-  display: block;
-  height: 100%;
+
+/* ── Card link: ลบเส้นขีดและสีฟ้า ── */
+.course-card-link,
+.course-card-link * {
+  text-decoration: none !important;
+  color: inherit !important;
 }
-.course-card-link:hover { color: inherit; }
-.course-card-link .course-card { height: 100%; }
-
-/* ── การ์ดทั้งใบเป็น link — ไม่มีเส้นขีดใต้ทุกอย่าง ── */
-a.course-card-link { text-decoration: none; color: inherit; display: block; height: 100%; }
-a.course-card-link:hover { text-decoration: none; color: inherit; }
-a.course-card-link:visited { text-decoration: none; color: inherit; }
-a.course-card-link * { text-decoration: none; }
-a.course-card-link p,
-a.course-card-link span,
-a.course-card-link div { text-decoration: none; }
-
-/* ── override browser default <a> underline ทุก element ใน card ── */
-.course-card a,
-.course-card-link .course-name,
-.course-card-link .course-desc,
-.course-card-link .tutor-name,
+.course-card-link .price-value  { color: var(--pct-primary) !important; }
 .course-card-link .price-label,
-.course-card-link .price-value { text-decoration: none !important; }
+.course-card-link .price-unit,
+.course-card-link .course-desc,
+.course-card-link .tutor-name   { color: var(--pct-muted) !important; }
+
+/* ── Tutor overlay บนรูปปก ── */
+.card-tutor-overlay {
+  position: absolute;
+  bottom: .6rem; left: .6rem;
+  display: flex; align-items: center; gap: .45rem;
+}
+.card-tutor-avatar {
+  width: 26px !important; height: 26px !important;
+  min-width: 26px; max-width: 26px;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 2px solid rgba(255,255,255,.7) !important;
+  flex-shrink: 0;
+}
+.course-card-img .card-tutor-overlay img {
+  width: 26px !important; height: 26px !important;
+  border-radius: 50% !important;
+}
+.card-tutor-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--pct-primary);
+  color: #fff; font-size: .65rem; font-weight: 700;
+}
+.card-tutor-name {
+  font-size: .75rem; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 130px;
+  background: rgba(255,255,255,.4);
+  border-radius: 999px;
+  padding: .1rem .45rem;
+}
