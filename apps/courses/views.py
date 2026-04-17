@@ -242,7 +242,9 @@ def course_group_json(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def course_list(request):
-    qs        = Course.objects.select_related('cg_id').order_by('crs_id')
+    qs = Course.objects.select_related('cg_id').annotate(
+    tutorcourse_count=Count('tutorcourse')
+    ).order_by('crs_id')
     q         = request.GET.get('q',  '').strip()
     cg_filter = request.GET.get('cg', '')
     if q:
@@ -285,7 +287,9 @@ def course_create(request):
 def course_edit(request, pk):
     obj = get_object_or_404(Course, pk=pk)
     if request.method == 'POST':
-        form = CourseForm(request.POST, instance=obj)
+        data = request.POST.copy()
+        data['crs_id'] = pk  # ใส่ crs_id กลับเข้าไปเพราะ modal ไม่ส่งมา
+        form = CourseForm(data, instance=obj)
         if form.is_valid():
             form.save()
             messages.success(request, 'แก้ไขรายวิชาเรียบร้อยแล้ว')
@@ -299,11 +303,17 @@ def course_edit(request, pk):
 def course_delete(request, pk):
     obj = get_object_or_404(Course, pk=pk)
     if request.method == 'POST':
-        try:
-            obj.delete()
-            messages.success(request, f'ลบรายวิชา "{obj.crs_name}" เรียบร้อยแล้ว')
-        except Exception:
-            messages.error(request, 'ไม่สามารถลบได้ เนื่องจากมีข้อมูลที่เกี่ยวข้อง')
+        # ตรวจสอบว่ามี TutorCourse ที่ใช้รายวิชานี้อยู่หรือไม่
+        from apps.tutoring.models import TutorCourse
+        tutor_course_count = TutorCourse.objects.filter(crs_id=obj).count()
+        if tutor_course_count > 0:
+            messages.error(request, f'ไม่สามารถลบรายวิชา "{obj.crs_name}" ได้ เนื่องจากมีติวเตอร์ใช้งานอยู่ ({tutor_course_count} คอร์ส)')
+        else:
+            try:
+                obj.delete()
+                messages.success(request, f'ลบรายวิชา "{obj.crs_name}" เรียบร้อยแล้ว')
+            except Exception:
+                messages.error(request, 'ไม่สามารถลบได้ เนื่องจากมีข้อมูลที่เกี่ยวข้อง')
     return redirect('courses:course_list')
 
 
