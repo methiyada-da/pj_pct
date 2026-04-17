@@ -51,11 +51,12 @@
     </form>
   </div>
 
-  <table class="data-table">
+  <table class="data-table" style="table-layout:fixed;width:100%;">
     <thead>
       <tr>
         <th style="width:140px;">รหัสรายวิชา</th>
-        <th>ชื่อรายวิชา</th>
+        <th style="width:35%;">ชื่อรายวิชา</th>
+        <th style="width:120px;text-align:center;">จำนวนคอร์ส</th>
         <th style="width:180px;">กลุ่มรายวิชา</th>
         <th style="width:100px;">การปฏิบัติ</th>
       </tr>
@@ -70,6 +71,15 @@
           <strong>{{ obj.crs_name }}</strong>
           {% if obj.crs_desc %}
           <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">{{ obj.crs_desc|truncatechars:70 }}</div>
+          {% endif %}
+        </td>
+        <td style="text-align:center;">
+          {% if obj.tutorcourse_count %}
+          <span style="display:inline-block;background:#EFF6FF;color:#2563EB;font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;">
+            {{ obj.tutorcourse_count }}
+          </span>
+          {% else %}
+          <span style="color:#D1D5DB;font-size:13px;">—</span>
           {% endif %}
         </td>
         <td style="font-size:13px;color:#6B7280;">{{ obj.cg_id.cg_name }}</td>
@@ -167,6 +177,7 @@
     <div class="modal-content">
       <form method="post" id="editForm" action="">
         {% csrf_token %}
+        <input type="hidden" name="crs_id" id="edit_crs_id_hidden" />
         <div class="modal-header">
           <h5 class="modal-title"><i class="bi bi-pencil me-2 text-primary"></i>แก้ไขรายวิชา</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -237,6 +248,7 @@ function openEditCourse(pk, name, desc, cgId) {
   document.getElementById('edit_crs_desc').value  = desc;
   document.getElementById('edit_cg_id').value    = cgId;
   document.getElementById('editForm').action = `/courses/course/${pk}/edit/`;
+  document.getElementById('edit_crs_id_hidden').value = pk;
   new bootstrap.Modal(document.getElementById('editModal')).show();
 }
 function openDeleteCourse(pk, name) {
