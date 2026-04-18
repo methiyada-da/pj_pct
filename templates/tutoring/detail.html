@@ -33,9 +33,15 @@
           <p class="tutor-name-lg">{{ member.mb_full_name }}</p>
 
           <!-- ปุ่มแชท -->
-          <a href="#" class="btn-chat">
-            <i class="far fa-comment-dots"></i> แชท
-          </a>
+          {% if user.is_authenticated and user.member != member %}
+            <a href="{% url 'messaging:chat_with' member.pk %}" class="btn-chat">
+              <i class="far fa-comment-dots"></i> แชท
+            </a>
+          {% elif not user.is_authenticated %}
+            <a href="{% url 'accounts:login' %}?next={% url 'messaging:chat_with' member.pk %}" class="btn-chat">
+              <i class="far fa-comment-dots"></i> แชท
+            </a>
+          {% endif %}
 
           <!-- Rating -->
           <div class="tutor-rating-row">
