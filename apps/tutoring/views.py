@@ -8,6 +8,7 @@ from apps.courses.models import CourseGroup, Course
 from .forms import TutorRegisterForm
 import re
 from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
+from apps.bookings.models import Booking
 
 
 def _member_context(member):
@@ -96,7 +97,9 @@ def tutor_manage(request):
     if tutor and tutor.tut_status == 1:
         courses = TutorCourse.objects.filter(tut_id=tutor)
         course_count = courses.count()
-        # TODO: ใส่ logic booking count เมื่อมี booking model
+        pending_booking_count = Booking.objects.filter(
+            tutc_id__tut_id=tutor, bk_status=0
+        ).count()
 
     return render(request, 'tutoring/tutor_manage.html', {
         **_member_context(member),
