@@ -52,33 +52,78 @@
     border-bottom: 1px solid #F1F5F9;
   }
   .modal-detail-row:last-child { border-bottom: none; }
+
+  /* Summary stat cards */
+  .stat-card {
+    border-radius: 14px;
+    padding: 18px 20px;
+    border: 1.5px solid transparent;
+  }
+  .stat-card.stat-pending  { background:#FFFBEB; border-color:#FDE68A; }
+  .stat-card.stat-accepted { background:#F0FDF4; border-color:#BBF7D0; }
+  .stat-card.stat-others   { background:#F8FAFC; border-color:#E2E8F0; }
+
+  .back-btn:hover { background:#2563eb !important; border-color:#2563eb !important; color:#fff !important; }
+
+  /* empty state illustration */
+  .empty-state {
+    background: #fff;
+    border-radius: 16px;
+    border: 1.5px dashed #E5E7EB;
+    padding: 48px 24px;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
+
+<!-- ── Page Header ── -->
+<div class="py-3">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3">
+
+      <!-- ปุ่มย้อนกลับ — อยู่นอกซ้าย ขนานกับหัวข้อ -->
+      <a href="{% url 'tutoring:tutor_manage' %}"
+         class="d-inline-flex align-items-center justify-content-center flex-shrink-0 text-decoration-none back-btn"
+         title="กลับหน้าจัดการ"
+         style="width:36px; height:36px; border-radius:8px; border:1.5px solid #e5e7eb; background:#fff; color:#6b7280; font-size:.9rem; transition:all .15s;">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+
+      <!-- หัวข้อ -->
+      <div>
+        <h1 class="fw-bold mb-0" style="font-size:1.2rem; color:#111; line-height:1.2;">คำขอจองของฉัน</h1>
+        <p class="text-muted mb-0" style="font-size:.8rem;">จัดการคำขอจองที่นักเรียนส่งมาให้คุณ</p>
+      </div>
+
+      <!-- badge รออนุมัติ -->
+      {% if pending %}
+      <span class="badge rounded-pill fw-bold px-3 py-2 ms-auto"
+            style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-size:.8rem;">
+        <i class="fas fa-bell me-1"></i> {{ pending|length }} รออนุมัติ
+      </span>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Main Content ── -->
 <div class="bg-light min-vh-100 py-4 px-2 px-md-3">
   <div class="container" style="max-width:900px;">
-
-    <!-- Header -->
-    <div class="d-flex align-items-center justify-content-between mb-4">
-      <div>
-        <h4 class="fw-bold mb-1">คำขอจองของฉัน</h4>
-        <p class="text-muted small mb-0">จัดการคำขอจองที่นักเรียนส่งมาให้คุณ</p>
-      </div>
-      <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-        {{ pending|length }} รออนุมัติ
-      </span>
-    </div>
 
     <!-- Tab pills -->
     <div class="d-flex gap-2 mb-4 flex-wrap">
       <button class="tab-pill active" data-tab="pending">
+        <i class="fas fa-hourglass-half me-1 text-warning"></i>
         รอยืนยัน <span class="badge bg-warning text-dark ms-1">{{ pending|length }}</span>
       </button>
       <button class="tab-pill" data-tab="accepted">
+        <i class="fas fa-check-circle me-1 text-success"></i>
         รับงานแล้ว <span class="badge bg-success ms-1">{{ accepted|length }}</span>
       </button>
       <button class="tab-pill" data-tab="others">
+        <i class="fas fa-folder me-1 text-secondary"></i>
         อื่น ๆ <span class="badge bg-secondary ms-1">{{ others|length }}</span>
       </button>
     </div>
@@ -93,9 +138,10 @@
               <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 <span class="badge bg-warning text-dark">รอยืนยัน</span>
+                <span class="text-muted small ms-auto">{{ bk.bk_date|date:"d M Y H:i" }}</span>
               </div>
 
-              <div class="fw-bold mb-2" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
+              <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
               <div class="text-muted small mb-3">{{ bk.tutc_id.crs_id }}</div>
 
               <div class="row g-2">
@@ -168,9 +214,10 @@
         </div>
         {% endfor %}
       {% else %}
-        <div class="text-center py-5 text-muted">
-          <i class="fas fa-inbox fa-3x mb-3 d-block" style="opacity:.3;"></i>
-          ยังไม่มีคำขอจองที่รอยืนยัน
+        <div class="empty-state text-center text-muted">
+          <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-inbox"></i></div>
+          <div class="fw-semibold mb-1">ยังไม่มีคำขอจองที่รอยืนยัน</div>
+          <div class="small">เมื่อมีนักเรียนส่งคำขอ จะปรากฏที่นี่</div>
         </div>
       {% endif %}
     </div>
@@ -186,30 +233,26 @@
               <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 <span class="badge bg-success">รับงานแล้ว</span>
+                <span class="text-muted small ms-auto">{{ bk.bk_date|date:"d M Y" }}</span>
               </div>
               <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
-              <div class="info-row">
-                <span class="info-label"><i class="fas fa-user me-1 text-success"></i>นักเรียน</span>
-                <span>{{ bk.member.mb_full_name }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label"><i class="fas fa-calendar me-1 text-success"></i>วันนัด</span>
-                <span>{{ bk.bk_stu_datetime|date:"d M Y H:i" }}</span>
-              </div>
+              <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
             </div>
             <div class="text-end">
               <div class="fw-bold text-success" style="font-size:18px;">
                 {{ bk.total_credit }} เครดิต
               </div>
               <div class="text-muted small">{{ bk.bk_stu_count }} คน × {{ bk.bk_rate_per_person }}</div>
+              <div class="text-muted small mt-1"><i class="fas fa-chevron-right" style="font-size:11px;"></i> ดูรายละเอียด</div>
             </div>
           </div>
         </div>
         {% endfor %}
       {% else %}
-        <div class="text-center py-5 text-muted">
-          <i class="fas fa-clipboard-check fa-3x mb-3 d-block" style="opacity:.3;"></i>
-          ยังไม่มีงานที่รับแล้ว
+        <div class="empty-state text-center text-muted">
+          <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-clipboard-check"></i></div>
+          <div class="fw-semibold mb-1">ยังไม่มีงานที่รับแล้ว</div>
+          <div class="small">งานที่คุณยืนยันรับจะปรากฏที่นี่</div>
         </div>
       {% endif %}
     </div>
@@ -239,14 +282,16 @@
               <div class="fw-bold" style="font-size:16px;">
                 {{ bk.total_credit }} เครดิต
               </div>
+              <div class="text-muted small mt-1"><i class="fas fa-chevron-right" style="font-size:11px;"></i> ดูรายละเอียด</div>
             </div>
           </div>
         </div>
         {% endfor %}
       {% else %}
-        <div class="text-center py-5 text-muted">
-          <i class="fas fa-folder-open fa-3x mb-3 d-block" style="opacity:.3;"></i>
-          ไม่มีรายการ
+        <div class="empty-state text-center text-muted">
+          <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-folder-open"></i></div>
+          <div class="fw-semibold mb-1">ไม่มีรายการ</div>
+          <div class="small">ประวัติการจองอื่น ๆ จะปรากฏที่นี่</div>
         </div>
       {% endif %}
     </div>
