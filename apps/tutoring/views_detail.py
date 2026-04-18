@@ -171,6 +171,7 @@ def booking_create(request, tutc_id):
             request,
             f'จองสำเร็จ! รอติวเตอร์ยืนยันภายใน 24 ชั่วโมง (ล็อกเครดิต {total_credit} เครดิต)'
         )
+        return redirect('bookings:student_bookings')
     except Exception:
         messages.error(request, 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')
 

@@ -221,6 +221,8 @@ def topup_view(request):
     if system and system.promptpay_id:
         qr_img = _generate_promptpay_qr(system.promptpay_id, amount=0)
 
+    available = member.mb_deposit_crd + member.mb_income_crd - member.mb_locked_crd
+
     return render(request, 'credits/topup.html', {
         'member'      : member,
         'system'      : system,
@@ -228,6 +230,7 @@ def topup_view(request):
         'crd_val'     : crd_val,
         'qr_img'      : qr_img,
         'promptpay_id': system.promptpay_id if system and system.promptpay_id else '',
+        'available'   : available,
         'prev'        : {},
     })
 
