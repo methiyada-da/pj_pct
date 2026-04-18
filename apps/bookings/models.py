@@ -48,6 +48,10 @@ class Booking(models.Model):
         db_table     = 'booking'
         verbose_name = "ข้อมูลการจองเรียน"
 
+    @property
+    def total_credit(self):
+        return self.bk_rate_per_person * self.bk_stu_count
+
     def __str__(self):
         return f"BK{self.bk_id:05d} | {self.member.mb_full_name}"
 
