@@ -104,7 +104,8 @@
 
               {# ── Message Row ── #}
               <div class="msg-row {% if msg.sender == me %}msg-row--me{% else %}msg-row--other{% endif %}"
-                   data-msg-id="{{ msg.msg_id }}">
+                   data-msg-id="{{ msg.msg_id }}"
+                   data-sent-time="{{ msg.msg_sent_time|date:'c' }}">
 
                 {% if msg.sender != me %}
                   {% if msg.sender.mb_img %}
@@ -344,7 +345,12 @@
     const rows = chatBody.querySelectorAll('[data-msg-id]');
     return rows.length ? Math.max(...[...rows].map(r => parseInt(r.dataset.msgId) || 0)) : 0;
   })();
-  let lastMsgTime = null;
+  // ดึงเวลาของข้อความล่าสุดที่ render จาก Django เพื่อเช็ค date separator ใน polling
+  let lastMsgTime = (() => {
+    const rows = chatBody.querySelectorAll('[data-msg-id]');
+    if (!rows.length) return null;
+    return rows[rows.length - 1].dataset.sentTime || null;
+  })();
 
   async function poll() {
     if (!meta.pollUrl) return;

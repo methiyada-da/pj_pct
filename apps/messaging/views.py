@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from datetime import datetime, timezone as dt_timezone
 from django.utils import timezone
 from django.db.models import Q
 
@@ -30,7 +31,7 @@ def _build_inbox_data(me):
         })
     inbox_data.sort(
         key=lambda x: x['last_msg'].msg_sent_time if x['last_msg']
-                      else timezone.datetime.min.replace(tzinfo=timezone.utc),
+                      else datetime.min.replace(tzinfo=dt_timezone.utc),
         reverse=True
     )
     return inbox_data
