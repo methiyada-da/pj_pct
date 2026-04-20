@@ -1,0 +1,311 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}จัดการโปรไฟล์ | Puean Chuay Tu{% endblock %}
+
+{% block content %}
+
+
+<!-- ── Messages ── -->
+{% if messages %}
+<div class="container mt-3">
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show rounded-3" role="alert">
+      {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" id="editForm">
+{% csrf_token %}
+
+<section class="py-4 pb-5 bg-light">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- LEFT ── -->
+      <div class="col-12">
+
+        <!-- ── Hero Profile Card ── -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4" style="background: linear-gradient(135deg, #1d4ed8, #3b82f6); overflow: hidden;">
+          <div class="card-body p-4 d-flex align-items-center gap-4">
+            <!-- Avatar + อัปโหลด -->
+            <div class="position-relative flex-shrink-0">
+              {% if member.mb_img %}
+                <img id="avatarPreview" src="{{ member.mb_img.url }}" alt="รูปโปรไฟล์"
+                     class="rounded-circle border border-4 border-white shadow"
+                     style="width: 100px; height: 100px; object-fit: cover;">
+              {% else %}
+                <div id="avatarPreview" class="rounded-circle border border-4 border-white shadow bg-white d-flex align-items-center justify-content-center"
+                     style="width: 100px; height: 100px;">
+                  <i class="fas fa-user-circle text-primary" style="font-size: 3.5rem;"></i>
+                </div>
+              {% endif %}
+              <!-- ปุ่มกล้อง -->
+              <label for="mb_img" class="position-absolute bottom-0 end-0 rounded-circle bg-white text-primary d-flex align-items-center justify-content-center shadow"
+                     style="width: 30px; height: 30px; cursor: pointer; border: 2px solid #2563eb;">
+                <i class="fas fa-camera" style="font-size: .7rem;"></i>
+              </label>
+              <input type="file" id="mb_img" name="mb_img" accept="image/*" class="d-none" onchange="previewAvatar(this)">
+            </div>
+            <!-- ชื่อ / สถานะ -->
+            <div class="text-white">
+              <h4 class="fw-bold mb-1">{{ member.mb_full_name }}</h4>
+              <p class="mb-1" style="opacity: .8; font-size: .87rem;">{{ faculty_name }} · {{ major_name }}</p>
+              <span class="badge rounded-pill px-3 py-1 fw-semibold"
+                    style="background: rgba(255,255,255,.2); font-size: .75rem;">
+                {% if tutor.tut_status == 1 %}
+                  <i class="fas fa-circle me-1" style="font-size: .45rem; vertical-align: middle;"></i> ติวเตอร์ที่ได้รับการยืนยัน
+                {% else %}
+                  {{ tutor.get_tut_status_display }}
+                {% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ข้อมูลส่วนตัว (read-only) ── -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3 text-dark">
+              <i class="fas fa-user me-2 text-primary"></i>ข้อมูลส่วนตัว
+            </h6>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label text-muted small">ชื่อ-นามสกุล</label>
+                <input type="text" class="form-control bg-light" value="{{ member.mb_full_name }}" disabled>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label text-muted small">อีเมล (RMUTI)</label>
+                <input type="text" class="form-control bg-light" value="{{ member.mb_email }}" disabled>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label text-muted small">คณะ</label>
+                <input type="text" class="form-control bg-light" value="{{ faculty_name }}" disabled>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label text-muted small">สาขาวิชา</label>
+                <input type="text" class="form-control bg-light" value="{{ major_name }}" disabled>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label text-muted small">เกรดเฉลี่ยสะสม (ตรวจสอบแล้ว)</label>
+                <div class="form-control bg-light fw-bold text-primary">{{ tutor.tut_gpax }} <i class="fas fa-check-circle text-success ms-1" style="font-size: .8rem;"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── เกี่ยวกับฉัน ── -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3 text-dark">
+              <i class="fas fa-align-left me-2 text-primary"></i>เกี่ยวกับฉัน
+            </h6>
+            <label class="form-label text-muted small">คำอธิบายตัวเอง</label>
+            <textarea name="tut_desc" class="form-control" rows="5"
+                      placeholder="แนะนำตัวเอง สไตล์การสอน จุดเด่น..."
+                      maxlength="1000">{{ tutor.tut_desc|default:'' }}</textarea>
+            <div class="text-end text-muted mt-1" style="font-size: .75rem;">
+              <span id="descCount">{{ tutor.tut_desc|length|default:0 }}</span> / 1000 ตัวอักษร
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ความถนัดและทักษะ ── -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3 text-dark">
+              <i class="fas fa-tools me-2 text-primary"></i>ความถนัดและทักษะ
+            </h6>
+            <p class="text-muted small mb-3">พิมพ์ทักษะแล้วกด Enter หรือ , เพื่อเพิ่ม</p>
+
+            <!-- แสดง chips -->
+            <div id="skillChips" class="d-flex flex-wrap gap-2 mb-3">
+              {% for skill in skills %}
+                <span class="skill-chip badge rounded-pill px-3 py-2 d-flex align-items-center gap-2"
+                      style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: .82rem; font-weight: 500;">
+                  {{ skill }}
+                  <button type="button" onclick="removeSkill(this)" class="btn-close btn-close-sm" style="font-size: .55rem; filter: invert(1) sepia(1) saturate(5) hue-rotate(190deg);"></button>
+                </span>
+              {% endfor %}
+            </div>
+            <div class="d-flex gap-2">
+              <input type="text" id="skillInput" class="form-control form-control-sm" style="max-width: 250px;"
+                     placeholder="เพิ่มทักษะ..." onkeydown="handleSkillKey(event)">
+              <button type="button" onclick="addSkillFromInput()" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                <i class="fas fa-plus me-1"></i>เพิ่ม
+              </button>
+            </div>
+            <!-- hidden input เก็บค่าจริง -->
+            <input type="hidden" id="tut_skill" name="tut_skill" value="{{ tutor.tut_skill|default:'' }}">
+          </div>
+        </div>
+
+        <!-- ── ประสบการณ์สอน ── -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4">
+          <div class="card-body p-4">
+            <h6 class="fw-bold mb-3 text-dark">
+              <i class="fas fa-briefcase me-2 text-primary"></i>ประสบการณ์การสอน
+            </h6>
+            <div class="d-flex gap-4 mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="tut_has_exp" value="0" id="expNo"
+                       {% if not tutor.tut_has_exp %}checked{% endif %}
+                       onchange="toggleExpDetail()">
+                <label class="form-check-label" for="expNo">ไม่มีประสบการณ์</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="tut_has_exp" value="1" id="expYes"
+                       {% if tutor.tut_has_exp %}checked{% endif %}
+                       onchange="toggleExpDetail()">
+                <label class="form-check-label" for="expYes">มีประสบการณ์</label>
+              </div>
+            </div>
+            <div id="expDetailBox" {% if not tutor.tut_has_exp %}style="display:none;"{% endif %}>
+              <label class="form-label text-muted small">รายละเอียดประสบการณ์</label>
+              <textarea name="tut_exp_desc" class="form-control" rows="4"
+                        placeholder="ช่วยเล่าเพิ่มเติมเกี่ยวกับประสบการณ์ของคุณในฐานะติวเตอร์...">{{ tutor.tut_exp_desc|default:'' }}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── รูปภาพกิจกรรมการสอน ── -->
+        <div class="card border-0 rounded-4 shadow-sm mb-4">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="fw-bold mb-0 text-dark">
+                <i class="fas fa-images me-2 text-primary"></i>รูปภาพกิจกรรมการสอน
+              </h6>
+              <span class="badge bg-secondary rounded-pill px-3" style="font-size: .72rem;">เร็วๆ นี้</span>
+            </div>
+            <p class="text-muted small mb-3">รูปภาพจะดึงมาจากการบันทึกกิจกรรมหลังจากมีการจองสำเร็จ</p>
+            <!-- Preview placeholder -->
+            <div class="row g-3">
+              <div class="col-4">
+                <div class="rounded-3 bg-light border d-flex align-items-center justify-content-center" style="height: 120px;">
+                  <i class="fas fa-image text-muted" style="font-size: 1.8rem; opacity: .3;"></i>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="rounded-3 bg-light border d-flex align-items-center justify-content-center" style="height: 120px;">
+                  <i class="fas fa-image text-muted" style="font-size: 1.8rem; opacity: .3;"></i>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="rounded-3 bg-light border d-flex align-items-center justify-content-center" style="height: 120px;">
+                  <span class="text-muted small">อัปโหลดใหม่<br>เร็วๆ นี้</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ปุ่มบันทึก + ดูโปรไฟล์ (ด้านล่างสุด) ── -->
+        <div class="d-flex gap-2 mt-2 mb-4">
+          <button type="submit" class="btn btn-primary fw-semibold px-4 py-2 rounded-pill shadow-sm">
+            <i class="fas fa-save me-2"></i>บันทึกโปรไฟล์
+          </button>
+          <a href="{% url 'tutoring:tutor_profile' tut_id=member.pk %}"
+             class="btn btn-outline-secondary fw-semibold px-4 py-2 rounded-pill">
+            <i class="fas fa-eye me-2"></i>ดูโปรไฟล์
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+</form>
+
+<script>
+/* ── Avatar Preview ── */
+function previewAvatar(input) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const el = document.getElementById('avatarPreview');
+    if (el.tagName === 'IMG') {
+      el.src = e.target.result;
+    } else {
+      // div → สร้าง img แทน
+      const img = document.createElement('img');
+      img.id        = 'avatarPreview';
+      img.src       = e.target.result;
+      img.className = 'rounded-circle border border-4 border-white shadow';
+      img.style     = 'width:100px; height:100px; object-fit:cover;';
+      el.replaceWith(img);
+    }
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+/* ── Skills Chip ── */
+function getSkills() {
+  const hidden = document.getElementById('tut_skill').value;
+  return hidden ? hidden.split(',').map(s => s.trim()).filter(Boolean) : [];
+}
+
+function setSkills(arr) {
+  document.getElementById('tut_skill').value = arr.join(', ');
+}
+
+function renderChips(arr) {
+  const box = document.getElementById('skillChips');
+  box.innerHTML = '';
+  arr.forEach(skill => {
+    const span = document.createElement('span');
+    span.className = 'skill-chip badge rounded-pill px-3 py-2 d-flex align-items-center gap-2';
+    span.style     = 'background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:.82rem; font-weight:500;';
+    span.innerHTML = `${skill} <button type="button" onclick="removeSkill(this)" class="btn-close btn-close-sm" style="font-size:.55rem; filter:invert(1) sepia(1) saturate(5) hue-rotate(190deg);"></button>`;
+    box.appendChild(span);
+  });
+}
+
+function addSkill(name) {
+  name = name.trim();
+  if (!name) return;
+  const arr = getSkills();
+  if (arr.includes(name)) return;
+  arr.push(name);
+  setSkills(arr);
+  renderChips(arr);
+}
+
+function removeSkill(btn) {
+  const chip = btn.closest('.skill-chip');
+  const name = chip.childNodes[0].textContent.trim();
+  const arr  = getSkills().filter(s => s !== name);
+  setSkills(arr);
+  renderChips(arr);
+}
+
+function addSkillFromInput() {
+  const input = document.getElementById('skillInput');
+  input.value.split(',').forEach(s => addSkill(s));
+  input.value = '';
+}
+
+function handleSkillKey(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    addSkillFromInput();
+  }
+}
+
+/* ── Desc Counter ── */
+const descTA = document.querySelector('textarea[name="tut_desc"]');
+const descCount = document.getElementById('descCount');
+if (descTA && descCount) {
+  descTA.addEventListener('input', () => { descCount.textContent = descTA.value.length; });
+}
+
+/* ── Toggle Exp Detail ── */
+function toggleExpDetail() {
+  const yes = document.getElementById('expYes').checked;
+  document.getElementById('expDetailBox').style.display = yes ? '' : 'none';
+}
+</script>
+
+{% endblock %}
