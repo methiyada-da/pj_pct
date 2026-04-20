@@ -52,12 +52,7 @@
           <div class="invalid-feedback d-block">{{ form.password.errors.0 }}</div>
         {% endif %}
       </div>
-
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="remember_me" id="rememberMe">
-          <label class="form-check-label small" for="rememberMe">จดจำฉันไว้</label>
-        </div>
+      <div class="d-flex justify-content-end mb-4">
         <a href="{% url 'accounts:password_reset' %}" class="link-primary small">ลืมรหัสผ่าน?</a>
       </div>
 

@@ -41,6 +41,10 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
+            if request.POST.get('remember_me'):
+                request.session.set_expiry(60 * 60 * 24 * 7)  # 30 วัน
+            else:
+                request.session.set_expiry(0)  # หมดอายุเมื่อปิด browser
             messages.success(request, f'ยินดีต้อนรับกลับ, {user.first_name or user.username}!')
             if user.is_staff:
                 return redirect('admin_panel:dashboard')
@@ -182,8 +186,88 @@ def profile_view(request):
 
 
 # ─────────────────────────────────────────────
-#  รีเซ็ตรหัสผ่าน (placeholder)
+#  รีเซ็ตรหัสผ่าน
 # ─────────────────────────────────────────────
 def password_reset_view(request):
-    """หน้ารีเซ็ตรหัสผ่าน (placeholder)"""
+    """ขอ reset — กรอก email แล้วส่งลิงก์"""
+    if request.method == 'POST':
+        from django.contrib.auth.models import User as AuthUser
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from django.core.mail import send_mail
+        from django.conf import settings as conf_settings
+
+        email = request.POST.get('email', '').strip().lower()
+        try:
+            user = AuthUser.objects.get(email__iexact=email)
+            uid   = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_url = request.build_absolute_uri(
+                f'/accounts/password-reset/confirm/{uid}/{token}/'
+            )
+            send_mail(
+                subject='[Puean Chuay Tu] รีเซ็ตรหัสผ่าน',
+                message=(
+                    f'สวัสดี {user.first_name or user.username},\n\n'
+                    f'คลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่:\n{reset_url}\n\n'
+                    f'ลิงก์นี้จะหมดอายุใน 24 ชั่วโมง\n'
+                    f'หากคุณไม่ได้ขอรีเซ็ต กรุณาเพิกเฉยต่ออีเมลนี้'
+                ),
+                from_email=conf_settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except AuthUser.DoesNotExist:
+            pass  # ไม่บอกว่า email ไม่มีในระบบ (ป้องกัน user enumeration)
+        except Exception:
+            messages.error(request, 'ส่งอีเมลไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ')
+            return render(request, 'accounts/password_reset.html')
+
+        return redirect('accounts:password_reset_done')
+
     return render(request, 'accounts/password_reset.html')
+
+
+def password_reset_done_view(request):
+    """แจ้งว่าส่งอีเมลแล้ว"""
+    return render(request, 'accounts/password_reset_done.html')
+
+
+def password_reset_confirm_view(request, uidb64, token):
+    """หน้าตั้งรหัสผ่านใหม่ — ตรวจ token ก่อน"""
+    from django.contrib.auth.models import User as AuthUser
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.utils.encoding import force_str
+
+    try:
+        uid  = force_str(urlsafe_base64_decode(uidb64))
+        user = AuthUser.objects.get(pk=uid)
+    except Exception:
+        user = None
+
+    valid = user is not None and default_token_generator.check_token(user, token)
+
+    if request.method == 'POST' and valid:
+        pw1 = request.POST.get('password1', '')
+        pw2 = request.POST.get('password2', '')
+        if len(pw1) < 8:
+            messages.error(request, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร')
+        elif pw1 != pw2:
+            messages.error(request, 'รหัสผ่านไม่ตรงกัน')
+        else:
+            user.set_password(pw1)
+            user.save()
+            return redirect('accounts:password_reset_complete')
+
+    return render(request, 'accounts/password_reset_confirm.html', {
+        'valid': valid,
+        'uidb64': uidb64,
+        'token': token,
+    })
+
+
+def password_reset_complete_view(request):
+    """รีเซ็ตสำเร็จ"""
+    return render(request, 'accounts/password_reset_complete.html')
