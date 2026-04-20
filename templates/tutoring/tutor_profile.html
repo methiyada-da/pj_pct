@@ -1,0 +1,460 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}โปรไฟล์ติวเตอร์ — {{ member.mb_full_name }}{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Tokens ── */
+  .tp-wrap {
+    --pr:    #2563eb;
+    --pr10:  rgba(37,99,235,.10);
+    --prcnt: #dbeafe;
+    --onprc: #1e40af;
+    --scnt:  #f1f3fb;
+    --shi:   #eceef5;
+    --ons:   #0f172a;
+    --onsv:  #475569;
+    --out:   #e2e8f0;
+    --outv:  #cbd5e1;
+    --bg:    #f6f7f8;
+  }
+
+  .tp-wrap { background:var(--bg); min-height:100vh; padding:2rem 1rem 5rem; }
+  .tp-wrap * { box-sizing:border-box; }
+
+  /* ── Grid ── */
+  .tp-grid { display:grid; grid-template-columns:1fr; gap:1.5rem; max-width:1280px; margin:0 auto; }
+  @media(min-width:1024px){ .tp-grid { grid-template-columns:340px 1fr; } }
+
+  /* ── Card base ── */
+  .tp-card { background:#fff; border:1px solid var(--out); border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+
+  /* ── Profile header ── */
+  .tp-banner { height:7.5rem; background:linear-gradient(90deg,#1d4ed8 0%,#2563eb 50%,#3b82f6 100%); border-radius:12px 12px 0 0; position:relative; overflow:hidden; }
+  .tp-banner::after { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='30'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+  .tp-profile-body { padding:0 1.5rem 1.5rem; margin-top:-4rem; }
+  .tp-avatar-wrap { position:relative; display:inline-block; }
+  .tp-avatar { width:7.5rem; height:7.5rem; border-radius:12px; border:4px solid #fff; object-fit:cover; box-shadow:0 4px 14px rgba(0,0,0,.15); background:#fff; display:block; }
+  .tp-avatar-ph { width:7.5rem; height:7.5rem; border-radius:12px; border:4px solid #fff; box-shadow:0 4px 14px rgba(0,0,0,.15); background:#fff; display:flex; align-items:center; justify-content:center; }
+  .tp-online { position:absolute; bottom:.5rem; right:.5rem; width:1.1rem; height:1.1rem; background:#22c55e; border-radius:9999px; border:3px solid #fff; }
+
+  /* ── Buttons ── */
+  .tp-btn { width:100%; font-weight:600; padding:.75rem 1rem; border-radius:.625rem; border:none; display:flex; align-items:center; justify-content:center; gap:.5rem; cursor:pointer; font-size:.9rem; transition:.15s; text-decoration:none; }
+  .tp-btn-chat { background:var(--scnt); color:var(--ons); border:1px solid var(--out); }
+  .tp-btn-chat:hover { background:var(--shi); color:var(--ons); }
+  .tp-btn-edit { background:var(--pr); color:#fff; }
+  .tp-btn-edit:hover { opacity:.88; color:#fff; }
+
+  /* ── Status badge ── */
+  .tp-status-dot { display:inline-flex; align-items:center; gap:.4rem; font-size:.8rem; font-weight:600; padding:.3rem .8rem; border-radius:9999px; }
+  .tp-status-approved { background:rgba(34,197,94,.12); color:#15803d; }
+  .tp-status-pending  { background:rgba(234,179,8,.12);  color:#a16207; }
+  .tp-status-rejected { background:rgba(239,68,68,.12);  color:#b91c1c; }
+
+  /* ── Academic rows ── */
+  .tp-arow { display:flex; align-items:flex-start; gap:.875rem; padding:.75rem; border-radius:.5rem; background:var(--scnt); }
+  .tp-arow-icon { color:var(--onsv); font-size:1.1rem; flex-shrink:0; margin-top:.1rem; }
+  .tp-arow-label { font-size:.62rem; color:var(--onsv); text-transform:uppercase; letter-spacing:.06em; font-weight:700; margin:0; }
+  .tp-arow-val   { font-weight:600; margin:.1rem 0 0; font-size:.875rem; color:var(--ons); }
+
+  /* ── Skill chips ── */
+  .tp-chip { background:var(--pr10); color:var(--pr); padding:.28rem .75rem; border-radius:9999px; font-size:.75rem; font-weight:600; display:inline-block; }
+
+  /* ── Section header ── */
+  .tp-sec { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+  .tp-sec-title { font-size:1.1rem; font-weight:700; color:var(--ons); margin:0; }
+  .tp-sec-link  { font-size:.82rem; font-weight:700; color:var(--pr); text-decoration:none; background:none; border:none; cursor:pointer; padding:0; }
+  .tp-sec-link:hover { text-decoration:underline; color:var(--pr); }
+
+  /* ══════════════════════════════════════════
+     COURSE CARDS  — อิงจาก style หน้าค้นหา
+  ══════════════════════════════════════════ */
+  .tp-course-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1.25rem; }
+  .tp-ccard { background:#fff; border:1px solid var(--out); border-radius:14px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.05); transition:box-shadow .2s,transform .2s,border-color .2s; text-decoration:none; color:inherit; display:flex; flex-direction:column; }
+  .tp-ccard:hover { box-shadow:0 6px 24px rgba(37,99,235,.12); transform:translateY(-3px); border-color:#93c5fd; }
+
+  /* รูปปก */
+  .tp-ccard-img { position:relative; height:9rem; background:linear-gradient(135deg,#1d4ed8,#3b82f6); overflow:hidden; flex-shrink:0; }
+  .tp-ccard-img img { width:100%; height:100%; object-fit:cover; }
+  .tp-ccard-img-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+  .tp-ccard-img-ph .ph-text { font-size:2.5rem; font-weight:800; color:rgba(255,255,255,.35); letter-spacing:-.04em; }
+
+  /* badge ใหม่บนรูป */
+  .tp-ccard-badge-new { position:absolute; top:.6rem; right:.6rem; background:#fff; color:var(--pr); font-size:.68rem; font-weight:700; padding:.25rem .6rem; border-radius:9999px; display:flex; align-items:center; gap:.2rem; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+
+  /* instructor mini on image */
+  .tp-ccard-instructor { position:absolute; bottom:.6rem; left:.6rem; display:flex; align-items:center; gap:.4rem; background:rgba(0,0,0,.45); backdrop-filter:blur(4px); padding:.25rem .6rem .25rem .3rem; border-radius:9999px; }
+  .tp-ccard-instructor img { width:1.4rem; height:1.4rem; border-radius:9999px; object-fit:cover; border:1.5px solid #fff; }
+  .tp-ccard-instructor span { color:#fff; font-size:.68rem; font-weight:500; }
+
+  /* body */
+  .tp-ccard-body { padding:1rem 1.1rem 1.1rem; flex:1; display:flex; flex-direction:column; }
+  .tp-ccard-cat  { display:inline-block; font-size:.68rem; font-weight:600; padding:.2rem .65rem; border-radius:.25rem; margin-bottom:.5rem; }
+  .tp-ccard-name { font-size:.97rem; font-weight:700; color:var(--ons); margin:0 0 .35rem; line-height:1.35; }
+  .tp-ccard-desc { font-size:.8rem; color:var(--onsv); line-height:1.55; margin:0 0 auto; }
+  .tp-ccard-footer { display:flex; justify-content:space-between; align-items:center; margin-top:.85rem; padding-top:.75rem; border-top:1px solid var(--out); }
+  .tp-ccard-price-label { font-size:.62rem; color:var(--onsv); text-transform:uppercase; font-weight:700; margin:0; }
+  .tp-ccard-price-val   { font-size:1.05rem; font-weight:800; color:var(--pr); margin:.05rem 0 0; }
+  .tp-ccard-price-free  { font-size:1.05rem; font-weight:800; color:#16a34a; margin:.05rem 0 0; }
+  .tp-ccard-btn { background:var(--pr); color:#fff !important; font-size:.78rem; font-weight:600; padding:.42rem .95rem; border-radius:.5rem; text-decoration:none; border:none; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:opacity .15s; }
+  .tp-ccard-btn:hover { opacity:.88; }
+
+  /* ── Gallery ── */
+  .tp-gallery { display:grid; grid-template-columns:repeat(2,1fr); gap:.875rem; }
+  @media(min-width:768px){ .tp-gallery { grid-template-columns:repeat(3,1fr); } }
+  .tp-gitem { position:relative; overflow:hidden; border-radius:12px; aspect-ratio:4/3; background:linear-gradient(135deg,#dbeafe,#eff6ff); display:flex; align-items:center; justify-content:center; }
+  .tp-gitem.tall { aspect-ratio:auto; }
+  @media(min-width:768px){ .tp-gitem.tall { grid-row:span 2; } }
+  .tp-gitem img { width:100%; height:100%; object-fit:cover; transition:transform .5s; position:absolute; inset:0; }
+  .tp-gitem:hover img { transform:scale(1.08); }
+  .tp-gitem::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,.18); transition:.2s; }
+  .tp-gitem:hover::after { background:rgba(0,0,0,.36); }
+
+  /* ── Reviews ── */
+  .tp-rv { padding-bottom:1.25rem; border-bottom:1px solid var(--outv); }
+  .tp-rv:last-child { border-bottom:none; padding-bottom:0; }
+  .tp-rv-avatar { width:2.4rem; height:2.4rem; border-radius:9999px; object-fit:cover; }
+  .tp-rv-stars  { display:flex; color:#f59e0b; font-size:.85rem; }
+  .tp-rv-text   { font-style:italic; color:var(--onsv); font-size:.85rem; margin:.4rem 0 0; line-height:1.6; }
+
+  /* ── Fade in ── */
+  @keyframes _fu { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+  .tp-fu  { animation:_fu .35s ease both; }
+  .tp-fu2 { animation:_fu .35s .07s ease both; }
+  .tp-fu3 { animation:_fu .35s .14s ease both; }
+  .tp-fu4 { animation:_fu .35s .21s ease both; }
+</style>
+
+<div class="tp-wrap">
+
+  <!-- ── ปุ่มย้อนกลับ + หัวข้อ ── -->
+  <div style="max-width:1280px;margin:0 auto 1rem;display:flex;align-items:center;gap:.75rem;">
+    <a id="back-btn" href="javascript:history.back()"
+       class="btn btn-light border shadow-sm d-inline-flex align-items-center justify-content-center"
+       style="border-radius:10px;width:36px;height:36px;padding:0;flex-shrink:0;">
+      <i class="fas fa-arrow-left" style="font-size:12px;"></i>
+    </a>
+    <h5 style="margin:0;font-weight:700;color:var(--ons);font-size:1.05rem;">โปรไฟล์ติวเตอร์</h5>
+  </div>
+  <script>
+    // ถ้าหน้าก่อนหน้าเป็นหน้าแก้ไขโปรไฟล์ → ไปที่ tutor_manage แทน
+    (function() {
+      var ref = document.referrer || '';
+      if (ref.indexOf('/tutoring/profile/edit') !== -1) {
+        document.getElementById('back-btn').href = "{% url 'tutoring:tutor_manage' %}";
+      }
+    })();
+  </script>
+
+<div class="tp-grid">
+
+  <!-- ═══════════════════════════
+       LEFT COLUMN
+  ═══════════════════════════ -->
+  <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+    <!-- ── Profile Header Card ── -->
+    <div class="tp-card tp-fu" style="overflow:hidden;">
+      <div class="tp-banner"></div>
+      <div class="tp-profile-body">
+        <!-- Avatar -->
+        <div class="tp-avatar-wrap">
+          {% if member.mb_img %}
+            <img class="tp-avatar" src="{{ member.mb_img.url }}" alt="{{ member.mb_full_name }}">
+          {% else %}
+            <div class="tp-avatar-ph">
+              <i class="fas fa-user-circle text-primary" style="font-size:3.5rem;"></i>
+            </div>
+          {% endif %}
+          <div class="tp-online"></div>
+        </div>
+
+        <!-- ชื่อ + status -->
+        <div style="margin-top:.875rem;">
+          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+            <h1 style="font-size:1.35rem;font-weight:700;color:var(--ons);margin:0;line-height:1.25;">{{ member.mb_full_name }}</h1>
+            {% if tutor.tut_status == 1 %}
+              <i class="fas fa-badge-check" style="color:var(--pr);font-size:1rem;" title="ติวเตอร์ที่ผ่านการยืนยัน"></i>
+            {% endif %}
+          </div>
+
+          <!-- สถานะแบบ badge -->
+          <div style="margin-top:.5rem;">
+            {% if tutor.tut_status == 1 %}
+              <span class="tp-status-dot tp-status-approved">
+                <i class="fas fa-circle" style="font-size:.45rem;"></i> ติวเตอร์ได้รับการอนุมัติแล้ว
+              </span>
+            {% elif tutor.tut_status == 0 %}
+              <span class="tp-status-dot tp-status-pending">
+                <i class="fas fa-circle" style="font-size:.45rem;"></i> รอการตรวจสอบ
+              </span>
+            {% elif tutor.tut_status == 2 %}
+              <span class="tp-status-dot tp-status-rejected">
+                <i class="fas fa-circle" style="font-size:.45rem;"></i> ถูกปฏิเสธ
+              </span>
+            {% endif %}
+          </div>
+
+          <!-- Rating -->
+          {% if tutor.tut_rating and tutor.tut_rating > 0 %}
+          <div style="display:flex;align-items:center;gap:.35rem;margin-top:.6rem;">
+            <div style="display:flex;gap:1px;color:#f59e0b;">
+              <i class="fas fa-star" style="font-size:.85rem;"></i>
+              <i class="fas fa-star" style="font-size:.85rem;"></i>
+              <i class="fas fa-star" style="font-size:.85rem;"></i>
+              <i class="fas fa-star" style="font-size:.85rem;"></i>
+              <i class="fas fa-star-half-alt" style="font-size:.85rem;"></i>
+            </div>
+            <span style="font-weight:700;font-size:.9rem;">{{ tutor.tut_rating }}</span>
+            <span style="color:var(--onsv);font-size:.78rem;">({{ review_count|default:"0" }} รีวิว)</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- CTA Buttons -->
+        <div style="margin-top:1.25rem;display:flex;flex-direction:column;gap:.5rem;">
+          {% if is_owner %}
+            {# เจ้าของ: แสดงแค่ปุ่มแก้ไข #}
+            <a href="{% url 'tutoring:tutor_profile_edit' %}" class="tp-btn tp-btn-edit">
+              <i class="fas fa-pen" style="font-size:.85rem;"></i> แก้ไขโปรไฟล์
+            </a>
+          {% else %}
+            {# คนอื่นดู: ปุ่มแชทขึ้นก่อน (เสมอ) #}
+            {% if request.user.is_authenticated %}
+              <a href="{% url 'messaging:chat_with' tutor_mb_id %}" class="tp-btn tp-btn-chat">
+                <i class="fas fa-comment-dots" style="font-size:.9rem;"></i> ส่งข้อความ
+              </a>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div><!-- /profile header -->
+
+    <!-- ── ประวัติการศึกษา ── -->
+    <div class="tp-card tp-fu2" style="padding:1.25rem;">
+      <h2 style="font-size:.92rem;font-weight:700;margin:0 0 .875rem;display:flex;align-items:center;gap:.45rem;color:var(--ons);">
+        <i class="fas fa-graduation-cap" style="color:var(--pr);font-size:.9rem;"></i> ประวัติการศึกษา
+      </h2>
+      <div style="display:flex;flex-direction:column;gap:.625rem;">
+        <div class="tp-arow">
+          <i class="fas fa-university tp-arow-icon"></i>
+          <div><p class="tp-arow-label">มหาวิทยาลัย</p><p class="tp-arow-val">มหาวิทยาลัยเทคโนโลยีราชมงคลอีสาน</p></div>
+        </div>
+        <div class="tp-arow">
+          <i class="fas fa-building tp-arow-icon"></i>
+          <div><p class="tp-arow-label">คณะ</p><p class="tp-arow-val">{{ faculty_name }}</p></div>
+        </div>
+        <div class="tp-arow">
+          <i class="fas fa-user-graduate tp-arow-icon"></i>
+          <div><p class="tp-arow-label">สาขาวิชา</p><p class="tp-arow-val">{{ major_name }}</p></div>
+        </div>
+        <div class="tp-arow">
+          <i class="fas fa-star tp-arow-icon" style="color:#f59e0b;"></i>
+          <div>
+            <p class="tp-arow-label">เกรดเฉลี่ยสะสม</p>
+            <p style="font-weight:800;font-size:1.1rem;color:var(--pr);margin:.1rem 0 0;">{{ tutor.tut_gpax }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── เกี่ยวกับฉัน ── -->
+    {% if tutor.tut_desc %}
+    <div class="tp-card tp-fu3" style="padding:1.25rem;">
+      <h2 style="font-size:.92rem;font-weight:700;margin:0 0 .75rem;display:flex;align-items:center;gap:.45rem;color:var(--ons);">
+        <i class="fas fa-user" style="color:var(--pr);font-size:.85rem;"></i> เกี่ยวกับฉัน
+      </h2>
+      <p style="color:var(--onsv);line-height:1.75;font-size:.85rem;margin:0;white-space:pre-wrap;">{{ tutor.tut_desc }}</p>
+    </div>
+    {% endif %}
+
+    <!-- ── ประสบการณ์สอน (แยกการ์ด) ── -->
+    {% if tutor.tut_has_exp or tutor.tut_exp_desc %}
+    <div class="tp-card tp-fu4" style="padding:1.25rem;">
+      <h2 style="font-size:.92rem;font-weight:700;margin:0 0 .75rem;display:flex;align-items:center;gap:.45rem;color:var(--ons);">
+        <i class="fas fa-briefcase" style="color:var(--pr);font-size:.85rem;"></i> ประสบการณ์การสอน
+      </h2>
+      {# badge "มีประสบการณ์" ขึ้นก่อนเสมอ #}
+      {% if tutor.tut_has_exp %}
+        <div style="margin-bottom:.75rem;">
+          <span style="background:var(--prcnt);color:var(--onprc);padding:.3rem .8rem .3rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600;display:inline-flex;align-items:center;gap:.3rem;">
+            <i class="fas fa-check-circle" style="font-size:.8rem;"></i> มีประสบการณ์สอน
+          </span>
+        </div>
+      {% endif %}
+      {% if tutor.tut_exp_desc %}
+        <p style="color:var(--onsv);line-height:1.75;font-size:.85rem;margin:0;white-space:pre-wrap;">{{ tutor.tut_exp_desc }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── ความเชี่ยวชาญและทักษะ ── -->
+    {% if skills %}
+    <div class="tp-card" style="padding:1.25rem;">
+      <h2 style="font-size:.92rem;font-weight:700;margin:0 0 .75rem;display:flex;align-items:center;gap:.45rem;color:var(--ons);">
+        <i class="fas fa-tools" style="color:var(--pr);font-size:.85rem;"></i> ความเชี่ยวชาญและทักษะ
+      </h2>
+      <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
+        {% for skill in skills %}<span class="tp-chip">{{ skill }}</span>{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div><!-- /left -->
+
+
+  <!-- ═══════════════════════════
+       RIGHT COLUMN
+  ═══════════════════════════ -->
+  <div style="display:flex;flex-direction:column;gap:2rem;">
+
+    <!-- ── รายวิชาที่รับสอน ── style หน้าค้นหา -->
+    <div class="tp-fu">
+      <div class="tp-sec">
+        <h2 class="tp-sec-title">รายวิชาที่รับสอน</h2>
+        {% if is_owner %}
+          <a href="{% url 'tutoring:tutor_course_list' %}" class="tp-sec-link">ดูทั้งหมด</a>
+        {% endif %}
+      </div>
+
+      {% if courses_with_min_rate %}
+      <div class="tp-course-grid">
+        {% for item in courses_with_min_rate %}
+        <a href="{% url 'tutoring:course_detail' item.course.tutc_id %}" class="tp-ccard">
+
+          <!-- รูปปก -->
+          <div class="tp-ccard-img">
+            {% if item.course.tutc_img %}
+              <img src="{{ item.course.tutc_img.url }}" alt="{{ item.course.tutc_name }}">
+            {% else %}
+              <div class="tp-ccard-img-ph">
+                <span class="ph-text">{{ item.course.tutc_name|slice:":2" }}</span>
+              </div>
+            {% endif %}
+
+            <!-- badge ใหม่ -->
+            <span class="tp-ccard-badge-new">
+              <i class="fas fa-star" style="font-size:.6rem;color:#f59e0b;"></i> ใหม่
+            </span>
+
+            <!-- instructor mini -->
+            <div class="tp-ccard-instructor">
+              {% if member.mb_img %}
+                <img src="{{ member.mb_img.url }}" alt="{{ member.mb_full_name }}">
+              {% endif %}
+              <span>{{ member.mb_full_name|truncatechars:18 }}</span>
+            </div>
+          </div>
+
+          <!-- body -->
+          <div class="tp-ccard-body">
+            <!-- category tag -->
+            <span class="tp-ccard-cat"
+                  style="background:{% cycle 'rgba(37,99,235,.08)' 'rgba(22,163,74,.08)' 'rgba(217,119,6,.08)' 'rgba(124,58,237,.08)' %};
+                         color:{% cycle '#1d4ed8' '#15803d' '#92400e' '#6d28d9' %};">
+              {{ item.course.crs_id.cg_id.cg_name|default:item.course.crs_id }}
+            </span>
+
+            <h3 class="tp-ccard-name">{{ item.course.tutc_name }}</h3>
+            {% if item.course.tutc_desc %}
+              <p class="tp-ccard-desc">{{ item.course.tutc_desc|truncatechars:80 }}</p>
+            {% endif %}
+
+            <!-- footer: ราคา + ปุ่ม -->
+            <div class="tp-ccard-footer">
+              <div>
+                <p class="tp-ccard-price-label">ราคา</p>
+                {% if item.min_rate %}
+                  <p class="tp-ccard-price-val">{{ item.min_rate }} เครดิต/ครั้ง</p>
+                {% else %}
+                  <p class="tp-ccard-price-free">ฟรี</p>
+                {% endif %}
+              </div>
+              <span class="tp-ccard-btn">ดูรายละเอียด</span>
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+
+      {% else %}
+      <div class="tp-card" style="text-align:center;padding:3rem 1.5rem;color:var(--onsv);">
+        <i class="fas fa-inbox" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:.75rem;"></i>
+        <p style="margin:0;font-size:.88rem;">ยังไม่มีคอร์สที่เปิดสอน</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── ภาพกิจกรรมการสอน ── -->
+    <div class="tp-fu2">
+      <div class="tp-sec">
+        <h2 class="tp-sec-title">ภาพกิจกรรมการสอน</h2>
+        <button class="tp-sec-link" style="background:none;border:none;">ดูทั้งหมด</button>
+      </div>
+      <div class="tp-gallery">
+        {% if activity_images %}
+          {% for img_url in activity_images %}
+          <div class="tp-gitem{% if forloop.counter == 2 %} tall{% endif %}">
+            <img src="{{ img_url }}" alt="ภาพกิจกรรม {{ forloop.counter }}">
+          </div>
+          {% endfor %}
+        {% else %}
+          {% for n in "12345" %}
+          <div class="tp-gitem{% if forloop.counter == 2 %} tall{% endif %}">
+            <i class="fas fa-image" style="font-size:2rem;color:var(--pr);opacity:.18;"></i>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ── รีวิวล่าสุด ── -->
+    <div class="tp-card tp-fu3" style="padding:1.5rem;">
+      <div class="tp-sec" style="margin-bottom:1.25rem;">
+        <h2 class="tp-sec-title">รีวิวล่าสุด</h2>
+        <button class="tp-sec-link" style="background:none;border:none;">ดูทั้งหมด</button>
+      </div>
+
+      {% if reviews %}
+      <div style="display:flex;flex-direction:column;gap:1.25rem;">
+        {% for rv in reviews %}
+        <div class="tp-rv">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem;">
+            <div style="display:flex;align-items:center;gap:.65rem;">
+              {% if rv.bk_id.member.mb_img %}
+                <img class="tp-rv-avatar" src="{{ rv.bk_id.member.mb_img.url }}" alt="">
+              {% else %}
+                <div class="tp-rv-avatar" style="background:var(--scnt);display:flex;align-items:center;justify-content:center;">
+                  <i class="fas fa-user" style="color:var(--onsv);font-size:1rem;"></i>
+                </div>
+              {% endif %}
+              <div>
+                <p style="font-weight:700;margin:0;font-size:.87rem;">{{ rv.bk_id.member.mb_full_name }}</p>
+                <p style="font-size:.7rem;color:var(--onsv);margin:.05rem 0 0;">{{ rv.rv_date|timesince }} ที่ผ่านมา</p>
+              </div>
+            </div>
+            <div class="tp-rv-stars">
+              {% for i in "12345" %}<i class="fas fa-star" style="font-size:.8rem;"></i>{% endfor %}
+            </div>
+          </div>
+          {% if rv.rv_cmt %}
+            <p class="tp-rv-text">"{{ rv.rv_cmt }}"</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:1.5rem 1rem;color:var(--onsv);">
+        <i class="fas fa-comment-slash" style="font-size:2rem;opacity:.2;display:block;margin-bottom:.6rem;"></i>
+        <p style="margin:0;font-size:.84rem;font-style:italic;">ยังไม่มีรีวิว — จะแสดงเมื่อมีการจองสำเร็จ</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div><!-- /right -->
+
+</div><!-- /tp-grid -->
+</div><!-- /tp-wrap -->
+
+{% endblock %}
