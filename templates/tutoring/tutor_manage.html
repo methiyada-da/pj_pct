@@ -147,7 +147,7 @@
         <!-- โปรไฟล์ติวเตอร์ -->
         <p class="text-muted text-uppercase fw-bold mb-2 mt-4" style="font-size:.7rem; letter-spacing:.1em;">👤 โปรไฟล์</p>
         <div class="d-flex flex-column gap-3">
-          <a href="{% url 'tutoring:register_tutor' %}" class="card border rounded-4 text-decoration-none text-dark shadow-sm menu-card">
+          <a href="{% url 'tutoring:tutor_profile' tut_id=request.user.member.pk %}" class="card border rounded-4 text-decoration-none text-dark shadow-sm menu-card">
             <div class="card-body d-flex align-items-center gap-3 p-4">
               <div class="d-inline-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
                    style="width:52px; height:52px; font-size:1.3rem; background:#f5f3ff; color:#7c3aed;">
@@ -155,7 +155,7 @@
               </div>
               <div class="flex-fill">
                 <div class="fw-bold" style="font-size:.97rem;">โปรไฟล์ติวเตอร์</div>
-                <p class="text-muted mb-0 small">แก้ไข GPA ทักษะ ประสบการณ์ </p>
+                <p class="text-muted mb-0 small">จัดการข้อมูลโปรไฟล์ติวเตอร์ของคุณ</p>
               </div>
               <i class="fas fa-chevron-right text-muted"></i>
             </div>
