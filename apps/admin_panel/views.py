@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.db import transaction
 from django.urls import reverse
 
 from django.utils import timezone
@@ -415,4 +416,116 @@ def payment_mgmt(request):
         'status_filter' : status_filter,
         'active_menu'   : 'payment',
         'topbar_breadcrumb': 'การชำระเงิน',
+    })
+
+
+# ─────────────────────────────────────────────
+#  รายงานปัญหา (admin)
+# ─────────────────────────────────────────────
+@login_required
+@user_passes_test(is_admin)
+def report_mgmt(request):
+    """รายการรายงานปัญหาจากผู้เรียน"""
+    from apps.bookings.models import Booking
+
+    if request.method == 'POST':
+        bk_id  = request.POST.get('bk_id')
+        action = request.POST.get('action')
+        bk = get_object_or_404(
+            Booking.objects.select_related(
+                'member', 'tutc_id', 'tutc_id__tut_id', 'tutc_id__tut_id__tut_id'
+            ), pk=bk_id
+        )
+
+        if action == 'send_back':
+            # ส่งให้ติวเตอร์แก้ไข → bk_status กลับเป็น 2
+            bk.bk_status = 2
+            bk.bk_report_desc = None
+            bk.bk_report_type = None
+            bk.bk_report_date = None
+            bk.save(update_fields=['bk_status', 'bk_report_desc', 'bk_report_type', 'bk_report_date'])
+            messages.success(request, f'ส่งกลับให้ติวเตอร์แก้ไข BK{bk.bk_id:05d} แล้ว')
+
+        elif action == 'send_note':
+            # ส่งหมายเหตุถึงผู้เรียน → บันทึกลง bk_cmt
+            note = request.POST.get('note', '').strip()
+            if note:
+                bk.bk_cmt = f'[แอดมิน] {note}'
+                bk.save(update_fields=['bk_cmt'])
+                messages.success(request, f'ส่งหมายเหตุถึงผู้เรียน BK{bk.bk_id:05d} แล้ว')
+            else:
+                messages.error(request, 'กรุณาระบุหมายเหตุ')
+
+        elif action == 'resolve_transfer':
+            # จัดการแล้ว + โอนเครดิตให้ติวเตอร์
+            try:
+                with transaction.atomic():
+                    total_credit = bk.bk_rate_per_person * bk.bk_stu_count
+                    # โอนเครดิตจากล็อก → ติวเตอร์
+                    bk.member.mb_locked_crd = max(0, bk.member.mb_locked_crd - total_credit)
+                    bk.member.save(update_fields=['mb_locked_crd'])
+                    tutor_member = bk.tutc_id.tut_id.tut_id
+                    tutor_member.mb_income_crd += total_credit
+                    tutor_member.save(update_fields=['mb_income_crd'])
+                    # อัปเดต JobCompletion
+                    from apps.bookings.models import JobCompletion
+                    JobCompletion.objects.filter(bk_id=bk).update(jc_confirm_date=timezone.now())
+                    # เปลี่ยนสถานะ + ล้าง report
+                    bk.bk_status      = 4
+                    bk.bk_report_desc = None
+                    bk.bk_report_type = None
+                    bk.bk_report_date = None
+                    bk.save(update_fields=['bk_status', 'bk_report_desc', 'bk_report_type', 'bk_report_date'])
+                messages.success(request, f'โอนเครดิต {total_credit} เครดิต และปิด BK{bk.bk_id:05d} แล้ว')
+            except Exception as e:
+                messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+
+        elif action == 'suspend':
+            # ระงับการสอน → tut_status = 3
+            tutor = bk.tutc_id.tut_id
+            tutor.tut_status = 3
+            tutor.save(update_fields=['tut_status'])
+            bk.bk_report_desc = None
+            bk.bk_report_type = None
+            bk.bk_report_date = None
+            bk.save(update_fields=['bk_report_desc', 'bk_report_type', 'bk_report_date'])
+            messages.warning(request, f'ระงับการสอนของ {tutor.tut_id.mb_full_name} แล้ว')
+
+        elif action == 'resolve':
+            # ปิด case โดยไม่โอนเครดิต
+            bk.bk_report_desc = None
+            bk.bk_report_type = None
+            bk.bk_report_date = None
+            bk.save(update_fields=['bk_report_desc', 'bk_report_type', 'bk_report_date'])
+            messages.success(request, f'จัดการรายงานปัญหา BK{bk.bk_id:05d} เรียบร้อยแล้ว')
+
+        return redirect('admin_panel:report_mgmt')
+
+    # ดึง booking ที่มีการรายงานปัญหา (bk_report_desc ไม่ว่าง)
+    qs = (
+        Booking.objects
+        .filter(bk_report_desc__isnull=False)
+        .select_related('member', 'tutc_id', 'tutc_id__tut_id__tut_id')
+        .order_by('-bk_report_date')
+    )
+
+    type_filter = request.GET.get('type', '')
+    if type_filter != '':
+        qs = qs.filter(bk_report_type=type_filter)
+
+    pending_count = qs.count()
+    admin_count   = qs.filter(bk_report_type=1).count()
+    tutor_count   = qs.filter(bk_report_type=0).count()
+
+    paginator = Paginator(qs, 15)
+    page      = paginator.get_page(request.GET.get('page', 1))
+
+    return render(request, 'admin_panel/report_mgmt.html', {
+        'page'          : page,
+        'pending_count' : pending_count,
+        'admin_count'   : admin_count,
+        'tutor_count'   : tutor_count,
+        'type_filter'   : type_filter,
+        'active_menu'   : 'report_mgmt',
+        'topbar_breadcrumb': 'รายงานปัญหา',
     })

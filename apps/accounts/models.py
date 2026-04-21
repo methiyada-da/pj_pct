@@ -60,7 +60,17 @@ class Tutor(models.Model):
     tut_gpax     = models.DecimalField(max_digits=3, decimal_places=2, verbose_name="เกรดเฉลี่ย")
     tut_has_exp  = models.IntegerField(choices=EXP_CHOICES, default=0, verbose_name="ประสบการณ์สอน")
     tut_exp_desc = models.TextField(blank=True, null=True, verbose_name="รายละเอียดประสบการณ์สอน")
+
+    # คะแนนรีวิวเฉลี่ยรวม (ใช้สำหรับ sort/rank ในหน้าค้นหา)
     tut_rating   = models.DecimalField(max_digits=3, decimal_places=2, default=0, verbose_name="คะแนนรีวิวเฉลี่ย")
+
+    # คะแนนรีวิวแยก 5 ด้าน (cache จาก Review — อัพเดตทุกครั้งที่มีรีวิวใหม่)
+    tut_rating_quality       = models.DecimalField(max_digits=3, decimal_places=2, default=0, verbose_name="เฉลี่ยคุณภาพการสอน")
+    tut_rating_knowledge     = models.DecimalField(max_digits=3, decimal_places=2, default=0, verbose_name="เฉลี่ยความรู้ความสามารถ")
+    tut_rating_communication = models.DecimalField(max_digits=3, decimal_places=2, default=0, verbose_name="เฉลี่ยการสื่อสารและการอธิบาย")
+    tut_rating_punctuality   = models.DecimalField(max_digits=3, decimal_places=2, default=0, verbose_name="เฉลี่ยความตรงต่อเวลา")
+    tut_rating_satisfaction  = models.DecimalField(max_digits=3, decimal_places=2, default=0, verbose_name="เฉลี่ยความพึงพอใจ")
+
     tut_status   = models.IntegerField(choices=STATUS_CHOICES, default=0, verbose_name="สถานะ")
 
     class Meta:

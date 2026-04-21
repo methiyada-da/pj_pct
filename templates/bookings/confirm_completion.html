@@ -1,0 +1,196 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}ยืนยันการจบงาน — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<style>
+  .proof-img {
+    width: 100%; aspect-ratio: 4/3; object-fit: cover;
+    border-radius: 12px; cursor: pointer;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .proof-img:hover { transform: scale(1.03); box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+  .proof-placeholder {
+    width: 100%; aspect-ratio: 4/3;
+    background: #F1F5F9; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .secure-bar {
+    background: #F8FAFC; border: 1px solid #E2E8F0;
+    border-radius: 10px; padding: 10px 16px; font-size: 12.5px; color: #64748B;
+  }
+  .info-card {
+    border-radius: 12px; border: 1.5px solid #E5E7EB;
+    background: #fff; overflow: hidden;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-light min-vh-100 py-4 px-2 px-md-3">
+  <div class="container" style="max-width: 780px;">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb" style="font-size: 13px;">
+        <li class="breadcrumb-item"><a href="{% url 'bookings:student_bookings' %}" class="text-decoration-none">การจอง</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'bookings:student_bookings' %}" class="text-decoration-none">รายการจอง</a></li>
+        <li class="breadcrumb-item active">ยืนยันการจบงาน</li>
+      </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="mb-4">
+      <span class="badge bg-warning text-dark rounded-pill px-3 py-2 mb-2" style="font-size:.78rem;">
+        <i class="fas fa-clock me-1"></i>Pending Review
+      </span>
+      <h4 class="fw-bold mb-1">ตรวจสอบการจบงานสอน</h4>
+      <p class="text-muted small mb-0">โปรดตรวจสอบเอกสารที่อาจารย์ผู้สอนส่งมาและอนุมัติการจ่ายหน่วยกิต</p>
+    </div>
+
+    <!-- Session Info Cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="info-card p-3 d-flex align-items-center gap-3">
+          <i class="fas fa-calendar-alt text-primary" style="font-size:1.3rem;"></i>
+          <div>
+            <div class="text-muted" style="font-size:11px;">วันที่</div>
+            <div class="fw-semibold" style="font-size:13.5px;">{{ bk.bk_stu_datetime|date:"d F Y" }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="info-card p-3 d-flex align-items-center gap-3">
+          <i class="fas fa-clock text-warning" style="font-size:1.3rem;"></i>
+          <div>
+            <div class="text-muted" style="font-size:11px;">เวลา</div>
+            <div class="fw-semibold" style="font-size:13.5px;">
+              {% if bk.ts_id %}
+                {{ bk.ts_id.ts_start_time|time:"H:i" }} – {{ bk.ts_id.ts_end_time|time:"H:i" }} น.
+              {% else %}
+                {{ bk.bk_stu_datetime|date:"H:i" }} น.
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="info-card p-3 d-flex align-items-center gap-3">
+          <i class="fas fa-book text-danger" style="font-size:1.3rem;"></i>
+          <div>
+            <div class="text-muted" style="font-size:11px;">รายวิชา</div>
+            <div class="fw-semibold" style="font-size:13.5px;">{{ bk.tutc_id.tutc_name }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tutor Info + Report -->
+    <div class="card border-0 rounded-4 shadow-sm mb-4">
+      <div class="card-body p-4">
+
+        <!-- Tutor header -->
+        <div class="d-flex align-items-center gap-3 mb-4">
+          {% if bk.tutc_id.tut_id.tut_id.mb_img %}
+            <img src="{{ bk.tutc_id.tut_id.tut_id.mb_img.url }}" alt=""
+                 class="rounded-circle" style="width:48px;height:48px;object-fit:cover;border:2px solid #E5E7EB;">
+          {% else %}
+            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
+                 style="width:48px;height:48px;font-size:1.1rem;">
+              {{ bk.tutc_id.tut_id.tut_id.mb_full_name|first|upper }}
+            </div>
+          {% endif %}
+          <div>
+            <div class="fw-bold">{{ bk.tutc_id.tut_id.tut_id.mb_full_name }}</div>
+            <div class="text-muted small">รายงานการเสร็จสิ้นการสอนของผู้สอน</div>
+          </div>
+        </div>
+
+        <!-- หลักฐานการสอน -->
+        <h6 class="fw-bold mb-3"><i class="fas fa-image me-2 text-primary"></i>หลักฐานการสอน</h6>
+        <div class="row g-3 mb-4">
+          {% if activity.ta_img1 %}
+          <div class="col-4">
+            <img src="{{ activity.ta_img1.url }}" class="proof-img" alt="หลักฐาน 1"
+                 onclick="openLightbox('{{ activity.ta_img1.url }}')">
+          </div>
+          {% endif %}
+          {% if activity.ta_img2 %}
+          <div class="col-4">
+            <img src="{{ activity.ta_img2.url }}" class="proof-img" alt="หลักฐาน 2"
+                 onclick="openLightbox('{{ activity.ta_img2.url }}')">
+          </div>
+          {% endif %}
+          {% if activity.ta_img3 %}
+          <div class="col-4">
+            <img src="{{ activity.ta_img3.url }}" class="proof-img" alt="หลักฐาน 3"
+                 onclick="openLightbox('{{ activity.ta_img3.url }}')">
+          </div>
+          {% endif %}
+          {% if not activity.ta_img1 and not activity.ta_img2 and not activity.ta_img3 %}
+          <div class="col-12">
+            <div class="proof-placeholder"><i class="fas fa-image text-muted" style="font-size:2rem;opacity:.3;"></i></div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- สรุปเนื้อหา -->
+        <h6 class="fw-bold mb-3"><i class="fas fa-file-alt me-2 text-primary"></i>สรุปเนื้อหาการสอน</h6>
+        <div class="p-3 rounded-3" style="background:#F8FAFC; font-size:14px; line-height:1.7; color:#374151;">
+          {{ activity.ta_desc|linebreaksbr }}
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <form method="post">
+      {% csrf_token %}
+      <div class="d-grid gap-3 mb-3">
+        <button type="submit"
+                class="btn btn-success fw-bold py-3 rounded-3 shadow-sm"
+                style="font-size:15px;"
+                onclick="return confirm('การกดยืนยันจะเป็นการมอบ Credit ให้แก่ผู้สอน ระบบจะไม่สามารถเรียกคืนได้หากกดยืนยันแล้ว กรุณาตรวจสอบความถูกต้องก่อนกดยืนยัน')">
+          <i class="fas fa-shield-alt me-2"></i>ยืนยันการจบงานและโอนเครดิต
+        </button>
+      </div>
+    </form>
+
+    <div class="text-center mb-4">
+      <span class="text-muted small">มีอะไรผิดปกติหรือเปล่า?</span>
+      <a href="#" class="text-danger small fw-semibold ms-2">
+        <i class="fas fa-exclamation-circle me-1"></i>รายงานปัญหา
+      </a>
+    </div>
+
+    <!-- Secure bar -->
+    <div class="secure-bar text-center">
+      <i class="fas fa-lock me-2"></i>
+      * การกดยืนยันจะเป็นการมอบ Credit/เงิน ให้แก่ผู้สอนทันที ระบบจะไม่สามารถเรียกคืนได้หากกดยืนยันแล้ว
+      กรุณาตรวจสอบความถูกต้องให้เรียบร้อยก่อนกดยืนยัน
+    </div>
+
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="this.style.display='none'"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;
+            display:none;align-items:center;justify-content:center;cursor:zoom-out;">
+  <img id="lightboxImg" src="" alt="" style="max-width:90vw;max-height:90vh;border-radius:12px;object-fit:contain;">
+</div>
+
+{% block extra_js %}
+<script>
+function openLightbox(url) {
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lightboxImg').src = url;
+  lb.style.display = 'flex';
+}
+document.getElementById('lightbox').addEventListener('click', function() {
+  this.style.display = 'none';
+});
+</script>
+{% endblock %}
+{% endblock %}

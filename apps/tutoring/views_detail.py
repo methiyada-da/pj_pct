@@ -54,11 +54,21 @@ def course_detail(request, tutc_id):
         .order_by('sd_date')
     )
 
-    # กรองเฉพาะวันที่ยังมี slot ว่าง (ts_status=0)
-    available_dates = [
-        sd for sd in schedule_qs
-        if sd.time_slots.filter(ts_status=0).exists()
-    ]
+    # กรองเฉพาะวันที่ยังมี slot ว่าง (ts_status=0) และเวลายังไม่ผ่าน
+    now_local = timezone.localtime(timezone.now())
+    today     = now_local.date()
+    now_time  = now_local.time()
+
+    available_dates = []
+    for sd in schedule_qs:
+        if sd.sd_date == today:
+            # วันนี้ — กรอง slot ที่เวลาเริ่มยังไม่ผ่าน
+            has_slot = sd.time_slots.filter(ts_status=0, ts_start_time__gt=now_time).exists()
+        else:
+            # วันอื่น (อนาคต) — กรอง slot ว่างปกติ
+            has_slot = sd.time_slots.filter(ts_status=0).exists()
+        if has_slot:
+            available_dates.append(sd)
 
     user_credit = None
     if request.user.is_authenticated:
