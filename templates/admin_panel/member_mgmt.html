@@ -63,21 +63,41 @@
 <!-- ── Filter & Search ── -->
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-body py-3">
-    <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
-      <div class="input-group" style="max-width:320px;">
+    <form method="get" id="filterForm" class="d-flex gap-2 align-items-center flex-wrap">
+      <div class="input-group" style="max-width:300px;">
         <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
         <input type="text" name="q" value="{{ q }}" class="form-control border-start-0"
-               placeholder="ค้นหาชื่อ, อีเมล, สาขา...">
+               placeholder="ค้นหาชื่อ, อีเมล..." onchange="submitFilter()">
       </div>
+      <select name="fac" id="facSelect" class="form-select form-select-sm" style="width:auto;"
+              onchange="onFacChange(this)">
+        <option value="">ทุกคณะ</option>
+        {% for fac in faculties %}
+          <option value="{{ fac.fac_id }}"
+            {% if fac_filter == fac.fac_id|stringformat:"s" %}selected{% endif %}>
+            {{ fac.fac_name }}
+          </option>
+        {% endfor %}
+      </select>
+      <select name="mj" id="mjSelect" class="form-select form-select-sm" style="width:auto;"
+              onchange="submitFilter()">
+        <option value="">ทุกสาขา</option>
+        {% for mj in majors %}
+          <option value="{{ mj.mj_id }}"
+                  data-fac="{{ mj.fac_id.fac_id }}"
+                  {% if mj_filter == mj.mj_id|stringformat:"s" %}selected{% endif %}>
+            {{ mj.mj_name }}
+          </option>
+        {% endfor %}
+      </select>
       <select name="status" class="form-select form-select-sm" style="width:auto;"
-              onchange="this.form.submit()">
+              onchange="submitFilter()">
         <option value="">ทุกสถานะ</option>
         <option value="1" {% if status_filter == '1' %}selected{% endif %}>ใช้งานปกติ</option>
         <option value="2" {% if status_filter == '2' %}selected{% endif %}>ระงับชั่วคราว</option>
         <option value="0" {% if status_filter == '0' %}selected{% endif %}>ปิดการใช้งาน</option>
       </select>
-      <button type="submit" class="btn btn-sm btn-primary px-3">ค้นหา</button>
-      {% if q or status_filter %}
+      {% if q or fac_filter or mj_filter or status_filter %}
         <a href="{% url 'admin_panel:member_mgmt' %}" class="btn btn-sm btn-outline-secondary">
           <i class="fas fa-times me-1"></i>ล้าง
         </a>
@@ -186,19 +206,19 @@
     {% if page.has_other_pages %}
     <div class="d-flex gap-1">
       {% if page.has_previous %}
-        <a href="?page={{ page.previous_page_number }}&q={{ q }}&status={{ status_filter }}"
+        <a href="?page={{ page.previous_page_number }}&q={{ q }}&fac={{ fac_filter }}&mj={{ mj_filter }}&status={{ status_filter }}"
            class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></a>
       {% endif %}
       {% for num in page.paginator.page_range %}
         {% if page.number == num %}
           <button class="btn btn-sm btn-primary">{{ num }}</button>
         {% elif num >= page.number|add:"-2" and num <= page.number|add:"2" %}
-          <a href="?page={{ num }}&q={{ q }}&status={{ status_filter }}"
+          <a href="?page={{ num }}&q={{ q }}&fac={{ fac_filter }}&mj={{ mj_filter }}&status={{ status_filter }}"
              class="btn btn-sm btn-outline-secondary">{{ num }}</a>
         {% endif %}
       {% endfor %}
       {% if page.has_next %}
-        <a href="?page={{ page.next_page_number }}&q={{ q }}&status={{ status_filter }}"
+        <a href="?page={{ page.next_page_number }}&q={{ q }}&fac={{ fac_filter }}&mj={{ mj_filter }}&status={{ status_filter }}"
            class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-right"></i></a>
       {% endif %}
     </div>
@@ -234,6 +254,26 @@
 
 <!-- Member data (JSON for modal) -->
 <script>
+function submitFilter() {
+  document.getElementById('filterForm').submit();
+}
+
+function onFacChange(facSelect) {
+  const facId = facSelect.value;
+  const mjSel = document.getElementById('mjSelect');
+  Array.from(mjSel.options).forEach(opt => {
+    if (!opt.value) return;
+    const show = !facId || opt.dataset.fac === facId;
+    opt.hidden = !show;
+    if (!show && opt.selected) mjSel.value = '';
+  });
+  submitFilter();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  onFacChange(document.getElementById('facSelect'));
+});
+
 const memberData = {
   {% for mb in page %}
   "{{ mb.pk }}": {
