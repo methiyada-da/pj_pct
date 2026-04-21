@@ -1,0 +1,193 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}รีวิวติวเตอร์ — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rv-wrap { max-width: 680px; margin: 0 auto; }
+
+  .star-group { display: flex; gap: 6px; flex-direction: row-reverse; justify-content: flex-end; }
+  .star-group input { display: none; }
+  .star-group label {
+    font-size: 2rem; cursor: pointer; color: #D1D5DB;
+    transition: color .15s, transform .15s;
+  }
+  .star-group label:hover,
+  .star-group label:hover ~ label,
+  .star-group input:checked ~ label { color: #F59E0B; }
+  .star-group label:hover { transform: scale(1.15); }
+
+  .rating-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 14px 0; border-bottom: 1px solid #F1F5F9; flex-wrap: wrap;
+  }
+  .rating-label-th { font-weight: 600; font-size: 14px; min-width: 160px; }
+  .rating-label-en { font-size: 11px; color: #94A3B8; font-weight: 500; }
+
+  .tutor-banner { background: linear-gradient(135deg,#1d4ed8,#3b82f6); border-radius: 16px 16px 0 0; height: 80px; }
+  .tutor-avatar { width:72px; height:72px; border-radius:50%; object-fit:cover; border:4px solid #fff; box-shadow:0 4px 12px rgba(0,0,0,.15); }
+  .tutor-avatar-ph {
+    width:72px; height:72px; border-radius:50%; border:4px solid #fff; background:#fff;
+    box-shadow:0 4px 12px rgba(0,0,0,.15); display:flex; align-items:center;
+    justify-content:center; font-size:1.6rem; font-weight:700; color:#2563EB;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-light min-vh-100 py-4 px-2 px-md-3">
+  <div class="container rv-wrap">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb" style="font-size:13px;">
+        <li class="breadcrumb-item"><a href="{% url 'bookings:student_bookings' %}" class="text-decoration-none">การจอง</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'bookings:student_bookings' %}" class="text-decoration-none">รายการจอง</a></li>
+        <li class="breadcrumb-item active">การรีวิว</li>
+      </ol>
+    </nav>
+
+    <form method="post" id="reviewForm">
+      {% csrf_token %}
+
+      <!-- Tutor Card -->
+      <div class="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden">
+        <div class="tutor-banner"></div>
+        <div class="card-body pt-0 pb-4 px-4">
+          <div class="d-flex flex-column align-items-center text-center" style="margin-top:-36px;">
+            {% if bk.tutc_id.tut_id.tut_id.mb_img %}
+              <img src="{{ bk.tutc_id.tut_id.tut_id.mb_img.url }}" class="tutor-avatar mb-3" alt="">
+            {% else %}
+              <div class="tutor-avatar-ph mb-3">{{ bk.tutc_id.tut_id.tut_id.mb_full_name|first|upper }}</div>
+            {% endif %}
+            <h5 class="fw-bold mb-1">{{ bk.tutc_id.tut_id.tut_id.mb_full_name }}</h5>
+            <div class="d-flex gap-3 text-muted flex-wrap justify-content-center" style="font-size:13px;">
+              <span><i class="fas fa-book me-1"></i>{{ bk.tutc_id.tutc_name }}</span>
+              <span><i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d F Y" }}</span>
+              <span>
+                <i class="fas fa-clock me-1"></i>
+                {% if bk.ts_id %}{{ bk.ts_id.ts_start_time|time:"H:i" }} – {{ bk.ts_id.ts_end_time|time:"H:i" }} น.
+                {% else %}{{ bk.bk_stu_datetime|date:"H:i" }} น.{% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Star Ratings -->
+      <div class="card border-0 rounded-4 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <h6 class="fw-bold mb-1">คุณรู้สึกอย่างไรกับคอร์สเรียนครั้งนี้?</h6>
+          <p class="text-muted small mb-4">กรุณาให้คะแนนครบทุกด้าน <span class="text-danger">*</span></p>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2 small mb-3">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <!-- คุณภาพการสอน -->
+          <div class="rating-row">
+            <div class="rating-label-th">คุณภาพการสอน</div>
+            <div class="star-group">
+              <input type="radio" name="rv_quality" id="rv_quality_5" value="5"><label for="rv_quality_5">&#9733;</label>
+              <input type="radio" name="rv_quality" id="rv_quality_4" value="4"><label for="rv_quality_4">&#9733;</label>
+              <input type="radio" name="rv_quality" id="rv_quality_3" value="3"><label for="rv_quality_3">&#9733;</label>
+              <input type="radio" name="rv_quality" id="rv_quality_2" value="2"><label for="rv_quality_2">&#9733;</label>
+              <input type="radio" name="rv_quality" id="rv_quality_1" value="1"><label for="rv_quality_1">&#9733;</label>
+            </div>
+          </div>
+
+          <!-- ความรู้ความสามารถ -->
+          <div class="rating-row">
+            <div class="rating-label-th">ความรู้ความสามารถ</div>
+            <div class="star-group">
+              <input type="radio" name="rv_knowledge" id="rv_knowledge_5" value="5"><label for="rv_knowledge_5">&#9733;</label>
+              <input type="radio" name="rv_knowledge" id="rv_knowledge_4" value="4"><label for="rv_knowledge_4">&#9733;</label>
+              <input type="radio" name="rv_knowledge" id="rv_knowledge_3" value="3"><label for="rv_knowledge_3">&#9733;</label>
+              <input type="radio" name="rv_knowledge" id="rv_knowledge_2" value="2"><label for="rv_knowledge_2">&#9733;</label>
+              <input type="radio" name="rv_knowledge" id="rv_knowledge_1" value="1"><label for="rv_knowledge_1">&#9733;</label>
+            </div>
+          </div>
+
+          <!-- การสื่อสารและการอธิบาย -->
+          <div class="rating-row">
+            <div class="rating-label-th">การสื่อสารและการอธิบาย</div>
+            <div class="star-group">
+              <input type="radio" name="rv_communication" id="rv_communication_5" value="5"><label for="rv_communication_5">&#9733;</label>
+              <input type="radio" name="rv_communication" id="rv_communication_4" value="4"><label for="rv_communication_4">&#9733;</label>
+              <input type="radio" name="rv_communication" id="rv_communication_3" value="3"><label for="rv_communication_3">&#9733;</label>
+              <input type="radio" name="rv_communication" id="rv_communication_2" value="2"><label for="rv_communication_2">&#9733;</label>
+              <input type="radio" name="rv_communication" id="rv_communication_1" value="1"><label for="rv_communication_1">&#9733;</label>
+            </div>
+          </div>
+
+          <!-- ความตรงต่อเวลา -->
+          <div class="rating-row">
+            <div class="rating-label-th">ความตรงต่อเวลา</div>
+            <div class="star-group">
+              <input type="radio" name="rv_punctuality" id="rv_punctuality_5" value="5"><label for="rv_punctuality_5">&#9733;</label>
+              <input type="radio" name="rv_punctuality" id="rv_punctuality_4" value="4"><label for="rv_punctuality_4">&#9733;</label>
+              <input type="radio" name="rv_punctuality" id="rv_punctuality_3" value="3"><label for="rv_punctuality_3">&#9733;</label>
+              <input type="radio" name="rv_punctuality" id="rv_punctuality_2" value="2"><label for="rv_punctuality_2">&#9733;</label>
+              <input type="radio" name="rv_punctuality" id="rv_punctuality_1" value="1"><label for="rv_punctuality_1">&#9733;</label>
+            </div>
+          </div>
+
+          <!-- ความพึงพอใจโดยรวม -->
+          <div class="text-center py-4 border-top mt-2">
+            <div class="fw-bold mb-1">ความพึงพอใจโดยรวม</div>
+            <div class="star-group justify-content-center" style="font-size:2.5rem; gap:8px;">
+              <input type="radio" name="rv_satisfaction" id="rv_satisfaction_5" value="5"><label for="rv_satisfaction_5">&#9733;</label>
+              <input type="radio" name="rv_satisfaction" id="rv_satisfaction_4" value="4"><label for="rv_satisfaction_4">&#9733;</label>
+              <input type="radio" name="rv_satisfaction" id="rv_satisfaction_3" value="3"><label for="rv_satisfaction_3">&#9733;</label>
+              <input type="radio" name="rv_satisfaction" id="rv_satisfaction_2" value="2"><label for="rv_satisfaction_2">&#9733;</label>
+              <input type="radio" name="rv_satisfaction" id="rv_satisfaction_1" value="1"><label for="rv_satisfaction_1">&#9733;</label>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ข้อความรีวิว -->
+      <div class="card border-0 rounded-4 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <label class="form-label fw-bold">
+            ข้อความรีวิวเพิ่มเติม <span class="text-muted fw-normal">(ไม่บังคับ)</span>
+          </label>
+          <textarea name="rv_cmt" class="form-control" rows="4"
+                    placeholder="แชร์ประสบการณ์การเรียนของคุณที่นี่..."></textarea>
+          <p class="text-muted small mt-3 mb-0">
+            รีวิวของคุณจะช่วยให้ผู้สอนพัฒนาการสอนและช่วยให้เพื่อนนักศึกษาตัดสินใจเลือกติวเตอร์ได้ดีขึ้น
+          </p>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="d-flex gap-3 justify-content-end mb-4">
+        <a href="{% url 'bookings:student_bookings' %}" class="btn btn-outline-secondary px-4 rounded-pill">รีวิวทีหลัง</a>
+        <button type="submit" class="btn btn-primary fw-bold px-5 rounded-pill shadow-sm"
+                onclick="return validateReview()">
+          <i class="fas fa-paper-plane me-2"></i>ส่งการรีวิว
+        </button>
+      </div>
+
+      <p class="text-center text-muted small">© 2024 RMUTI Puean Chuay Tutor System. All rights reserved.</p>
+
+    </form>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+function validateReview() {
+  const fields = ['rv_quality','rv_knowledge','rv_communication','rv_punctuality','rv_satisfaction'];
+  for (const name of fields) {
+    if (!document.querySelector(`input[name="${name}"]:checked`)) {
+      alert('กรุณาให้คะแนนครบทุกด้าน');
+      return false;
+    }
+  }
+  return true;
+}
+</script>
+{% endblock %}
+{% endblock %}

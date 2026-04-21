@@ -24,6 +24,9 @@ class Booking(models.Model):
     bk_accepted_date   = models.DateTimeField(blank=True, null=True, verbose_name="วันเวลาที่รับงาน")
     bk_status          = models.IntegerField(choices=STATUS_CHOICES, default=0, verbose_name="สถานะ")
     bk_cmt             = models.TextField(blank=True, null=True, verbose_name="หมายเหตุ")
+    bk_report_desc     = models.TextField(blank=True, null=True, verbose_name="รายละเอียดการรายงานปัญหา")
+    bk_report_type     = models.IntegerField(blank=True, null=True, verbose_name="ประเภทการรายงาน (0=ติวเตอร์, 1=แอดมิน)")
+    bk_report_date     = models.DateTimeField(blank=True, null=True, verbose_name="วันเวลาที่รายงาน")
     member             = models.ForeignKey(
         Member,
         on_delete=models.CASCADE,

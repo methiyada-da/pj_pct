@@ -1,0 +1,285 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}กิจกรรมการติว — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<style>
+  .upload-zone {
+    border: 2px dashed #CBD5E1;
+    border-radius: 14px;
+    background: #F8FAFC;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone:hover { border-color: #2563EB; background: #EFF6FF; }
+  .upload-zone.has-image { border-style: solid; border-color: #93C5FD; }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-preview {
+    width: 100%; height: 100%; object-fit: cover;
+    position: absolute; inset: 0; border-radius: 12px;
+  }
+  .upload-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,.45);
+    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity .2s;
+  }
+  .upload-zone:hover .upload-overlay { opacity: 1; }
+
+  .info-box {
+    background: #EFF6FF; border: 1px solid #BFDBFE;
+    border-radius: 12px; padding: 14px 18px;
+    font-size: 13.5px; color: #1E40AF;
+  }
+
+  .char-counter { font-size: 12px; color: #94A3B8; }
+  .char-counter.near-limit { color: #F59E0B; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-light min-vh-100 py-4 px-2 px-md-3">
+  <div class="container" style="max-width: 780px;">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb" style="font-size: 13px;">
+        <li class="breadcrumb-item"><a href="{% url 'bookings:tutor_requests' %}" class="text-decoration-none">การจอง</a></li>
+        <li class="breadcrumb-item active">กิจกรรมการติว</li>
+      </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="mb-4">
+      <h4 class="fw-bold mb-1">กิจกรรมการติว</h4>
+      <p class="text-muted small mb-0">
+        อัปโหลดรูปภาพกิจกรรมการติวและสรุปการเรียนการสอนเพื่อแจ้งจบงานไปยังผู้เรียน
+      </p>
+    </div>
+
+    <!-- Info box -->
+    <div class="info-box mb-4">
+      <i class="fas fa-info-circle me-2"></i>
+      เมื่อคุณส่งคำขอแล้ว ผู้เรียนจะได้รับการแจ้งเตือนให้ตรวจสอบสรุปการเรียนการสอนและรูปภาพกิจกรรม
+      หลังจากที่พวกเขายืนยันแล้ว เครดิตจะถูกโอนเข้าบัญชีของคุณ
+    </div>
+
+    <!-- Session Info -->
+    <div class="card border-0 rounded-4 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="d-flex align-items-center gap-2">
+              <i class="fas fa-calendar-alt text-primary"></i>
+              <div>
+                <div class="text-muted" style="font-size:11px;">วันที่</div>
+                <div class="fw-semibold" style="font-size:13.5px;">{{ bk.bk_stu_datetime|date:"d M Y" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex align-items-center gap-2">
+              <i class="fas fa-clock text-primary"></i>
+              <div>
+                <div class="text-muted" style="font-size:11px;">เวลา</div>
+                <div class="fw-semibold" style="font-size:13.5px;">
+                  {% if bk.ts_id %}
+                    {{ bk.ts_id.ts_start_time|time:"H:i" }} – {{ bk.ts_id.ts_end_time|time:"H:i" }} น.
+                  {% else %}
+                    {{ bk.bk_stu_datetime|date:"H:i" }} น.
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex align-items-center gap-2">
+              <i class="fas fa-book text-primary"></i>
+              <div>
+                <div class="text-muted" style="font-size:11px;">รายวิชา</div>
+                <div class="fw-semibold" style="font-size:13.5px;">{{ bk.tutc_id.tutc_name }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" id="activityForm">
+      {% csrf_token %}
+
+      <!-- ── หลักฐานการทำงาน ── -->
+      <div class="card border-0 rounded-4 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <h6 class="fw-bold mb-0"><i class="fas fa-images me-2 text-primary"></i>รูปภาพกิจกรรมการติว</h6>
+            <span class="badge bg-danger rounded-pill px-3" style="font-size:.72rem;">จำเป็น</span>
+          </div>
+          <p class="text-muted small mb-4">
+            อัปโหลดรูปภาพกิจกรรมการติวได้สูงสุด 3 ภาพ (เช่น ภาพบรรยากาศการติว หรือรูปภาพอื่นๆ ที่แสดงให้เห็นว่าได้ทำการติวจริง)
+            <br><span class="text-danger fw-semibold">* ต้องอัปโหลดอย่างน้อย 1 รูป</span>
+          </p>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="row g-3">
+            <!-- รูปที่ 1 -->
+            <div class="col-md-4">
+              <div class="upload-zone rounded-3{% if activity.ta_img1 %} has-image{% endif %}" id="zone1" style="height:180px;">
+                {% if activity.ta_img1 %}
+                  <img src="{{ activity.ta_img1.url }}" class="upload-preview" id="preview1" alt="รูป 1">
+                  <div class="upload-overlay">
+                    <span class="text-white small"><i class="fas fa-camera me-1"></i>เปลี่ยนรูป</span>
+                  </div>
+                {% else %}
+                  <div id="placeholder1" class="text-center p-3">
+                    <i class="fas fa-camera text-muted" style="font-size:2rem; opacity:.3;"></i>
+                    <div class="text-muted small mt-2">รูปภาพ 1</div>
+                  </div>
+                {% endif %}
+                <input type="file" name="ta_img1" accept="image/*" onchange="previewImg(this,'preview1','zone1','placeholder1')">
+              </div>
+              {% if form.ta_img1.errors %}
+                <div class="text-danger small mt-1">{{ form.ta_img1.errors }}</div>
+              {% endif %}
+            </div>
+
+            <!-- รูปที่ 2 -->
+            <div class="col-md-4">
+              <div class="upload-zone rounded-3{% if activity.ta_img2 %} has-image{% endif %}" id="zone2" style="height:180px;">
+                {% if activity.ta_img2 %}
+                  <img src="{{ activity.ta_img2.url }}" class="upload-preview" id="preview2" alt="รูป 2">
+                  <div class="upload-overlay">
+                    <span class="text-white small"><i class="fas fa-camera me-1"></i>เปลี่ยนรูป</span>
+                  </div>
+                {% else %}
+                  <div id="placeholder2" class="text-center p-3">
+                    <i class="fas fa-camera text-muted" style="font-size:2rem; opacity:.3;"></i>
+                    <div class="text-muted small mt-2">รูปภาพ 2</div>
+                  </div>
+                {% endif %}
+                <input type="file" name="ta_img2" accept="image/*" onchange="previewImg(this,'preview2','zone2','placeholder2')">
+              </div>
+            </div>
+
+            <!-- รูปที่ 3 -->
+            <div class="col-md-4">
+              <div class="upload-zone rounded-3{% if activity.ta_img3 %} has-image{% endif %}" id="zone3" style="height:180px;">
+                {% if activity.ta_img3 %}
+                  <img src="{{ activity.ta_img3.url }}" class="upload-preview" id="preview3" alt="รูป 3">
+                  <div class="upload-overlay">
+                    <span class="text-white small"><i class="fas fa-camera me-1"></i>เปลี่ยนรูป</span>
+                  </div>
+                {% else %}
+                  <div id="placeholder3" class="text-center p-3">
+                    <i class="fas fa-camera text-muted" style="font-size:2rem; opacity:.3;"></i>
+                    <div class="text-muted small mt-2">รูปภาพ 3</div>
+                  </div>
+                {% endif %}
+                <input type="file" name="ta_img3" accept="image/*" onchange="previewImg(this,'preview3','zone3','placeholder3')">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── สรุปเนื้อหาการสอน ── -->
+      <div class="card border-0 rounded-4 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <h6 class="fw-bold mb-1"><i class="fas fa-file-alt me-2 text-primary"></i>สรุปการสอน</h6>
+          <p class="text-muted small mb-3">
+            สรุปหัวข้อหลักที่เรียนและพัฒนาการของนักเรียน เพื่อช่วยให้นักเรียนยืนยันว่าเรียนจบหลักสูตรแล้ว
+            <span class="text-danger fw-semibold">*</span>
+          </p>
+          <textarea name="ta_desc" id="ta_desc" class="form-control" rows="6"
+                    placeholder="สรุปหัวข้อหลักที่เรียนและพัฒนาการของนักเรียน..."
+                    maxlength="1000">{{ activity.ta_desc|default:'' }}</textarea>
+          {% if form.ta_desc.errors %}
+            <div class="text-danger small mt-1">{{ form.ta_desc.errors }}</div>
+          {% endif %}
+          <div class="text-end mt-1">
+            <span id="descCounter" class="char-counter">{{ activity.ta_desc|length|default:0 }} / 1000 ตัวอักษร</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ปุ่ม Action ── -->
+      <div class="d-flex gap-3 justify-content-between align-items-center flex-wrap">
+        <button type="submit" name="action" value="save"
+                class="btn btn-outline-secondary fw-semibold px-4 rounded-pill">
+          <i class="fas fa-save me-2"></i>บันทึกความคืบหน้า
+        </button>
+        <button type="submit" name="action" value="submit"
+                class="btn btn-primary fw-bold px-5 rounded-pill shadow-sm"
+                onclick="return confirmSubmit()">
+          <i class="fas fa-paper-plane me-2"></i>ส่งและขอการดำเนินการให้เสร็จสมบูรณ์
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+/* ── Preview รูปที่อัปโหลด ── */
+function previewImg(input, previewId, zoneId, placeholderId) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const zone = document.getElementById(zoneId);
+    zone.classList.add('has-image');
+
+    // ซ่อน placeholder
+    const ph = document.getElementById(placeholderId);
+    if (ph) ph.style.display = 'none';
+
+    // แสดง preview
+    let preview = document.getElementById(previewId);
+    if (!preview) {
+      preview    = document.createElement('img');
+      preview.id = previewId;
+      preview.className = 'upload-preview';
+      preview.alt = 'preview';
+      zone.insertBefore(preview, zone.firstChild);
+
+      // เพิ่ม overlay ถ้ายังไม่มี
+      if (!zone.querySelector('.upload-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.className = 'upload-overlay';
+        overlay.innerHTML = '<span class="text-white small"><i class="fas fa-camera me-1"></i>เปลี่ยนรูป</span>';
+        zone.appendChild(overlay);
+      }
+    }
+    preview.src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+/* ── นับตัวอักษร ── */
+const descTA = document.getElementById('ta_desc');
+const descCounter = document.getElementById('descCounter');
+if (descTA && descCounter) {
+  descTA.addEventListener('input', function() {
+    const len = this.value.length;
+    descCounter.textContent = `${len} / 1000 ตัวอักษร`;
+    descCounter.classList.toggle('near-limit', len > 900);
+  });
+}
+
+</script>
+{% endblock %}
+{% endblock %}

@@ -79,16 +79,25 @@
           <a href="{% url 'messaging:inbox' %}" class="chat-back d-md-none">
             <i class="fas fa-arrow-left"></i>
           </a>
-          {% if other.mb_img %}
-            <img src="{{ other.mb_img.url }}" class="chat-header-avatar" alt="{{ other.mb_full_name }}">
+          {% if other.tutor %}
+            <a href="{% url 'tutoring:tutor_profile' tut_id=other.pk %}" style="text-decoration:none;display:flex;align-items:center;gap:.65rem;">
           {% else %}
-            <div class="chat-header-avatar chat-header-avatar--placeholder">
-              {{ other.mb_full_name|first|upper }}
-            </div>
+            <div style="display:flex;align-items:center;gap:.65rem;">
           {% endif %}
-          <div class="chat-header-info">
-            <span class="chat-header-name">{{ other.mb_full_name }}</span>
-          </div>
+            {% if other.mb_img %}
+              <img src="{{ other.mb_img.url }}" class="chat-header-avatar" alt="{{ other.mb_full_name }}">
+            {% else %}
+              <div class="chat-header-avatar chat-header-avatar--placeholder">
+                {{ other.mb_full_name|first|upper }}
+              </div>
+            {% endif %}
+            <div class="chat-header-info">
+              <span class="chat-header-name">{{ other.mb_full_name }}</span>
+              {% if other.tutor %}
+                <span style="font-size:.7rem;color:#64748B;">ดูโปรไฟล์ <i class="fas fa-external-link-alt" style="font-size:.6rem;"></i></span>
+              {% endif %}
+            </div>
+          {% if other.tutor %}</a>{% else %}</div>{% endif %}
         </div>
 
         <!-- ── Messages ── -->
@@ -123,7 +132,7 @@
                     </div>
                   {% endif %}
                   {% if msg.msg %}
-                    <div class="msg-bubble">{{ msg.msg }}</div>
+                    <div class="msg-bubble" style="white-space:pre-wrap;">{{ msg.msg|urlize|linebreaksbr }}</div>
                   {% endif %}
                   <div class="msg-meta">
                     <span class="msg-time">{{ msg.msg_sent_time|date:"H:i" }}</span>
@@ -312,7 +321,14 @@
     }
     if (msg.msg) {
       const b = document.createElement('div');
-      b.className = 'msg-bubble'; b.textContent = msg.msg; bw.appendChild(b);
+      b.className = 'msg-bubble';
+      b.style.whiteSpace = 'pre-wrap';
+      // แปลง URL เป็น clickable link
+      b.innerHTML = msg.msg.replace(/\n/g,'<br>').replace(/(https?:\/\/[^\s]+|(\/bookings\/[^\s]+))/g, (url) => {
+        const href = url.startsWith('/') ? url : url;
+        return '<a href="' + href + '" style="color:#93C5FD;text-decoration:underline;" target="_self">กดเพื่อดูรายละเอียดการจอง</a>';
+      });
+      bw.appendChild(b);
     }
     const md = document.createElement('div'); md.className = 'msg-meta';
     md.innerHTML = `<span class="msg-time">${fmtTime(msg.msg_sent_time)}</span>`;
