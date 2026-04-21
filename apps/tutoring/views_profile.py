@@ -39,29 +39,35 @@ def tutor_profile_view(request, tut_id):
     try:
         from apps.bookings.models import Review, TutoringActivity, Booking
         # รีวิวล่าสุด 5 รายการ
-        reviews = (
+        reviews_qs = (
             Review.objects
             .filter(bk_id__tutc_id__tut_id=tutor)
             .select_related('bk_id__member')
             .order_by('-rv_date')[:5]
         )
+        # แนบค่าเฉลี่ยรวม 5 ด้านให้แต่ละ review
+        reviews = []
+        for rv in reviews_qs:
+            avg = (rv.rv_quality + rv.rv_knowledge + rv.rv_communication +
+                   rv.rv_punctuality + rv.rv_satisfaction) / 5
+            rv.rv_avg = round(avg, 2)
+            reviews.append(rv)
         review_count = Review.objects.filter(bk_id__tutc_id__tut_id=tutor).count()
 
-        # รูปกิจกรรมล่าสุด (สูงสุด 5 รูป)
-        activities = (
+        # รูปกิจกรรมทั้งหมด (ไม่จำกัดจำนวน)
+        activities_all = (
             TutoringActivity.objects
             .filter(bk_id__tutc_id__tut_id=tutor)
-            .order_by('-bk_id__bk_date')[:3]
+            .order_by('-bk_id__bk_date')
         )
-        for act in activities:
+        all_images = []
+        for act in activities_all:
             for field in ['ta_img1', 'ta_img2', 'ta_img3']:
                 img = getattr(act, field)
                 if img:
-                    activity_images.append(img.url)
-                    if len(activity_images) >= 5:
-                        break
-            if len(activity_images) >= 5:
-                break
+                    all_images.append(img.url)
+        # แสดง 5 รูปแรกใน gallery, ทั้งหมดใน modal
+        activity_images = all_images[:5]
     except Exception:
         pass   # bookings ยังไม่พร้อม — ไม่แสดงรีวิว/รูป
 
@@ -75,6 +81,21 @@ def tutor_profile_view(request, tut_id):
     # แยกทักษะ
     skills = [s.strip() for s in (tutor.tut_skill or '').split(',') if s.strip()]
 
+    # สร้าง rating_rows สำหรับแสดงดาวแยกด้าน
+    def make_row(label, val):
+        v    = float(val or 0)
+        full = int(v)
+        half = (full + 1) if (v - full) >= 0.5 else 0
+        return {'label': label, 'val': f"{v:.2f}", 'full': full, 'half': half}
+
+    rating_rows = [
+        make_row('คุณภาพการสอน',     tutor.tut_rating_quality),
+        make_row('ความรู้ความสามารถ', tutor.tut_rating_knowledge),
+        make_row('การสื่อสาร',        tutor.tut_rating_communication),
+        make_row('ความตรงต่อเวลา',    tutor.tut_rating_punctuality),
+        make_row('ความพึงพอใจ',       tutor.tut_rating_satisfaction),
+    ]
+
     return render(request, 'tutoring/tutor_profile.html', {
         'tutor'                : tutor,
         'member'               : member,
@@ -87,6 +108,7 @@ def tutor_profile_view(request, tut_id):
         'reviews'              : reviews,
         'review_count'         : review_count,
         'activity_images'      : activity_images,
+        'rating_rows'          : rating_rows,
     })
 
 

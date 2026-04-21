@@ -56,7 +56,7 @@ def register_tutor(request):
             if old_status == 2:
                 tutor.tut_status = 0
                 tutor.save()
-                messages.success(request, 'ส่งคำขอใหม่เรียบร้อยแล้ว ทีมงานจะตรวจสอบและแจ้งผลภายใน 2-3 วันทำการ')
+                messages.success(request, 'ส่งคำขอใหม่เรียบร้อยแล้ว Admin จะตรวจสอบและแจ้งผลภายใน 2-3 วันทำการ')
             else:
                 tutor.save()
                 messages.success(request, 'อัปเดตข้อมูลติวเตอร์เรียบร้อยแล้ว')
@@ -71,7 +71,7 @@ def register_tutor(request):
             )
             messages.success(
                 request,
-                'ส่งคำขอสมัครเป็นติวเตอร์เรียบร้อยแล้ว ทีมงานจะตรวจสอบและแจ้งผลภายใน 2-3 วันทำการ'
+                'ส่งคำขอสมัครเป็นติวเตอร์เรียบร้อยแล้ว Adminจะตรวจสอบและแจ้งผลภายใน 2-3 วันทำการ'
             )
         return redirect('tutoring:register_tutor')
 
