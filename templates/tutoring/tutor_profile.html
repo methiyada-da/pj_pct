@@ -106,10 +106,22 @@
   .tp-gitem { position:relative; overflow:hidden; border-radius:12px; aspect-ratio:4/3; background:linear-gradient(135deg,#dbeafe,#eff6ff); display:flex; align-items:center; justify-content:center; }
   .tp-gitem.tall { aspect-ratio:auto; }
   @media(min-width:768px){ .tp-gitem.tall { grid-row:span 2; } }
-  .tp-gitem img { width:100%; height:100%; object-fit:cover; transition:transform .5s; position:absolute; inset:0; }
+  .tp-gitem img { width:100%; height:100%; object-fit:cover; transition:transform .5s; position:absolute; inset:0; cursor:pointer; }
   .tp-gitem:hover img { transform:scale(1.08); }
-  .tp-gitem::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,.18); transition:.2s; }
+  .tp-gitem::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,.18); transition:.2s; pointer-events:none; }
   .tp-gitem:hover::after { background:rgba(0,0,0,.36); }
+  #tp-lb { display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
+  #tp-lb.show { display:flex; }
+  #tp-lb img { max-width:92vw; max-height:92vh; border-radius:10px; object-fit:contain; }
+  .tp-gallery-modal { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; max-height:72vh; overflow-y:auto; }
+  .tp-gallery-modal img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:8px; cursor:pointer; transition:opacity .15s; }
+  .tp-gallery-modal img:hover { opacity:.82; }
+
+  /* ── Rating bars ── */
+  .tp-rating-bar-wrap { display:flex; align-items:center; gap:.5rem; margin-bottom:.5rem; }
+  .tp-rating-label { font-size:.72rem; color:var(--onsv); flex:1; }
+  .tp-rating-stars { display:flex; gap:2px; color:#f59e0b; flex-shrink:0; }
+  .tp-rating-val { font-size:.72rem; font-weight:700; color:var(--ons); width:32px; text-align:right; flex-shrink:0; }
 
   /* ── Reviews ── */
   .tp-rv { padding-bottom:1.25rem; border-bottom:1px solid var(--outv); }
@@ -269,7 +281,7 @@
     </div>
     {% endif %}
 
-    <!-- ── ประสบการณ์สอน (แยกการ์ด) ── -->
+    <!-- ── ประสบการณ์สอน (แยกการ์ด) 
     {% if tutor.tut_has_exp or tutor.tut_exp_desc %}
     <div class="tp-card tp-fu4" style="padding:1.25rem;">
       <h2 style="font-size:.92rem;font-weight:700;margin:0 0 .75rem;display:flex;align-items:center;gap:.45rem;color:var(--ons);">
@@ -287,7 +299,7 @@
         <p style="color:var(--onsv);line-height:1.75;font-size:.85rem;margin:0;white-space:pre-wrap;">{{ tutor.tut_exp_desc }}</p>
       {% endif %}
     </div>
-    {% endif %}
+    {% endif %}── -->
 
     <!-- ── ความเชี่ยวชาญและทักษะ ── -->
     {% if skills %}
@@ -297,6 +309,37 @@
       </h2>
       <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
         {% for skill in skills %}<span class="tp-chip">{{ skill }}</span>{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── คะแนนรีวิวแยกด้าน ── -->
+    {% if tutor.tut_rating and tutor.tut_rating > 0 %}
+    <div class="tp-card" style="padding:1.25rem;">
+      <h2 style="font-size:.92rem;font-weight:700;margin:0 0 1rem;display:flex;align-items:center;gap:.45rem;color:var(--ons);">
+        <i class="fas fa-star" style="color:#f59e0b;font-size:.85rem;"></i> คะแนนรีวิว
+        <span style="margin-left:auto;font-size:.82rem;color:var(--onsv);font-weight:500;">{{ review_count }} รีวิว</span>
+      </h2>
+      <div>
+
+        {% for row in rating_rows %}
+        <div class="tp-rating-bar-wrap">
+          <span class="tp-rating-label">{{ row.label }}</span>
+          <div class="tp-rating-stars">
+            {% for i in "12345" %}
+              {% if forloop.counter <= row.full %}
+                <i class="fas fa-star" style="font-size:.75rem;"></i>
+              {% elif forloop.counter == row.half %}
+                <i class="fas fa-star-half-alt" style="font-size:.75rem;"></i>
+              {% else %}
+                <i class="far fa-star" style="font-size:.75rem;color:#D1D5DB;"></i>
+              {% endif %}
+            {% endfor %}
+          </div>
+          <span class="tp-rating-val">{{ row.val }}</span>
+        </div>
+        {% endfor %}
+
       </div>
     </div>
     {% endif %}
@@ -390,13 +433,14 @@
     <div class="tp-fu2">
       <div class="tp-sec">
         <h2 class="tp-sec-title">ภาพกิจกรรมการสอน</h2>
-        <button class="tp-sec-link" style="background:none;border:none;">ดูทั้งหมด</button>
+        {% if activity_images %}<button class="tp-sec-link" onclick="openGalleryModal()" style="background:none;border:none;">ดูทั้งหมด</button>{% endif %}
       </div>
       <div class="tp-gallery">
         {% if activity_images %}
           {% for img_url in activity_images %}
           <div class="tp-gitem{% if forloop.counter == 2 %} tall{% endif %}">
-            <img src="{{ img_url }}" alt="ภาพกิจกรรม {{ forloop.counter }}">
+            <img src="{{ img_url }}" alt="ภาพกิจกรรม {{ forloop.counter }}"
+                 onclick="openLb('{{ img_url }}')">
           </div>
           {% endfor %}
         {% else %}
@@ -434,8 +478,10 @@
                 <p style="font-size:.7rem;color:var(--onsv);margin:.05rem 0 0;">{{ rv.rv_date|timesince }} ที่ผ่านมา</p>
               </div>
             </div>
-            <div class="tp-rv-stars">
-              {% for i in "12345" %}<i class="fas fa-star" style="font-size:.8rem;"></i>{% endfor %}
+            <!-- ดาว 1 อัน + ค่าเฉลี่ยรวม 5 ด้าน -->
+            <div style="display:flex;align-items:center;gap:.3rem;">
+              <i class="fas fa-star" style="color:#f59e0b;font-size:.85rem;"></i>
+              <span style="font-weight:700;font-size:.9rem;">{{ rv.rv_avg }}</span>
             </div>
           </div>
           {% if rv.rv_cmt %}
@@ -457,4 +503,69 @@
 </div><!-- /tp-grid -->
 </div><!-- /tp-wrap -->
 
+
+<!-- Lightbox -->
+<div id="tp-lb" onclick="closeLb()">
+  <img id="tp-lb-img" src="" alt="">
+</div>
+<script>
+function openLb(url) {
+  document.getElementById('tp-lb-img').src = url;
+  document.getElementById('tp-lb').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeLb() {
+  document.getElementById('tp-lb').classList.remove('show');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeLb();
+});
+</script>
+
+<!-- Lightbox -->
+<div id="tp-lb" onclick="closeLb()">
+  <img id="tp-lb-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<!-- Modal ดูรูปทั้งหมด -->
+<div class="modal fade" id="galleryModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold">
+          <i class="fas fa-images me-2 text-primary"></i>ภาพกิจกรรมการสอนทั้งหมด
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="tp-gallery-modal" id="gallery-all"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// รูปทั้งหมดจาก view
+const allImages = [{% for img_url in activity_images %}"{{ img_url }}",{% endfor %}];
+
+function openLb(url) {
+  document.getElementById('tp-lb-img').src = url;
+  document.getElementById('tp-lb').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeLb() {
+  document.getElementById('tp-lb').classList.remove('show');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+
+function openGalleryModal() {
+  const container = document.getElementById('gallery-all');
+  container.innerHTML = allImages.map(url =>
+    `<img src="${url}" alt="" onclick="openLb('${url}')">`
+  ).join('');
+  new bootstrap.Modal(document.getElementById('galleryModal')).show();
+}
+</script>
 {% endblock %}

@@ -43,6 +43,11 @@
     <i class="bi bi-cash-stack"></i> การชำระเงิน
   </a>
 
+  <a href="{% url 'admin_panel:report_mgmt' %}"
+     class="sidebar-link {% if active_menu == 'report_mgmt' %}active{% endif %}">
+    <i class="bi bi-exclamation-triangle"></i> รายงานปัญหา
+  </a>
+
   <div class="sidebar-section-label" style="margin-top:8px;">ระบบ</div>
   <a href="{% url 'admin_panel:system_settings' %}"
      class="sidebar-link {% if active_menu == 'system' %}active{% endif %}">

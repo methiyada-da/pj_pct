@@ -198,11 +198,18 @@
             <input type="hidden" name="ts_id" id="ts_id_input" value="">
 
             <!-- JSON ข้อมูล slot (กรอง ts_status=0 แล้วจาก view) -->
-            <script id="slot-data" type="application/json">
-            {
-              {% for sd in available_dates %}"{{ sd.sd_id }}": [{% for slot in sd.time_slots.all %}{% if slot.ts_status == 0 %}{"ts_id": {{ slot.ts_id }}, "start": "{{ slot.ts_start_time|time:'H:i' }}", "end": "{{ slot.ts_end_time|time:'H:i' }}"}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}]{% if not forloop.last %},{% endif %}
+            <script>
+            const slotData = {
+              {% for sd in available_dates %}
+              "{{ sd.sd_id }}": [
+                {% for slot in sd.time_slots.all %}
+                  {% if slot.ts_status == 0 %}
+                  {ts_id: {{ slot.ts_id }}, start: "{{ slot.ts_start_time|time:'H:i' }}", end: "{{ slot.ts_end_time|time:'H:i' }}"},
+                  {% endif %}
+                {% endfor %}
+              ],
               {% endfor %}
-            }
+            };
             </script>
 
             <!-- จำนวนผู้เรียน -->
@@ -291,7 +298,7 @@
           <div class="pending-note">
             <i class="fas fa-clock me-1"></i>
             ติวเตอร์จะยืนยันภายใน <strong>24 ชั่วโมง</strong>
-            เครดิตจะถูกล็อกไว้ก่อน และตัดจริงเมื่อติวเตอร์รับงานแล้ว
+            เครดิตจะถูกล็อกไว้ก่อน และตัดจริงเมื่อจบคอร์สเรียนแล้ว
           </div>
 
         </div>
@@ -341,8 +348,8 @@
 <script>
 (function () {
   // ── parse data ──
-  let slotData = {}, rateData = [];
-  try { slotData = JSON.parse(document.getElementById('slot-data').textContent); } catch(e){}
+  // slotData ถูกสร้างจาก template แล้ว ไม่ต้อง parse
+  let rateData = [];
   try { rateData = JSON.parse(document.getElementById('rate-data').textContent); } catch(e){}
 
   const maxStu = {{ tc.tutc_max_stu }};

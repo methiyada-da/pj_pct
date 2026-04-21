@@ -1,0 +1,249 @@
+{% extends 'admin_panel/base_admin.html' %}
+
+{% block title %}รายงานปัญหา{% endblock %}
+
+{% block content %}
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="summary-card">
+      <div class="summary-icon" style="background:#FEF2F2;color:#EF4444;">
+        <i class="bi bi-exclamation-triangle"></i>
+      </div>
+      <div>
+        <div class="val">{{ pending_count }}</div>
+        <div class="lbl">รายงานทั้งหมด</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="summary-card">
+      <div class="summary-icon" style="background:#EFF6FF;color:#2563EB;">
+        <i class="bi bi-person-check"></i>
+      </div>
+      <div>
+        <div class="val">{{ tutor_count }}</div>
+        <div class="lbl">แจ้งติวเตอร์</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="summary-card">
+      <div class="summary-icon" style="background:#FFF7ED;color:#F59E0B;">
+        <i class="bi bi-shield-exclamation"></i>
+      </div>
+      <div>
+        <div class="val">{{ admin_count }}</div>
+        <div class="lbl">แจ้งแอดมิน</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card-panel">
+  <div class="card-toolbar">
+    <form method="get" class="d-flex gap-2 flex-wrap align-items-center" style="flex:1;">
+      <select name="type" class="filter-select" onchange="this.form.submit()">
+        <option value="" {% if type_filter == '' %}selected{% endif %}>ทุกประเภท</option>
+        <option value="0" {% if type_filter == '0' %}selected{% endif %}>แจ้งติวเตอร์</option>
+        <option value="1" {% if type_filter == '1' %}selected{% endif %}>แจ้งแอดมิน</option>
+      </select>
+    </form>
+  </div>
+
+  {% if page.object_list %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>รหัสการจอง</th>
+        <th>ผู้เรียน</th>
+        <th>ติวเตอร์</th>
+        <th>วิชา</th>
+        <th>ประเภท</th>
+        <th>รายละเอียดปัญหา</th>
+        <th>วันที่รายงาน</th>
+        <th>จัดการ</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for bk in page.object_list %}
+      <tr>
+        <td><span class="fw-semibold">BK{{ bk.bk_id|stringformat:"05d" }}</span></td>
+        <td>{{ bk.member.mb_full_name }}</td>
+        <td>{{ bk.tutc_id.tut_id.tut_id.mb_full_name }}</td>
+        <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ bk.tutc_id.tutc_name }}
+        </td>
+        <td>
+          {% if bk.bk_report_type == 0 %}
+            <span class="badge text-bg-primary" style="font-size:11px;">แจ้งติวเตอร์</span>
+          {% else %}
+            <span class="badge text-bg-warning" style="font-size:11px;">แจ้งแอดมิน</span>
+          {% endif %}
+        </td>
+        <td style="max-width:200px;">
+          <span style="font-size:13px;color:#374151;" title="{{ bk.bk_report_desc }}">
+            {{ bk.bk_report_desc|truncatechars:60 }}
+          </span>
+        </td>
+        <td style="font-size:13px;color:#6B7280;white-space:nowrap;">
+          {{ bk.bk_report_date|date:"d M Y H:i" }}
+        </td>
+        <td>
+          <button class="btn-action btn-edit"
+                  onclick="openDetail({{ bk.bk_id }},
+                    'BK{{ bk.bk_id|stringformat:"05d" }}',
+                    '{{ bk.member.mb_full_name|escapejs }}',
+                    '{{ bk.tutc_id.tut_id.tut_id.mb_full_name|escapejs }}',
+                    '{{ bk.tutc_id.tutc_name|escapejs }}',
+                    {% if bk.bk_report_type == 0 %}'แจ้งติวเตอร์'{% else %}'แจ้งแอดมิน'{% endif %},
+                    '{{ bk.bk_report_desc|escapejs }}',
+                    '{{ bk.bk_report_date|date:"d M Y H:i" }}')"
+                  title="ดูรายละเอียด">
+            <i class="bi bi-eye"></i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page.paginator.num_pages > 1 %}
+  <div class="pagination-wrap">
+    <div class="pagination-info">
+      แสดง {{ page.start_index }}–{{ page.end_index }} จาก {{ page.paginator.count }} รายการ
+    </div>
+    <ul class="pagination">
+      <li class="page-item {% if not page.has_previous %}disabled{% endif %}">
+        <a class="page-link" href="?page={{ page.previous_page_number }}&type={{ type_filter }}">‹</a>
+      </li>
+      {% for p in page.paginator.page_range %}
+      <li class="page-item {% if p == page.number %}active{% endif %}">
+        <a class="page-link" href="?page={{ p }}&type={{ type_filter }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+      <li class="page-item {% if not page.has_next %}disabled{% endif %}">
+        <a class="page-link" href="?page={{ page.next_page_number }}&type={{ type_filter }}">›</a>
+      </li>
+    </ul>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-check-circle"></i>
+    <p>ไม่มีรายงานปัญหา</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal รายละเอียด -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>รายละเอียดรายงานปัญหา</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- ข้อมูล -->
+        <table class="w-100 mb-3" style="font-size:14px;border-collapse:collapse;">
+          <tr><td style="padding:5px 0;color:#6B7280;width:120px;">รหัสการจอง</td><td id="d-bkid" class="fw-semibold"></td></tr>
+          <tr><td style="padding:5px 0;color:#6B7280;">ผู้เรียน</td><td id="d-student"></td></tr>
+          <tr><td style="padding:5px 0;color:#6B7280;">ติวเตอร์</td><td id="d-tutor"></td></tr>
+          <tr><td style="padding:5px 0;color:#6B7280;">วิชา</td><td id="d-course"></td></tr>
+          <tr><td style="padding:5px 0;color:#6B7280;">ประเภท</td><td id="d-type"></td></tr>
+          <tr><td style="padding:5px 0;color:#6B7280;">วันที่รายงาน</td><td id="d-date" style="color:#6B7280;"></td></tr>
+        </table>
+        <div class="mb-3">
+          <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">รายละเอียดปัญหา</div>
+          <div id="d-desc" class="p-3 rounded" style="background:#FEF2F2;font-size:14px;line-height:1.7;color:#374151;"></div>
+        </div>
+
+        <!-- หมายเหตุถึงผู้เรียน -->
+        <div class="mb-2">
+          <label class="form-label fw-semibold" style="font-size:13px;">หมายเหตุถึงผู้เรียน (สำหรับปุ่มส่งหมายเหตุ)</label>
+          <textarea id="d-note" class="form-control" rows="3"
+                    placeholder="พิมพ์ข้อความอธิบายให้ผู้เรียนทราบ..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer flex-wrap gap-2">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+
+        <!-- ส่งให้ติวเตอร์แก้ไข -->
+        <form method="post" class="d-inline" id="formSendBack">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="send_back">
+          <input type="hidden" name="bk_id" class="modal-bk-id">
+          <button type="submit" class="btn btn-warning fw-semibold"
+                  onclick="return confirm('ส่งกลับให้ติวเตอร์แก้ไขข้อมูล?')">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>ส่งให้ติวเตอร์แก้ไข
+          </button>
+        </form>
+
+        <!-- ส่งหมายเหตุถึงผู้เรียน -->
+        <form method="post" class="d-inline" id="formSendNote" onsubmit="syncNote(this)">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="send_note">
+          <input type="hidden" name="bk_id" class="modal-bk-id">
+          <input type="hidden" name="note" id="note-hidden">
+          <button type="submit" class="btn btn-info text-white fw-semibold">
+            <i class="bi bi-chat-left-text me-1"></i>ส่งหมายเหตุถึงผู้เรียน
+          </button>
+        </form>
+
+        <!-- จัดการแล้ว + โอนเครดิต -->
+        <form method="post" class="d-inline" id="formResolveTransfer">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="resolve_transfer">
+          <input type="hidden" name="bk_id" class="modal-bk-id">
+          <button type="submit" class="btn btn-success fw-semibold"
+                  onclick="return confirm('ยืนยันจัดการแล้วและโอนเครดิตให้ติวเตอร์?')">
+            <i class="bi bi-check-circle me-1"></i>จัดการแล้ว + โอนเครดิต
+          </button>
+        </form>
+
+        <!-- ระงับการสอน -->
+        <form method="post" class="d-inline" id="formSuspend">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="suspend">
+          <input type="hidden" name="bk_id" class="modal-bk-id">
+          <button type="submit" class="btn btn-danger fw-semibold"
+                  onclick="return confirm('ระงับการสอนของติวเตอร์? ติวเตอร์จะต้องติดต่อแอดมินเพื่อขอปลดระงับ')">
+            <i class="bi bi-slash-circle me-1"></i>ระงับการสอน
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openDetail(pk, bkId, student, tutor, course, type, desc, date) {
+  document.getElementById('d-bkid').textContent    = bkId;
+  document.getElementById('d-student').textContent = student;
+  document.getElementById('d-tutor').textContent   = tutor;
+  document.getElementById('d-course').textContent  = course;
+  document.getElementById('d-type').textContent    = type;
+  document.getElementById('d-date').textContent    = date;
+  document.getElementById('d-desc').textContent    = desc;
+  document.getElementById('d-note').value          = '';
+  // set bk_id ในทุก form
+  document.querySelectorAll('.modal-bk-id').forEach(el => el.value = pk);
+  new bootstrap.Modal(document.getElementById('detailModal')).show();
+}
+
+function syncNote(form) {
+  const note = document.getElementById('d-note').value.trim();
+  if (!note) { alert('กรุณาระบุหมายเหตุก่อนส่ง'); return false; }
+  document.getElementById('note-hidden').value = note;
+  return true;
+}
+</script>
+{% endblock %}
