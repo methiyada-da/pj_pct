@@ -12,6 +12,7 @@ from .models import System
 from .forms  import SystemForm, AdminUserForm
 from apps.accounts.models import Tutor, Member
 from apps.credits.models  import Refill, Withdrawals
+from apps.courses.models  import Faculty, Major
 
 
 def is_admin(user):
@@ -325,6 +326,8 @@ def refill_mgmt(request):
 @user_passes_test(is_admin)
 def member_mgmt(request):
     q             = request.GET.get("q", "").strip()
+    fac_filter    = request.GET.get("fac", "")
+    mj_filter     = request.GET.get("mj", "")
     status_filter = request.GET.get("status", "")
 
     qs = Member.objects.select_related("user", "mj_id", "mj_id__fac_id").order_by("-user__date_joined")
@@ -335,12 +338,19 @@ def member_mgmt(request):
             Q(mb_email__icontains=q)     |
             Q(mj_id__mj_name__icontains=q)
         )
-    if status_filter != "": 
+    if fac_filter:
+        qs = qs.filter(mj_id__fac_id=fac_filter)
+    if mj_filter:
+        qs = qs.filter(mj_id=mj_filter)
+    if status_filter != "":
         qs = qs.filter(mb_status=status_filter)
 
     total_count  = Member.objects.count()
     active_count = Member.objects.filter(mb_status=1).count()
     tutor_count  = Member.objects.filter(tutor__tut_status=1).count()
+
+    faculties = Faculty.objects.order_by("fac_name")
+    majors    = Major.objects.select_related("fac_id").order_by("fac_id", "mj_name")
 
     paginator = Paginator(qs, 15)
     page      = paginator.get_page(request.GET.get("page", 1))
@@ -348,7 +358,11 @@ def member_mgmt(request):
     return render(request, "admin_panel/member_mgmt.html", {
         "page"          : page,
         "q"             : q,
+        "fac_filter"    : fac_filter,
+        "mj_filter"     : mj_filter,
         "status_filter" : status_filter,
+        "faculties"     : faculties,
+        "majors"        : majors,
         "total_count"   : total_count,
         "active_count"  : active_count,
         "tutor_count"   : tutor_count,
