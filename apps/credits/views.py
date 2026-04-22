@@ -8,6 +8,7 @@ import base64, io
 
 from .models import Refill, Withdrawals
 from apps.admin_panel.models import System
+from apps.bookings.models import Booking, JobCompletion
 
 
 @login_required
@@ -120,10 +121,58 @@ def credit_view(request):
             'wd_cmt'    : w.wd_cmt or '',
         })
 
+    # การจองที่เสร็จสิ้นแล้ว — ฝั่งผู้เรียน (จ่ายค่าเรียน)
+    paid_bookings = (
+        Booking.objects
+        .filter(member=member, bk_status__in=(4, 5))
+        .select_related('tutc_id__crs_id', 'tutc_id__tut_id__tut_id', 'jobcompletion')
+    )
+    for bk in paid_bookings:
+        try:
+            confirm_date = bk.jobcompletion.jc_confirm_date or bk.jobcompletion.jc_complete_date
+        except JobCompletion.DoesNotExist:
+            confirm_date = bk.bk_date
+        tx_list.append({
+            'kind'        : 'booking_pay',
+            'bk_id'       : bk.bk_id,
+            'amount'      : bk.total_credit,
+            'crs_name'    : bk.tutc_id.crs_id.crs_name,
+            'tutor_name'  : bk.tutc_id.tut_id.tut_id.mb_full_name,
+            'rate'        : bk.bk_rate_per_person,
+            'stu_count'   : bk.bk_stu_count,
+            'date'        : confirm_date,
+        })
+
+    # การจองที่เสร็จสิ้นแล้ว — ฝั่งติวเตอร์ (รายได้)
+    try:
+        tutor = member.tutor
+        income_bookings = (
+            Booking.objects
+            .filter(tutc_id__tut_id=tutor, bk_status__in=(4, 5))
+            .select_related('tutc_id__crs_id', 'member', 'jobcompletion')
+        )
+        for bk in income_bookings:
+            try:
+                confirm_date = bk.jobcompletion.jc_confirm_date or bk.jobcompletion.jc_complete_date
+            except JobCompletion.DoesNotExist:
+                confirm_date = bk.bk_date
+            tx_list.append({
+                'kind'         : 'booking_income',
+                'bk_id'        : bk.bk_id,
+                'amount'       : bk.total_credit,
+                'crs_name'     : bk.tutc_id.crs_id.crs_name,
+                'student_name' : bk.member.mb_full_name,
+                'rate'         : bk.bk_rate_per_person,
+                'stu_count'    : bk.bk_stu_count,
+                'date'         : confirm_date,
+            })
+    except Exception:
+        pass
+
     tx_list.sort(key=lambda x: x['date'], reverse=True)
 
     kind_filter = request.GET.get('kind', '')
-    if kind_filter in ('topup', 'withdraw', 'income'):
+    if kind_filter in ('topup', 'withdraw', 'booking_pay', 'booking_income'):
         tx_list = [t for t in tx_list if t['kind'] == kind_filter]
 
     paginator = Paginator(tx_list, 15)

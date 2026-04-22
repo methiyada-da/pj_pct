@@ -92,10 +92,11 @@
         <span class="fw-bold"><i class="fas fa-list me-2 text-primary"></i>รายการความเคลื่อนไหว</span>
         <select class="form-select form-select-sm" style="width:auto;"
                 onchange="location.href='?kind='+this.value">
-          <option value=""         {% if not kind_filter %}selected{% endif %}>ทุกประเภท</option>
-          <option value="topup"    {% if kind_filter == 'topup'    %}selected{% endif %}>เติมเครดิต</option>
-          <option value="withdraw" {% if kind_filter == 'withdraw' %}selected{% endif %}>ถอนเครดิต</option>
-          <option value="income"   {% if kind_filter == 'income'   %}selected{% endif %}>รายได้</option>
+          <option value=""               {% if not kind_filter %}selected{% endif %}>ทุกประเภท</option>
+          <option value="topup"          {% if kind_filter == 'topup'          %}selected{% endif %}>เติมเครดิต</option>
+          <option value="withdraw"       {% if kind_filter == 'withdraw'       %}selected{% endif %}>ถอนเครดิต</option>
+          <option value="booking_pay"    {% if kind_filter == 'booking_pay'    %}selected{% endif %}>จ่ายค่าเรียน</option>
+          <option value="booking_income" {% if kind_filter == 'booking_income' %}selected{% endif %}>รายได้จากการสอน</option>
         </select>
       </div>
 
@@ -122,7 +123,7 @@
               </div>
               <div class="flex-grow-1">
                 <div class="fw-semibold" style="font-size:14px;">เติมเครดิต</div>
-                <div class="text-muted" style="font-size:12px;">ผ่าน Mobile Banking</div>
+                <div class="text-muted" style="font-size:12px;">ผ่านบัญชี {{ tx.extracted_bank|default:"—" }}</div>
               </div>
               <div class="text-end flex-shrink-0 d-flex align-items-center gap-4">
                 <div>
@@ -153,7 +154,7 @@
             </div>
           </li>
 
-          {% else %}
+          {% elif tx.kind == 'withdraw' %}
           <li class="list-group-item px-4 py-3" style="cursor:pointer;"
               onclick="openWithdrawDetail(
                 '{{ tx.wd_id|stringformat:"05d" }}',
@@ -171,7 +172,7 @@
               </div>
               <div class="flex-grow-1">
                 <div class="fw-semibold" style="font-size:14px;">ถอนเครดิต</div>
-                <div class="text-muted" style="font-size:12px;">ถอนเข้าบัญชี {{ tx.bank_name }}</div>
+                <div class="text-muted" style="font-size:12px;">เข้าบัญชี {{ tx.bank_name }}</div>
               </div>
               <div class="text-end flex-shrink-0 d-flex align-items-center gap-4">
                 <div>
@@ -199,6 +200,61 @@
               </div>
             </div>
           </li>
+
+          {% elif tx.kind == 'booking_pay' %}
+          <li class="list-group-item px-4 py-3" style="cursor:pointer;"
+              onclick="openBookingDetail(
+                'BK{{ tx.bk_id|stringformat:"05d" }}',
+                '{{ tx.crs_name|escapejs }}',
+                '{{ tx.tutor_name|escapejs }}',
+                '',
+                {{ tx.rate }}, {{ tx.stu_count }}, {{ tx.amount }},
+                '{{ tx.date|date:"j M Y - H:i" }}',
+                'pay'
+              )">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:42px;height:42px;background:#FEE2E2;color:#EF4444;font-size:18px;">
+                <i class="fas fa-minus-circle"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-semibold" style="font-size:14px;">จ่ายค่าเรียน</div>
+                <div class="text-muted" style="font-size:12px;">{{ tx.crs_name }} · BK{{ tx.bk_id|stringformat:"05d" }}</div>
+              </div>
+              <div class="text-end flex-shrink-0">
+                <div class="fw-bold text-danger" style="font-size:15px;">-{{ tx.amount }} P</div>
+                <div class="text-muted" style="font-size:12px;">{{ tx.date|date:"j M Y - H:i" }}</div>
+              </div>
+            </div>
+          </li>
+
+          {% elif tx.kind == 'booking_income' %}
+          <li class="list-group-item px-4 py-3" style="cursor:pointer;"
+              onclick="openBookingDetail(
+                'BK{{ tx.bk_id|stringformat:"05d" }}',
+                '{{ tx.crs_name|escapejs }}',
+                '',
+                '{{ tx.student_name|escapejs }}',
+                {{ tx.rate }}, {{ tx.stu_count }}, {{ tx.amount }},
+                '{{ tx.date|date:"j M Y - H:i" }}',
+                'income'
+              )">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:42px;height:42px;background:#DCFCE7;color:#16A34A;font-size:18px;">
+                <i class="fas fa-plus-circle"></i>
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-semibold" style="font-size:14px;">รายได้จากการสอน</div>
+                <div class="text-muted" style="font-size:12px;">{{ tx.crs_name }} · BK{{ tx.bk_id|stringformat:"05d" }}</div>
+              </div>
+              <div class="text-end flex-shrink-0">
+                <div class="fw-bold text-success" style="font-size:15px;">+{{ tx.amount }} P</div>
+                <div class="text-muted" style="font-size:12px;">{{ tx.date|date:"j M Y - H:i" }}</div>
+              </div>
+            </div>
+          </li>
+
           {% endif %}
 
           {% endfor %}
@@ -283,6 +339,55 @@
               <i class="fas fa-image d-block mb-1" style="font-size:28px;opacity:.3;"></i>ไม่มีสลิป
             </div>
           </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Booking Detail Modal ── -->
+<div class="modal fade" id="bookingDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0 px-4 pt-4">
+        <div>
+          <h6 class="fw-bold mb-0" id="bkModalTitle"></h6>
+          <div class="text-muted small" id="bkId"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <div id="bkBanner" class="rounded-3 p-3 mb-3 text-center fw-semibold"></div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">รายวิชา</span>
+          <span class="fw-semibold small text-end" id="bkCrsName"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2 d-none" id="bkTutorRow">
+          <span class="text-muted small">ติวเตอร์</span>
+          <span class="fw-semibold small" id="bkTutorName"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2 d-none" id="bkStudentRow">
+          <span class="text-muted small">ผู้เรียน</span>
+          <span class="fw-semibold small" id="bkStudentName"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">อัตราค่าเรียน</span>
+          <span class="fw-semibold small" id="bkRate"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">จำนวนผู้เรียน</span>
+          <span class="fw-semibold small" id="bkStuCount"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+          <span class="text-muted small">รวมเครดิต</span>
+          <span class="fw-bold small" id="bkTotal"></span>
+        </div>
+        <div class="mb-2 d-flex justify-content-between">
+          <span class="text-muted small">วันที่ยืนยันจบงาน</span>
+          <span class="fw-semibold small" id="bkDate"></span>
         </div>
       </div>
       <div class="modal-footer border-0 pt-0">
@@ -396,6 +501,46 @@ function openWithdrawDetail(wdId, credit, netCash, bank, date, status, cmt) {
   if (cmt) { document.getElementById('wdCmt').textContent = cmt; cmtSec.classList.remove('d-none'); }
   else { cmtSec.classList.add('d-none'); }
   new bootstrap.Modal(document.getElementById('withdrawDetailModal')).show();
+}
+
+function openBookingDetail(bkId, crsName, tutorName, studentName, rate, stuCount, total, date, type) {
+  const isPay = type === 'pay';
+  document.getElementById('bkModalTitle').textContent = isPay ? 'รายละเอียดการจ่ายค่าเรียน' : 'รายละเอียดรายได้จากการสอน';
+  document.getElementById('bkId').textContent         = bkId;
+  document.getElementById('bkCrsName').textContent    = crsName;
+  document.getElementById('bkRate').textContent       = rate + ' P / คน';
+  document.getElementById('bkStuCount').textContent   = stuCount + ' คน';
+  document.getElementById('bkDate').textContent       = date;
+
+  const totalEl = document.getElementById('bkTotal');
+  totalEl.textContent = (isPay ? '-' : '+') + total + ' P';
+  totalEl.style.color = isPay ? '#EF4444' : '#16A34A';
+
+  const banner = document.getElementById('bkBanner');
+  if (isPay) {
+    banner.style.cssText = 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-minus-circle me-2"></i>จ่ายค่าเรียนแล้ว';
+  } else {
+    banner.style.cssText = 'background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-plus-circle me-2"></i>ได้รับเครดิตรายได้';
+  }
+
+  const tutorRow   = document.getElementById('bkTutorRow');
+  const studentRow = document.getElementById('bkStudentRow');
+  if (tutorName) {
+    document.getElementById('bkTutorName').textContent = tutorName;
+    tutorRow.classList.remove('d-none');
+  } else {
+    tutorRow.classList.add('d-none');
+  }
+  if (studentName) {
+    document.getElementById('bkStudentName').textContent = studentName;
+    studentRow.classList.remove('d-none');
+  } else {
+    studentRow.classList.add('d-none');
+  }
+
+  new bootstrap.Modal(document.getElementById('bookingDetailModal')).show();
 }
 </script>
 {% endblock %}
