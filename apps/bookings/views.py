@@ -250,12 +250,8 @@ def confirm_completion(request, bk_id):
 
     try:
         with transaction.atomic():
-            mb.mb_locked_crd = max(0, mb.mb_locked_crd - total_credit)
-            mb.save()
-
             tutor_member = bk.tutc_id.tut_id.tut_id
-            tutor_member.mb_income_crd += total_credit
-            tutor_member.save()
+            _pay_tutor(mb, tutor_member, total_credit)
 
             jc.jc_confirm_date = timezone.now()
             jc.save()
@@ -354,6 +350,25 @@ def report_problem(request, bk_id):
     return redirect('bookings:student_bookings')
 
 
+# ─── helper: โอนเครดิตจากผู้เรียนไปให้ติวเตอร์ ──────────────────────────────
+def _pay_tutor(student, tutor_member, total_credit):
+    """
+    หักเครดิตผู้เรียนตามลำดับ: deposit ก่อน → income ถ้าไม่พอ
+    ลด mb_locked_crd และโอนให้ tutor เป็น mb_income_crd
+    ต้องเรียกภายใน transaction.atomic()
+    """
+    deposit_deduct = min(student.mb_deposit_crd, total_credit)
+    income_deduct  = total_credit - deposit_deduct
+
+    student.mb_deposit_crd = max(0, student.mb_deposit_crd - deposit_deduct)
+    student.mb_income_crd  = max(0, student.mb_income_crd  - income_deduct)
+    student.mb_locked_crd  = max(0, student.mb_locked_crd  - total_credit)
+    student.save(update_fields=['mb_deposit_crd', 'mb_income_crd', 'mb_locked_crd'])
+
+    tutor_member.mb_income_crd += total_credit
+    tutor_member.save(update_fields=['mb_income_crd'])
+
+
 # ─── helper: ยืนยันจบงานอัตโนมัติถ้าเกิน 24 ชม. ──────────────────────────────
 def _auto_confirm_overdue(mb):
     """
@@ -377,12 +392,8 @@ def _auto_confirm_overdue(mb):
             if jc.jc_complete_date and jc.jc_complete_date <= cutoff:
                 total_credit = bk.bk_rate_per_person * bk.bk_stu_count
                 with transaction.atomic():
-                    mb.mb_locked_crd = max(0, mb.mb_locked_crd - total_credit)
-                    mb.save(update_fields=['mb_locked_crd'])
-
                     tutor_member = bk.tutc_id.tut_id.tut_id
-                    tutor_member.mb_income_crd += total_credit
-                    tutor_member.save(update_fields=['mb_income_crd'])
+                    _pay_tutor(mb, tutor_member, total_credit)
 
                     jc.jc_confirm_date = timezone.now()
                     jc.save()
