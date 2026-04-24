@@ -39,6 +39,7 @@ urlpatterns = [
     path('credits/',   include('apps.credits.urls',     namespace='credits')),
     path('bookings/',  include('apps.bookings.urls',    namespace='bookings')),
     path('messaging/', include('apps.messaging.urls', namespace='messaging')),
+    path('notifications/', include('apps.notifications.urls', namespace='notifications')),
 ]
  
 # Serve media files ในโหมด development
