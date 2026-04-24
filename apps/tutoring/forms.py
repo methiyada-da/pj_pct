@@ -4,6 +4,11 @@ from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 
 class TutorRegisterForm(forms.Form):
     """ฟอร์มขั้นตอนที่ 2 — ข้อมูลวิชาการและประสบการณ์"""
+    student_card = forms.ImageField(
+        label='รูปบัตรนักศึกษา',
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+    )
     gpa = forms.DecimalField(
         label='เกรดเฉลี่ยสะสม',
         max_digits=3, decimal_places=2, min_value=0, max_value=4,

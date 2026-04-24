@@ -112,7 +112,7 @@
     </div>
     <div class="card-body p-4">
       <div class="mb-3">
-        <label class="form-label fw-semibold small">ชื่อรายวิชา (ชื่อโฆษณา) <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold small">ชื่อรายวิชา (ชื่อเพื่อการโฆษณา) <span class="text-danger">*</span></label>
         <input type="text" name="tutc_name" class="form-control"
                placeholder="เช่น เข้าใจโปรแกรมภายใน 1 คอร์ส"
                value="{{ tutc.tutc_name|default:'' }}" required>
@@ -302,7 +302,7 @@
       <h2 class="h6 fw-bold mb-0">รายละเอียดราคา</h2>
     </div>
     <div class="card-body p-4">
-      <p class="text-muted small mb-1">กำหนดราคาตามจำนวนนักเรียนต่อ session <strong>(แบบช่วง)</strong></p>
+      <p class="text-muted small mb-1">กำหนดราคาตามจำนวนนักเรียนต่อคอร์ส <strong>(แบบช่วง)</strong></p>
       <p class="text-muted small mb-1"><i class="fas fa-coins text-warning me-1"></i> 1 เครดิต = 10 บาท</p>
       <p class="text-muted small mb-3"><i class="fas fa-info-circle text-primary me-1"></i> เรทแรก = ราคาเริ่มต้น, เรทถัดไป = เมื่อจำนวนคนถึงเกณฑ์จะใช้ราคานั้นแทน</p>
       <div id="rateContainer">

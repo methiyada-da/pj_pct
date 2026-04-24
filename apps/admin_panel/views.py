@@ -199,14 +199,18 @@ def tutor_mgmt_detail(request, pk):
             messages.success(request, f'อนุมัติติวเตอร์ {tutor.tut_id.mb_full_name} เรียบร้อยแล้ว')
             return redirect('admin_panel:tutor_mgmt_detail', pk=pk)
         elif action == 'reject':
-            tutor.tut_status = 2
+            note = request.POST.get('reject_note', '').strip()
+            tutor.tut_status      = 2
+            tutor.tut_reject_note = note or None  # บันทึกลง DB โดยตรง
             tutor.save()
-            messages.success(request, f'ปฏิเสธคำขอของ {tutor.tut_id.mb_full_name} เรียบร้อยแล้ว')
+            messages.error(request, f'ปฏิเสธคำขอเป็นติวเตอร์ของ {tutor.tut_id.mb_full_name} เรียบร้อยแล้ว')
             return redirect('admin_panel:tutor_mgmt_detail', pk=pk)
         elif action == 'suspend':
-            tutor.tut_status = 3
+            note = request.POST.get('reject_note', '').strip()
+            tutor.tut_status      = 3
+            tutor.tut_reject_note = note or None  # บันทึกเหตุผลการระงับ
             tutor.save()
-            messages.success(request, f'ระงับการสอนของ {tutor.tut_id.mb_full_name} เรียบร้อยแล้ว')
+            messages.error(request, f'ระงับการสอนของ {tutor.tut_id.mb_full_name} เรียบร้อยแล้ว')
             return redirect('admin_panel:tutor_mgmt_detail', pk=pk)
         elif action == 'unsuspend':
             tutor.tut_status = 1

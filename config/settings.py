@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'apps.messaging',
     'apps.credits',
     'apps.admin_panel',
+    'apps.notifications',
 ]
 
 

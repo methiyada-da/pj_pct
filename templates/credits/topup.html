@@ -180,12 +180,29 @@
 
               <div class="mb-4">
                 <label class="form-label fw-semibold small">อัปโหลดสลิป (หลักฐานการโอนเงิน)</label>
-                <div class="upload-zone" id="uploadZone">
-                  <input type="file" name="rf_slip" id="slipFile" accept="image/*,.pdf" required>
-                  <div id="uploadContent">
+                <div class="upload-zone" id="uploadZone" style="cursor:pointer;position:relative;">
+                  <input type="file" name="rf_slip" id="slipFile" accept="image/*,.pdf" required
+                         style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;z-index:1;">
+                  <!-- placeholder -->
+                  <div id="uploadPlaceholder" style="pointer-events:none;">
                     <i class="fas fa-cloud-upload-alt mb-2 d-block text-secondary" style="font-size:32px;"></i>
                     <div class="fw-semibold small mb-1">คลิกเพื่ออัปโหลด หรือลากและวาง</div>
                     <div class="text-muted" style="font-size:12px;">ไฟล์ PNG, JPG หรือ PDF (ขนาดสูงสุด 5MB)</div>
+                  </div>
+                  <!-- preview inline -->
+                  <div id="slipPreviewInner" class="d-none w-100 text-center" style="pointer-events:none;">
+                    <a id="slipPreviewLink" href="#" target="_blank"
+                       style="pointer-events:all;"
+                       onclick="event.stopPropagation()">
+                      <img id="slipPreviewImg"
+                           style="max-height:200px;max-width:100%;border-radius:8px;object-fit:contain;"
+                           alt="preview สลิป">
+                    </a>
+                    <div class="mt-2" style="font-size:12px;color:#16A34A;font-weight:600;">
+                      <i class="fas fa-check-circle me-1"></i>
+                      <span id="slipFileName"></span>
+                    </div>
+                    <div class="text-muted" style="font-size:11px;">คลิกที่รูปเพื่อดูขนาดเต็ม | คลิกกล่องเพื่อเปลี่ยนรูป</div>
                   </div>
                 </div>
               </div>
@@ -252,13 +269,11 @@
   const credInp  = document.getElementById('rfCredits');
   const dateInp  = document.querySelector('input[name="tx_date"]');
   const timeInp  = document.querySelector('input[name="tx_time"]');
-  const slipInp  = document.getElementById('slipFile');
 
   if (bankSel) setThaiValidation(bankSel, 'กรุณาเลือกธนาคารที่โอน', 'กรุณาเลือกธนาคารที่โอน');
   if (credInp) setThaiValidation(credInp, 'กรุณากรอกจำนวนเครดิตที่ต้องการ', 'กรุณากรอกจำนวนเครดิตที่ถูกต้อง (ตัวเลขเท่านั้น)');
   if (dateInp) setThaiValidation(dateInp, 'กรุณากรอกวันที่โอน', 'กรุณากรอกวันที่โอนให้ถูกต้อง');
   if (timeInp) setThaiValidation(timeInp, 'กรุณากรอกเวลาโอน', 'กรุณากรอกเวลาโอนให้ถูกต้อง');
-  if (slipInp) setThaiValidation(slipInp, 'กรุณาอัปโหลดสลิปการโอนเงิน', 'กรุณาอัปโหลดสลิปการโอนเงิน');
 
   function copyAccNo() {
     const text = document.getElementById('accNo').textContent.trim();
@@ -288,11 +303,28 @@
   });
 
   function showPreview(file) {
-    document.getElementById('uploadContent').innerHTML = `
-      <i class="fas fa-file-image mb-2 d-block text-primary" style="font-size:28px;"></i>
-      <div class="fw-semibold small text-primary mb-1">${file.name}</div>
-      <div class="text-muted" style="font-size:12px;">${(file.size/1024/1024).toFixed(2)} MB</div>`;
-    uploadZone.classList.add('done');
+    const placeholder = document.getElementById('uploadPlaceholder');
+    const preview     = document.getElementById('slipPreviewInner');
+    const img         = document.getElementById('slipPreviewImg');
+    const link        = document.getElementById('slipPreviewLink');
+    const nameEl      = document.getElementById('slipFileName');
+
+    nameEl.textContent = file.name;
+
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      img.src   = url;
+      link.href = url;
+      img.classList.remove('d-none');
+    } else {
+      // PDF — แสดงไอคอนแทน
+      img.classList.add('d-none');
+    }
+
+    placeholder.classList.add('d-none');
+    preview.classList.remove('d-none');
+    uploadZone.style.borderColor = '#16A34A';
+    uploadZone.style.background  = '#F0FDF4';
   }
 </script>
 {% endblock %}

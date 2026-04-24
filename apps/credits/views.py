@@ -237,7 +237,9 @@ def topup_view(request):
         if not errors:
             rf_credit = round(rf_money_f / crd_val)
             cmt = f'โอนจาก: {bank_from} | วันที่: {tx_date} {tx_time}'
-            Refill.objects.create(
+
+            # สร้าง Refill ก่อนเพื่อได้ rf_id
+            refill = Refill.objects.create(
                 rf_date   = timezone.now(),
                 rf_money  = rf_money_f,
                 rf_credit = rf_credit,
@@ -246,6 +248,18 @@ def topup_view(request):
                 rf_cmt    = cmt,
                 member    = member,
             )
+
+            # rename ไฟล์สลิปเป็น rf_id{pk}.ext
+            if refill.rf_slip:
+                import os
+                old_path = refill.rf_slip.path
+                ext      = os.path.splitext(old_path)[1].lower() or '.jpg'
+                new_name = f'rf_id{refill.rf_id}{ext}'
+                new_path = os.path.join(os.path.dirname(old_path), new_name)
+                os.rename(old_path, new_path)
+                refill.rf_slip.name = f'Refill/{new_name}'
+                refill.save(update_fields=['rf_slip'])
+
             messages.success(request, 'ส่งคำขอเติมเครดิตเรียบร้อยแล้ว กรุณารอการตรวจสอบ 15-30 นาที')
             return redirect('credits:credit')
 

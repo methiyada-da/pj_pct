@@ -104,7 +104,7 @@
 
             <!-- ช่วงราคา (เครดิต) -->
             <div class="filter-section">
-              <label class="filter-label">ช่วงราคา (เครดิต/ครั้ง)</label>
+              <label class="filter-label">อัตราค่าติว (เครดิต/ครั้ง)</label>
               <div class="price-inputs">
                 <input type="number" name="min_price" class="price-input"
                        placeholder="ต่ำสุด" min="0" value="{{ min_price }}">
@@ -260,14 +260,14 @@
                 <!-- Footer: ราคา + ปุ่ม -->
                 <div class="course-footer">
                   <div>
-                    <div class="price-label">ราคา</div>
+                    <div class="price-label">อัตราค่าติว</div>
                     <div>
                       {% if tc.lowest_price is not None %}
                         {% if tc.lowest_price == 0 %}
-                          <span class="price-value" style="color:#16a34a;">ฟรี</span>
+                          <span class="price-value" style="color:#16a34a;">ฟรี สำหรับ 1 คน</span>
                         {% else %}
                           <span class="price-value">{{ tc.lowest_price }}</span>
-                          <span class="price-unit"> เครดิต/ครั้ง</span>
+                          <span class="price-unit"> เครดิต/ครั้ง สำหรับ 1 คน</span> 
                         {% endif %}
                       {% else %}
                         <span class="price-value">—</span>
