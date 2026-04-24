@@ -73,6 +73,19 @@ class Tutor(models.Model):
 
     tut_status   = models.IntegerField(choices=STATUS_CHOICES, default=0, verbose_name="สถานะ")
 
+    # [เพิ่มใหม่] รูปบัตรนักศึกษาสำหรับยืนยันตัวตน
+    tut_student_card = models.ImageField(
+        upload_to='tutor_cards/',
+        blank=True, null=True,
+        verbose_name="รูปบัตรนักศึกษา"
+    )
+
+    # [เพิ่มใหม่] หมายเหตุจาก Admin เมื่อปฏิเสธหรือระงับการสอน
+    tut_reject_note = models.TextField(
+        blank=True, null=True,
+        verbose_name="หมายเหตุการปฏิเสธ/ระงับ"
+    )
+
     class Meta:
         db_table     = 'tutor'
         verbose_name = "ข้อมูลติวเตอร์"

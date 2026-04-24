@@ -2,11 +2,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
+from django.core.files.base import ContentFile
 
 from apps.accounts.models import Tutor
 from apps.courses.models import CourseGroup, Course
 from .forms import TutorRegisterForm
 import re
+import os
 from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 from apps.bookings.models import Booking
 
@@ -17,6 +19,13 @@ def _member_context(member):
         'faculty_name': member.mj_id.fac_id.fac_name if member.mj_id else '',
         'major_name'  : member.mj_id.mj_name          if member.mj_id else '',
     }
+
+
+def _rename_student_card(file, tut_pk):
+    """เปลี่ยนชื่อไฟล์บัตรนักศึกษาเป็น tut_id{pk}.ext"""
+    ext  = os.path.splitext(file.name)[1].lower() or '.jpg'
+    file.name = f'tut_id{tut_pk}{ext}'
+    return file
 
 
 # ─── สมัครเป็นติวเตอร์ ────────────────────────────────────────────────────────
@@ -44,7 +53,7 @@ def register_tutor(request):
             'experience_detail': tutor.tut_exp_desc,
         }
 
-    form = TutorRegisterForm(request.POST or None, initial=initial)
+    form = TutorRegisterForm(request.POST or None, request.FILES or None, initial=initial)
 
     if request.method == 'POST' and form.is_valid():
         if tutor:
@@ -53,33 +62,43 @@ def register_tutor(request):
             tutor.tut_skill    = form.cleaned_data['teaching_skills']
             tutor.tut_has_exp  = int(form.cleaned_data['has_experience'])
             tutor.tut_exp_desc = form.cleaned_data['experience_detail'] or ''
+            # อัพโหลดบัตรนักศึกษาถ้ามีการส่งมา
+            if form.cleaned_data.get('student_card'):
+                card = _rename_student_card(form.cleaned_data['student_card'], member.pk)
+                tutor.tut_student_card = card
             if old_status == 2:
-                tutor.tut_status = 0
+                tutor.tut_status      = 0
+                tutor.tut_reject_note = None  # ล้างหมายเหตุเก่าเมื่อส่งใหม่
                 tutor.save()
-                messages.success(request, 'ส่งคำขอใหม่เรียบร้อยแล้ว Admin จะตรวจสอบและแจ้งผลภายใน 2-3 วันทำการ')
+                messages.success(request, 'ส่งคำขอใหม่เรียบร้อยแล้ว Admin จะตรวจสอบและแจ้งผลภายใน 1-3 วันทำการ')
             else:
                 tutor.save()
                 messages.success(request, 'อัปเดตข้อมูลติวเตอร์เรียบร้อยแล้ว')
         else:
+            card = None
+            if form.cleaned_data.get('student_card'):
+                card = _rename_student_card(form.cleaned_data['student_card'], member.pk)
             tutor = Tutor.objects.create(
-                tut_id       = member,
-                tut_gpax     = form.cleaned_data['gpa'],
-                tut_skill    = form.cleaned_data['teaching_skills'],
-                tut_has_exp  = int(form.cleaned_data['has_experience']),
-                tut_exp_desc = form.cleaned_data['experience_detail'] or '',
-                tut_status   = 0,
+                tut_id           = member,
+                tut_gpax         = form.cleaned_data['gpa'],
+                tut_skill        = form.cleaned_data['teaching_skills'],
+                tut_has_exp      = int(form.cleaned_data['has_experience']),
+                tut_exp_desc     = form.cleaned_data['experience_detail'] or '',
+                tut_student_card = card,
+                tut_status       = 0,
             )
             messages.success(
                 request,
-                'ส่งคำขอสมัครเป็นติวเตอร์เรียบร้อยแล้ว Adminจะตรวจสอบและแจ้งผลภายใน 2-3 วันทำการ'
+                'ส่งคำขอสมัครเป็นติวเตอร์เรียบร้อยแล้ว Adminจะตรวจสอบและแจ้งผลภายใน 1-3 วันทำการ'
             )
         return redirect('tutoring:register_tutor')
 
     return render(request, 'tutoring/register_tutor.html', {
         **_member_context(member),
-        'form'         : form,
-        'tutor'        : tutor,
-        'is_view_only' : tutor is not None and tutor.tut_status in (0, 3),
+        'form'        : form,
+        'tutor'       : tutor,
+        'is_view_only': tutor is not None and tutor.tut_status in (0, 3),
+        'reject_note' : tutor.tut_reject_note if tutor else None,
     })
 
 
@@ -453,7 +472,22 @@ def delete_course(request, tutc_id):
     tutor  = get_object_or_404(Tutor, tut_id=member, tut_status=1)
     tutc   = get_object_or_404(TutorCourse, tutc_id=tutc_id, tut_id=tutor)
 
+    # ✅ เช็ค Booking ที่ยังดำเนินอยู่ (จอง / รับงาน / เรียนอยู่ / แจ้งจบงานแล้วแต่ยังไม่ยืนยัน)
+    ACTIVE_STATUSES = [0, 1, 2, 3]  # จอง, รับงานแล้ว, เรียนแล้ว, แจ้งจบงาน
+    has_active = Booking.objects.filter(
+        tutc_id=tutc,
+        bk_status__in=ACTIVE_STATUSES
+    ).exists()
+
+    if has_active:
+        messages.error(
+            request,
+            f'ไม่สามารถลบคอร์ส "{tutc.tutc_name}" ได้ '
+            f'เนื่องจากมีนักเรียนที่จองหรือกำลังเรียนอยู่'
+        )
+        return redirect('tutoring:tutor_course_list')
+
     name = tutc.tutc_name
     tutc.delete()
-    messages.success(request, f'ลบคอร์ส "{name}" เรียบร้อยแล้ว')
+    messages.error(request, f'ลบคอร์ส "{name}" เรียบร้อยแล้ว')
     return redirect('tutoring:tutor_course_list')

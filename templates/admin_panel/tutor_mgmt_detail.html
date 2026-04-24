@@ -79,6 +79,23 @@
           {{ tutor.tut_gpax }} <span style="font-size:16px;color:var(--text-muted);font-weight:400;"></span>
         </div>
       </div>
+
+      <!-- บัตรนักศึกษา -->
+      {% if tutor.tut_student_card %}
+      <div class="mt-3">
+        <div class="detail-label mb-2" style="letter-spacing:.04em;text-transform:uppercase;font-size:11px;">บัตรนักศึกษา</div>
+        <a href="{{ tutor.tut_student_card.url }}" target="_blank">
+          <img src="{{ tutor.tut_student_card.url }}"
+               style="max-width:100%;max-height:160px;border-radius:8px;border:1px solid var(--border);object-fit:cover;"
+               alt="บัตรนักศึกษา">
+        </a>
+      </div>
+      {% else %}
+      <div class="mt-3">
+        <div class="detail-label mb-1" style="letter-spacing:.04em;text-transform:uppercase;font-size:11px;">บัตรนักศึกษา</div>
+        <span style="font-size:13px;color:var(--text-muted);">ยังไม่ได้แนบ</span>
+      </div>
+      {% endif %}
     </div>
   </div>
 
@@ -118,14 +135,15 @@
       </p>
       <div class="d-flex gap-2">
         {% if tutor.tut_status == 0 %}
-          <button type="submit" name="action" value="reject" class="btn-action-reject">
+          <!-- Modal ปฏิเสธ -->
+          <button type="button" class="btn-action-reject" data-bs-toggle="modal" data-bs-target="#rejectModal">
             <i class="bi bi-x-lg"></i> ปฏิเสธคำขอ
           </button>
           <button type="submit" name="action" value="approve" class="btn-action-approve">
             <i class="bi bi-check-lg"></i> อนุมัติติวเตอร์
           </button>
         {% elif tutor.tut_status == 1 %}
-          <button type="submit" name="action" value="suspend" class="btn-action-reject">
+          <button type="button" class="btn-action-reject" data-bs-toggle="modal" data-bs-target="#suspendModal">
             <i class="bi bi-slash-circle"></i> ระงับการสอน
           </button>
         {% elif tutor.tut_status == 2 %}
@@ -146,6 +164,74 @@
 <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:24px;">
   ระบบจัดการติวเตอร์ RMUTI &bull; สำหรับผู้ดูแลระบบเท่านั้น
 </p>
+
+<!-- ── Modal: ปฏิเสธคำขอ ── -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header" style="border-bottom:1px solid var(--border);">
+        <h5 class="modal-title fw-bold" id="rejectModalLabel">
+          <i class="bi bi-x-circle text-danger me-2"></i>ปฏิเสธคำขอติวเตอร์
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-body" style="padding:20px 24px;">
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+            ระบุเหตุผลการปฏิเสธเพื่อให้ติวเตอร์ทราบและแก้ไขก่อนส่งคำขอใหม่
+          </p>
+          <label class="form-label fw-semibold" style="font-size:13px;">
+            หมายเหตุ / เหตุผลการปฏิเสธ <span class="text-danger">*</span>
+          </label>
+          <textarea name="reject_note" rows="4" class="form-control"
+                    placeholder="เช่น เกรดเฉลี่ยต่ำกว่าเกณฑ์, ข้อมูลไม่ครบถ้วน..."
+                    required style="font-size:13px;"></textarea>
+        </div>
+        <div class="modal-footer" style="border-top:1px solid var(--border);padding:14px 24px;">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" name="action" value="reject" class="btn-action-reject" style="padding:7px 18px;font-size:13px;">
+            <i class="bi bi-x-lg"></i> ยืนยันปฏิเสธ
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: ระงับการสอน ── -->
+<div class="modal fade" id="suspendModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header" style="border-bottom:1px solid var(--border);">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-slash-circle text-danger me-2"></i>ระงับการสอน
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-body" style="padding:20px 24px;">
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+            ระบุเหตุผลการระงับเพื่อให้ติวเตอร์ทราบ
+          </p>
+          <label class="form-label fw-semibold" style="font-size:13px;">
+            หมายเหตุ / เหตุผลการระงับ <span class="text-danger">*</span>
+          </label>
+          <textarea name="reject_note" rows="4" class="form-control"
+                    placeholder="เช่น มีการร้องเรียนจากผู้เรียน, พฤติกรรมไม่เหมาะสม..."
+                    required style="font-size:13px;"></textarea>
+        </div>
+        <div class="modal-footer" style="border-top:1px solid var(--border);padding:14px 24px;">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" name="action" value="suspend" class="btn-action-reject" style="padding:7px 18px;font-size:13px;">
+            <i class="bi bi-slash-circle"></i> ยืนยันระงับ
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
 
