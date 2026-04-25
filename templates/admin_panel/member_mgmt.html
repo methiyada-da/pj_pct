@@ -258,7 +258,7 @@ function submitFilter() {
   document.getElementById('filterForm').submit();
 }
 
-function onFacChange(facSelect) {
+function onFacChange(facSelect, submit = true) {
   const facId = facSelect.value;
   const mjSel = document.getElementById('mjSelect');
   Array.from(mjSel.options).forEach(opt => {
@@ -267,11 +267,11 @@ function onFacChange(facSelect) {
     opt.hidden = !show;
     if (!show && opt.selected) mjSel.value = '';
   });
-  submitFilter();
+  if (submit) submitFilter();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  onFacChange(document.getElementById('facSelect'));
+  onFacChange(document.getElementById('facSelect'), false);
 });
 
 const memberData = {
