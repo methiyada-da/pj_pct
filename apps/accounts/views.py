@@ -98,10 +98,124 @@ def register_view(request):
 
         form = MemberRegisterForm(post_data, request.FILES)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, 'สมัครสมาชิกสำเร็จ!')
-            return redirect('home')
+            from django.core.signing import dumps
+            from django.contrib.auth.hashers import make_password
+            from django.core.mail import send_mail
+            from django.conf import settings as conf_settings
+
+            data = {
+                'first_name': form.cleaned_data['first_name'],
+                'last_name':  form.cleaned_data['last_name'],
+                'mj_id':      form.cleaned_data['mj_id'].pk,
+                'email':      form.cleaned_data['mb_email'],
+                'password':   make_password(form.cleaned_data['password1']),
+            }
+            token      = dumps(data, salt='email-verify')
+            verify_url = request.build_absolute_uri(
+                f"/accounts/verify-email/?token={token}"
+            )
+            cancel_url = request.build_absolute_uri("/accounts/verify-email/cancel/")
+            html_message = f"""
+<!DOCTYPE html>
+<html lang="th">
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:12px;overflow:hidden;
+                    box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#4f46e5;padding:28px 32px;text-align:center;">
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">
+              เพื่อนช่วยติว
+            </h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 32px;">
+            <p style="margin:0 0 8px;font-size:16px;color:#1f2937;">
+              สวัสดี <strong>{data['first_name']} {data['last_name']}</strong>,
+            </p>
+            <p style="margin:0 0 24px;font-size:15px;color:#4b5563;line-height:1.6;">
+              มีคำขอสมัครสมาชิกใหม่สำหรับบัญชีนี้<br>
+              กรุณากดปุ่มด้านล่างเพื่อยืนยันการสมัคร
+            </p>
+
+            <!-- Confirm button -->
+            <table cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+              <tr>
+                <td style="border-radius:8px;background:#4f46e5;">
+                  <a href="{verify_url}"
+                     style="display:inline-block;padding:14px 36px;
+                            color:#ffffff;font-size:15px;font-weight:600;
+                            text-decoration:none;border-radius:8px;">
+                    ✅ ยืนยันการสมัครสมาชิก
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Cancel button -->
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:8px;border:1px solid #d1d5db;">
+                  <a href="{cancel_url}"
+                     style="display:inline-block;padding:13px 36px;
+                            color:#6b7280;font-size:15px;font-weight:600;
+                            text-decoration:none;border-radius:8px;">
+                    ❌ ไม่ใช่ฉัน / ยกเลิก
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:28px 0 0;font-size:13px;color:#9ca3af;">
+              ลิงก์นี้จะหมดอายุใน <strong>24 ชั่วโมง</strong><br>
+              หากไม่ได้สมัครสมาชิก กรุณาเพิกเฉยต่ออีเมลนี้
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f9fafb;padding:16px 32px;text-align:center;
+                     border-top:1px solid #e5e7eb;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">
+              © เพื่อนช่วยติว — RMUTI
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+            try:
+                send_mail(
+                    subject='[เพื่อนช่วยติว] ยืนยันอีเมลของคุณ',
+                    message=(
+                        f'สวัสดี {data["first_name"]},\n\n'
+                        f'คลิกลิงก์เพื่อยืนยันการสมัครสมาชิก:\n{verify_url}\n\n'
+                        f'ลิงก์นี้จะหมดอายุใน 24 ชั่วโมง'
+                    ),
+                    html_message=html_message,
+                    from_email=conf_settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[data['email']],
+                    fail_silently=False,
+                )
+            except Exception:
+                messages.error(request, 'ส่งอีเมลไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ')
+                context = {'active_tab': 'register', 'form': form, 'faculties': faculties}
+                return render(request, 'accounts/register.html', context)
+
+            request.session['pending_email'] = data['email']
+            return redirect('accounts:register_pending')
     else:
         form = MemberRegisterForm()
 
@@ -262,12 +376,99 @@ def password_reset_confirm_view(request, uidb64, token):
             return redirect('accounts:password_reset_complete')
 
     return render(request, 'accounts/password_reset_confirm.html', {
-        'valid': valid,
+        'valid':  valid,
         'uidb64': uidb64,
-        'token': token,
+        'token':  token,
+        'user':   user,
     })
 
 
 def password_reset_complete_view(request):
     """รีเซ็ตสำเร็จ"""
     return render(request, 'accounts/password_reset_complete.html')
+
+
+# ─────────────────────────────────────────────
+#  ยืนยันอีเมล (Email Verification)
+# ─────────────────────────────────────────────
+def cancel_verify_view(request):
+    """ปุ่ม 'ไม่ใช่ฉัน' ในอีเมล — แจ้งว่ายกเลิกแล้ว ไม่มีอะไรใน DB ให้ลบ"""
+    return render(request, 'accounts/verify_email_cancel.html')
+
+
+def register_pending_view(request):
+    """หน้าแจ้งให้ user ไปเช็คอีเมล"""
+    email = request.session.get('pending_email', '')
+    return render(request, 'accounts/register_pending.html', {'email': email})
+
+
+def verify_email_view(request):
+    """ตรวจ token → สร้าง User+Member ใน transaction เดียว → login"""
+    from django.core.signing import loads, BadSignature, SignatureExpired
+    from django.contrib.auth.models import User as AuthUser
+    from django.db import transaction
+    from apps.accounts.models import Member
+    from apps.courses.models import Major
+
+    token = request.GET.get('token', '')
+
+    # ── 1. ตรวจสอบ token ──────────────────────────────────────────
+    try:
+        data = loads(token, max_age=86400, salt='email-verify')
+    except SignatureExpired:
+        return render(request, 'accounts/verify_email_error.html', {
+            'error': 'ลิงก์ยืนยันหมดอายุแล้ว (24 ชั่วโมง) กรุณาสมัครสมาชิกใหม่อีกครั้ง'
+        })
+    except (BadSignature, Exception):
+        return render(request, 'accounts/verify_email_error.html', {
+            'error': 'ลิงก์ยืนยันไม่ถูกต้อง กรุณาสมัครสมาชิกใหม่อีกครั้ง'
+        })
+
+    email_addr = data['email']
+
+    # ── 2. ยืนยันแล้วจริงๆ (member มีอยู่แล้ว) ────────────────────
+    if Member.objects.filter(mb_email__iexact=email_addr).exists():
+        messages.info(request, 'อีเมลนี้ยืนยันแล้ว กรุณาเข้าสู่ระบบ')
+        return redirect('accounts:login')
+
+    # ── 3. ลบ orphaned auth_user (ถ้ามี) ──────────────────────────
+    AuthUser.objects.filter(email__iexact=email_addr).delete()
+
+    # ── 4. หา username ที่ไม่ซ้ำ ───────────────────────────────────
+    base = email_addr.split('@')[0]
+    username, n = base, 1
+    while AuthUser.objects.filter(username=username).exists():
+        username = f'{base}{n}'
+        n += 1
+
+    # ── 5. สร้าง User + Member ใน transaction เดียว ────────────────
+    try:
+        major = Major.objects.get(pk=data['mj_id'])
+    except Major.DoesNotExist:
+        major = None
+
+    try:
+        with transaction.atomic():
+            user = AuthUser(
+                username=username,
+                email=email_addr,
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+                password=data['password'],  # hashed แล้วตั้งแต่ตอน sign
+            )
+            user.save()
+            Member.objects.create(
+                user=user,
+                mb_full_name=f"{data['first_name']} {data['last_name']}".strip(),
+                mb_email=email_addr,
+                mb_img=None,
+                mj_id=major,
+            )
+    except Exception:
+        return render(request, 'accounts/verify_email_error.html', {
+            'error': 'เกิดข้อผิดพลาดในการสร้างบัญชี กรุณาติดต่อผู้ดูแลระบบ'
+        })
+
+    login(request, user)
+    messages.success(request, f'ยืนยันอีเมลเรียบร้อย ยินดีต้อนรับสู่เพื่อนช่วยติว, {user.first_name}!')
+    return redirect('home')

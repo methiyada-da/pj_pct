@@ -191,18 +191,25 @@
                   </div>
                   <!-- preview inline -->
                   <div id="slipPreviewInner" class="d-none w-100 text-center" style="pointer-events:none;">
-                    <a id="slipPreviewLink" href="#" target="_blank"
-                       style="pointer-events:all;"
-                       onclick="event.stopPropagation()">
-                      <img id="slipPreviewImg"
-                           style="max-height:200px;max-width:100%;border-radius:8px;object-fit:contain;"
-                           alt="preview สลิป">
-                    </a>
+                    <img id="slipPreviewImg"
+                         style="max-height:200px;max-width:100%;border-radius:8px;object-fit:contain;
+                                cursor:zoom-in;pointer-events:all;"
+                         alt="preview สลิป"
+                         onclick="openSlipModal(this.src)">
                     <div class="mt-2" style="font-size:12px;color:#16A34A;font-weight:600;">
                       <i class="fas fa-check-circle me-1"></i>
                       <span id="slipFileName"></span>
                     </div>
-                    <div class="text-muted" style="font-size:11px;">คลิกที่รูปเพื่อดูขนาดเต็ม | คลิกกล่องเพื่อเปลี่ยนรูป</div>
+                    <div class="d-flex justify-content-center gap-2 mt-2" style="pointer-events:all;">
+                      <button type="button" class="btn btn-sm btn-outline-primary px-3"
+                              onclick="openSlipModal(document.getElementById('slipPreviewImg').src)">
+                        <i class="fas fa-search-plus me-1"></i>ดูรูป
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary px-3"
+                              onclick="document.getElementById('slipFile').click()">
+                        <i class="fas fa-sync-alt me-1"></i>เปลี่ยนรูป
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -306,7 +313,6 @@
     const placeholder = document.getElementById('uploadPlaceholder');
     const preview     = document.getElementById('slipPreviewInner');
     const img         = document.getElementById('slipPreviewImg');
-    const link        = document.getElementById('slipPreviewLink');
     const nameEl      = document.getElementById('slipFileName');
 
     nameEl.textContent = file.name;
@@ -314,10 +320,8 @@
     if (file.type.startsWith('image/')) {
       const url = URL.createObjectURL(file);
       img.src   = url;
-      link.href = url;
       img.classList.remove('d-none');
     } else {
-      // PDF — แสดงไอคอนแทน
       img.classList.add('d-none');
     }
 
@@ -325,6 +329,35 @@
     preview.classList.remove('d-none');
     uploadZone.style.borderColor = '#16A34A';
     uploadZone.style.background  = '#F0FDF4';
+    uploadZone.style.cursor      = 'default';
+
+    // ปิด overlay ของ file input — ใช้ปุ่ม "เปลี่ยนรูป" แทน
+    slipFile.style.pointerEvents = 'none';
+    slipFile.style.zIndex        = '-1';
+  }
+
+  function openSlipModal(src) {
+    document.getElementById('slipModalImg').src = src;
+    new bootstrap.Modal(document.getElementById('slipModal')).show();
   }
 </script>
+
+<!-- Lightbox modal สลิป -->
+<div class="modal fade" id="slipModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:90vw;width:fit-content;">
+    <div class="modal-content border-0" style="background:transparent;">
+      <div class="modal-body p-0 position-relative">
+        <button type="button" data-bs-dismiss="modal"
+                style="position:absolute;top:-12px;right:-12px;z-index:10;
+                       background:#fff;border:none;border-radius:50%;
+                       width:32px;height:32px;font-size:16px;
+                       box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;">
+          <i class="fas fa-times text-secondary"></i>
+        </button>
+        <img id="slipModalImg" src="" alt="สลิปขนาดเต็ม"
+             style="max-width:85vw;max-height:85vh;border-radius:10px;display:block;object-fit:contain;">
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
