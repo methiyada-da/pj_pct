@@ -32,6 +32,7 @@ body {
   z-index: 1000;
   padding: 0;
 }
+
 .brand-icon {
   width: 36px; height: 36px;
   background: var(--pct-primary);
@@ -49,11 +50,14 @@ body {
 .pct-navbar .nav-link:hover,
 .pct-navbar .nav-link.active { color: var(--pct-primary); }
 
+.nav-icon { font-size: 1.2rem; }
+
 .avatar-sm {
   width: 36px; height: 36px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--pct-border);
+  margin-left: .75rem;
 }
 .avatar-placeholder {
   display: flex; align-items: center; justify-content: center;
