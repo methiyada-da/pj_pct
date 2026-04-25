@@ -150,6 +150,9 @@ LOGIN_URL          = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
  
+# ── Password Reset Token ────────────────────────────────────
+PASSWORD_RESET_TIMEOUT = 86400 
+
 # ── Email (SMTP) ─────────────────────────────────────────────
 EMAIL_BACKEND   = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST      = 'smtp.gmail.com'

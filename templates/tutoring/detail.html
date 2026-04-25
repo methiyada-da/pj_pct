@@ -370,8 +370,15 @@
   // ── render time slots ──
   function renderSlots(sdId) {
     const area  = document.getElementById('slot-area');
-    // กรอง: ts_id ต้องมีค่า, start/end ต้องไม่ว่าง
-    const slots = (slotData[sdId] || []).filter(s => s && s.ts_id && s.start && s.end);
+    // กรอง + dedup: เอาเฉพาะ ts_id แรกของแต่ละช่วงเวลา (ป้องกัน slot ซ้ำใน DB)
+    const _seen = new Set();
+    const slots = (slotData[sdId] || []).filter(s => {
+      if (!s || !s.ts_id || !s.start || !s.end) return false;
+      const key = s.start + '-' + s.end;
+      if (_seen.has(key)) return false;
+      _seen.add(key);
+      return true;
+    });
     if (!slots.length) {
       area.innerHTML = '<p class="no-slot-msg">ไม่มีช่วงเวลาว่างในวันนี้</p>';
       return;
