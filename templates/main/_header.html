@@ -31,7 +31,7 @@
               <i class="far fa-bell"></i>
               <span id="notif-badge"
                     class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
-                    style="font-size:0.6rem">0</span>
+                    style="font-size:0.55rem; padding:.25em .45em; min-width:16px; min-height:16px;"></span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end shadow p-0"
                 style="min-width:340px;max-height:460px;overflow-y:auto;">
@@ -45,7 +45,18 @@
             </ul>
           </li>
           <li class="nav-item">
-            <a class="nav-link nav-icon" href="{% url 'messaging:inbox' %}"><i class="far fa-comment-dots"></i></a>
+            <a class="nav-link nav-icon position-relative" href="{% url 'messaging:inbox' %}">
+              <i class="far fa-comment-dots"></i>
+              {% if total_unread > 0 %}
+              <span id="msg-badge"
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                    style="font-size:0.55rem; padding:.25em .45em; min-width:16px; min-height:16px;">{{ total_unread }}</span>
+              {% else %}
+              <span id="msg-badge"
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                    style="font-size:0.55rem; padding:.25em .45em; min-width:16px; min-height:16px;"></span>
+              {% endif %}
+            </a>
           </li>
           <li class="nav-item dropdown">
             <a class="nav-link p-0" href="#" id="userDropdown"
@@ -109,3 +120,29 @@
   </div>
 </nav>
 <!-- ===== END NAVBAR ===== -->
+
+{% if user.is_authenticated %}
+<script>
+// ── polling อัปเดต unread badge ทุก 15 วินาที ──
+(function() {
+  const badge = document.getElementById('msg-badge');
+  if (!badge) return;
+
+  async function updateMsgBadge() {
+    try {
+      const res  = await fetch('{% url "messaging:unread_count" %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      const data = await res.json();
+      const count = data.total_unread || 0;
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.remove('d-none');
+      } else {
+        badge.classList.add('d-none');
+      }
+    } catch(e) {}
+  }
+
+  setInterval(updateMsgBadge, 15000);
+})();
+</script>
+{% endif %}

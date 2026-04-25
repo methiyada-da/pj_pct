@@ -317,7 +317,7 @@
     {% if tutor.tut_rating and tutor.tut_rating > 0 %}
     <div class="tp-card" style="padding:1.25rem;">
       <h2 style="font-size:.92rem;font-weight:700;margin:0 0 1rem;display:flex;align-items:center;gap:.45rem;color:var(--ons);">
-        <i class="fas fa-star" style="color:#f59e0b;font-size:.85rem;"></i> คะแนนรีวิว
+        <i class="fas fa-star" style="color:#f59e0b;font-size:.85rem;"></i> คะแนนรีวิวแต่ละด้าน
         <span style="margin-left:auto;font-size:.82rem;color:var(--onsv);font-weight:500;">{{ review_count }} รีวิว</span>
       </h2>
       <div>
@@ -438,13 +438,15 @@
       <div class="tp-gallery">
         {% if activity_images %}
           {% for img_url in activity_images %}
+          {% if forloop.counter <= 3 %}
           <div class="tp-gitem{% if forloop.counter == 2 %} tall{% endif %}">
             <img src="{{ img_url }}" alt="ภาพกิจกรรม {{ forloop.counter }}"
                  onclick="openLb('{{ img_url }}')">
           </div>
+          {% endif %}
           {% endfor %}
         {% else %}
-          {% for n in "12345" %}
+          {% for n in "123" %}
           <div class="tp-gitem{% if forloop.counter == 2 %} tall{% endif %}">
             <i class="fas fa-image" style="font-size:2rem;color:var(--pr);opacity:.18;"></i>
           </div>
@@ -463,6 +465,7 @@
       {% if reviews %}
       <div style="display:flex;flex-direction:column;gap:1.25rem;">
         {% for rv in reviews %}
+        {% if rv.rv_cmt %}
         <div class="tp-rv">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem;">
             <div style="display:flex;align-items:center;gap:.65rem;">
@@ -475,19 +478,17 @@
               {% endif %}
               <div>
                 <p style="font-weight:700;margin:0;font-size:.87rem;">{{ rv.bk_id.member.mb_full_name }}</p>
-                <p style="font-size:.7rem;color:var(--onsv);margin:.05rem 0 0;">{{ rv.rv_date|timesince }} ที่ผ่านมา</p>
+                <p style="font-size:.7rem;color:var(--onsv);margin:.05rem 0 0;">{{ rv.rv_date|date:"j M Y" }}</p>
               </div>
             </div>
-            <!-- ดาว 1 อัน + ค่าเฉลี่ยรวม 5 ด้าน -->
             <div style="display:flex;align-items:center;gap:.3rem;">
               <i class="fas fa-star" style="color:#f59e0b;font-size:.85rem;"></i>
               <span style="font-weight:700;font-size:.9rem;">{{ rv.rv_avg }}</span>
             </div>
           </div>
-          {% if rv.rv_cmt %}
-            <p class="tp-rv-text">"{{ rv.rv_cmt }}"</p>
-          {% endif %}
+          <p class="tp-rv-text">"{{ rv.rv_cmt }}"</p>
         </div>
+        {% endif %}
         {% endfor %}
       </div>
       {% else %}

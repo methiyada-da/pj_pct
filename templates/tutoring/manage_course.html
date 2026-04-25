@@ -4,6 +4,20 @@
 {% block title %}{% if tutc %}แก้ไขคอร์สเรียน{% else %}เพิ่มคอร์สเรียน{% endif %} | Puean Chuay Tu{% endblock %}
 
 {% block content %}
+<style>
+  .slot-row.slot-row-error {
+    border-color: #dc3545 !important;
+    background-color: #fff5f5 !important;
+  }
+  .slot-row.slot-row-error input.time-input {
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+  .time-input::placeholder {
+    color: #c8cdd6 !important;
+    opacity: 1;
+  }
+</style>
 
 <!-- Django success messages only (error handled by JS inline) -->
 {% if messages %}
@@ -317,7 +331,6 @@
                 <label class="form-label fw-semibold small mb-1">ตั้งแต่ (คน) <span class="text-danger">*</span></label>
                 <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu"
                        min="1" value="{{ rate.tut_rate_stu_count }}" placeholder="เช่น 1">
-                <div class="invalid-feedback rate-stu-feedback"></div>
               </div>
               <div class="col">
                 <label class="form-label fw-semibold small mb-1">เครดิต/คน <span class="text-danger">*</span></label>
@@ -328,7 +341,6 @@
                     <i class="fas fa-coins"></i>
                   </span>
                 </div>
-                <div class="invalid-feedback rate-price-feedback"></div>
               </div>
               <div class="col-auto pt-3">
                 <button type="button" class="btn btn-link text-danger p-0" onclick="removeRate(this)">
@@ -336,6 +348,8 @@
                 </button>
               </div>
             </div>
+            <div class="text-danger small mt-2 rate-stu-feedback" style="display:none;"></div>
+            <div class="text-danger small mt-1 rate-price-feedback" style="display:none;"></div>
           </div>
           {% endfor %}
         {% else %}
@@ -347,7 +361,6 @@
               <div class="col">
                 <label class="form-label fw-semibold small mb-1">ตั้งแต่ (คน) <span class="text-danger">*</span></label>
                 <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu" min="1" placeholder="เช่น 1">
-                <div class="invalid-feedback rate-stu-feedback"></div>
               </div>
               <div class="col">
                 <label class="form-label fw-semibold small mb-1">เครดิต/คน <span class="text-danger">*</span></label>
@@ -357,9 +370,10 @@
                     <i class="fas fa-coins"></i>
                   </span>
                 </div>
-                <div class="invalid-feedback rate-price-feedback"></div>
               </div>
             </div>
+            <div class="text-danger small mt-2 rate-stu-feedback" style="display:none;"></div>
+            <div class="text-danger small mt-1 rate-price-feedback" style="display:none;"></div>
           </div>
         {% endif %}
       </div>
@@ -464,22 +478,39 @@ document.getElementById('courseForm').addEventListener('submit', function(e) {
     showErr('err_slots', 'กรุณาเพิ่มวันที่อย่างน้อย 1 วัน');
     valid = false;
   } else {
-    let slotErr = '';
+    let hasSlotErr = false;
+
+    // ล้าง inline error และ slot-row-error ของทุก group ก่อน
+    document.querySelectorAll('.slot-inline-err').forEach(el => el.remove());
+    document.querySelectorAll('.slot-row.slot-row-error').forEach(el => el.classList.remove('slot-row-error'));
+
     dayGroups.forEach(group => {
       const slots = group.querySelectorAll('.slot-row');
-      if (slots.length === 0) { slotErr = slotErr || 'แต่ละวันต้องมีช่วงเวลาอย่างน้อย 1 ช่วง'; valid = false; return; }
+      let groupErr = '';
+
+      if (slots.length === 0) {
+        groupErr = 'แต่ละวันต้องมีช่วงเวลาอย่างน้อย 1 ช่วง';
+        valid = false;
+      }
+
       const timeRe = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+      // เก็บ slot ที่ valid เพื่อตรวจ overlap ภายในวันเดียวกัน
+      // เก็บ element ทั้ง slot-row ด้วย เพื่อ highlight กรอบ
+      const parsedSlots = [];
       slots.forEach(slot => {
         const inputs = slot.querySelectorAll('input[type=text]');
+        let slotHasErr = false;
         inputs.forEach(inp => {
           if (!inp.value.trim()) {
             inp.classList.add('is-invalid');
-            slotErr = slotErr || 'กรุณากรอกเวลาให้ครบทุกช่วง';
+            groupErr = groupErr || 'กรุณากรอกเวลาให้ครบทุกช่วง';
             valid = false;
+            slotHasErr = true;
           } else if (!timeRe.test(inp.value.trim())) {
             inp.classList.add('is-invalid');
-            slotErr = slotErr || 'รูปแบบเวลาไม่ถูกต้อง กรุณาใช้ HH:MM';
+            groupErr = groupErr || 'รูปแบบเวลาไม่ถูกต้อง กรุณาใช้ HH:MM';
             valid = false;
+            slotHasErr = true;
           } else {
             inp.classList.remove('is-invalid');
           }
@@ -488,14 +519,41 @@ document.getElementById('courseForm').addEventListener('submit', function(e) {
         const inps = slot.querySelectorAll('input[type=text]');
         if (inps.length === 2 && inps[0].value && inps[1].value) {
           if (inps[1].value <= inps[0].value) {
-            inps[1].classList.add('is-invalid');
-            slotErr = slotErr || 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น';
+            slot.classList.add('slot-row-error');
+            groupErr = groupErr || 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น';
             valid = false;
+          } else if (!slotHasErr) {
+            parsedSlots.push({ start: inps[0].value.trim(), end: inps[1].value.trim(), row: slot });
           }
         }
       });
+
+      // ตรวจ overlap ภายในวันเดียวกัน — highlight ทั้ง 2 slot-row ที่ทับกัน
+      for (let i = 0; i < parsedSlots.length; i++) {
+        for (let j = i + 1; j < parsedSlots.length; j++) {
+          const a = parsedSlots[i], b = parsedSlots[j];
+          if (b.start < a.end && b.end > a.start) {
+            a.row.classList.add('slot-row-error');
+            b.row.classList.add('slot-row-error');
+            groupErr = groupErr || `ช่วงเวลาทับซ้อนกัน: ${a.start}–${a.end} และ ${b.start}–${b.end}`;
+            valid = false;
+          }
+        }
+      }
+
+      // แสดง error ใต้ group นี้โดยตรง
+      if (groupErr) {
+        hasSlotErr = true;
+        const errEl = document.createElement('div');
+        errEl.className = 'slot-inline-err text-danger small mt-1 mb-2';
+        errEl.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${groupErr}`;
+        const addBtn = group.querySelector('button[onclick*="addSlot"]');
+        if (addBtn) addBtn.after(errEl);
+        else group.appendChild(errEl);
+      }
     });
-    if (slotErr) showErr('err_slots', slotErr);
+
+    if (hasSlotErr) showErr('err_slots', 'กรุณาแก้ไขข้อผิดพลาดในตารางเวลา');
     else clearErr('err_slots');
   }
 
@@ -565,7 +623,32 @@ function addSlot(sdId, btn) {
       <i class="fas fa-times"></i>
     </button>`;
   group.insertBefore(row, btn);
-  row.querySelectorAll('.time-input').forEach(initTimeInput);
+  row.querySelectorAll('.time-input').forEach(inp => {
+    initTimeInput(inp);
+    // เรียง slot ใหม่ทุกครั้งที่ blur (หลังกรอกเวลาเสร็จ)
+    inp.addEventListener('blur', () => sortSlotsInGroup(group, btn));
+  });
+}
+
+// ── เรียง slot-row ภายใน group ตาม start time ──
+function sortSlotsInGroup(group, addBtn) {
+  const rows = [...group.querySelectorAll('.slot-row')];
+  if (rows.length < 2) return;
+
+  // เรียงตาม start time (ว่างหรือ invalid ให้ไปท้าย)
+  rows.sort((a, b) => {
+    const aVal = a.querySelectorAll('input[type="text"]')[0]?.value.trim() || '99:99';
+    const bVal = b.querySelectorAll('input[type="text"]')[0]?.value.trim() || '99:99';
+    const aOk = /^([01]\d|2[0-3]):[0-5]\d$/.test(aVal);
+    const bOk = /^([01]\d|2[0-3]):[0-5]\d$/.test(bVal);
+    if (!aOk && !bOk) return 0;
+    if (!aOk) return 1;
+    if (!bOk) return -1;
+    return aVal.localeCompare(bVal);
+  });
+
+  // re-insert ตามลำดับที่เรียงแล้ว (แทรกก่อน addBtn)
+  rows.forEach(row => group.insertBefore(row, addBtn));
 }
 
 // ── Add New Date (เพิ่มทีละวัน) — กรุ๊ปเข้ากลุ่มวันเดียวกัน ──
@@ -777,6 +860,50 @@ function initTimeInput(input) {
 }
 
 document.querySelectorAll('.time-input').forEach(initTimeInput);
+
+// ── ล้างวันที่และสล็อตเวลาที่ผ่านไปแล้วตอนโหลดหน้า ──
+(function cleanPastDates() {
+  const now = new Date();
+  const todayDateStr = now.toISOString().slice(0, 10);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const container = document.getElementById('slotContainer');
+
+  document.querySelectorAll('#slotContainer .slot-day-group').forEach(group => {
+    const dateStr = group.dataset.date;
+    if (!dateStr) return;
+    const pyDay = group.dataset.pyDay;
+
+    if (dateStr < todayDateStr) {
+      // วันที่ผ่านไปแล้วทั้งวัน → ลบออก
+      group.remove();
+    } else if (dateStr === todayDateStr) {
+      // วันนี้ → ลบเฉพาะสล็อตที่เวลาเริ่มต้นผ่านไปแล้ว
+      group.querySelectorAll('.slot-row').forEach(row => {
+        const startInput = row.querySelectorAll('input[type="text"]')[0];
+        if (!startInput) return;
+        const parts = startInput.value.split(':');
+        if (parts.length === 2) {
+          const slotMinutes = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+          if (slotMinutes <= nowMinutes) row.remove();
+        }
+      });
+      // ถ้าไม่มีสล็อตเหลือ → ลบวันด้วย
+      if (group.querySelectorAll('.slot-row').length === 0) group.remove();
+    } else {
+      return; // วันอนาคต ไม่ต้องทำอะไร
+    }
+
+    // ตรวจว่ากลุ่มวันในสัปดาห์ยังมีวันเหลือไหม ถ้าไม่เหลือลบ header ด้วย
+    const remaining = container.querySelectorAll(`.slot-day-group[data-py-day="${pyDay}"]`).length;
+    if (remaining === 0) {
+      const header = container.querySelector(`.repeat-day-section-header[data-py-day="${pyDay}"]`);
+      if (header) header.remove();
+    } else {
+      updateSectionCount(pyDay);
+    }
+  });
+})();
+
 const _timeObserver = new MutationObserver(mutations => {
   mutations.forEach(m => m.addedNodes.forEach(node => {
     if (node.nodeType === 1) {
@@ -811,8 +938,8 @@ function validateRateTiers() {
     // clear previous
     stuInput.classList.remove('is-invalid');
     priceInput.classList.remove('is-invalid');
-    if (stuFb) stuFb.textContent = '';
-    if (priceFb) priceFb.textContent = '';
+    if (stuFb) { stuFb.textContent = ''; stuFb.style.display = 'none'; }
+    if (priceFb) { priceFb.textContent = ''; priceFb.style.display = 'none'; }
 
     const stuVal = stuInput.value.trim();
     const priceVal = priceInput.value.trim();
@@ -820,13 +947,13 @@ function validateRateTiers() {
     // ต้องกรอก
     if (!stuVal || parseInt(stuVal) < 1) {
       stuInput.classList.add('is-invalid');
-      if (stuFb) stuFb.textContent = 'กรุณากรอกจำนวนคน (≥ 1)';
+      if (stuFb) { stuFb.textContent = 'กรุณากรอกจำนวนคน (≥ 1)'; stuFb.style.display = 'block'; }
       allValid = false;
       return;
     }
     if (priceVal === '' || parseInt(priceVal) < 0) {
       priceInput.classList.add('is-invalid');
-      if (priceFb) priceFb.textContent = 'กรุณากรอกเครดิต (≥ 0)';
+      if (priceFb) { priceFb.textContent = 'กรุณากรอกเครดิต (≥ 0)'; priceFb.style.display = 'block'; }
       allValid = false;
       return;
     }
@@ -837,14 +964,14 @@ function validateRateTiers() {
     // จำนวนคนต้องมากกว่าแถวก่อนหน้า
     if (idx > 0 && stu <= prevStuCount) {
       stuInput.classList.add('is-invalid');
-      if (stuFb) stuFb.textContent = `ต้องมากกว่า ${prevStuCount} คน`;
+      if (stuFb) { stuFb.textContent = `ต้องมากกว่า ${prevStuCount} คน`; stuFb.style.display = 'block'; }
       allValid = false;
     }
 
     // จำนวนคนต้องไม่เกิน max
     if (maxStu > 0 && stu > maxStu) {
       stuInput.classList.add('is-invalid');
-      if (stuFb) stuFb.textContent = `ต้องไม่เกิน ${maxStu} คน (จำนวนรับสูงสุด)`;
+      if (stuFb) { stuFb.textContent = `ต้องไม่เกิน ${maxStu} คน (จำนวนรับสูงสุด)`; stuFb.style.display = 'block'; }
       allValid = false;
     }
 
@@ -859,7 +986,7 @@ function validateRateTiers() {
       } else {
         if (prevPrice !== null && price >= prevPrice) {
           priceInput.classList.add('is-invalid');
-          if (priceFb) priceFb.textContent = `ต้องต่ำกว่า ${prevPrice} เครดิต`;
+          if (priceFb) { priceFb.textContent = `ต้องต่ำกว่า ${prevPrice} เครดิต (เรทถัดไปต้องถูกกว่าเรทก่อนหน้า)`; priceFb.style.display = 'block'; }
           allValid = false;
         }
       }
@@ -921,7 +1048,6 @@ function addRate() {
       <div class="col">
         <label class="form-label fw-semibold small mb-1">ตั้งแต่ (คน) <span class="text-danger">*</span></label>
         <input type="number" name="rate_stu_count[]" class="form-control form-control-sm rate-stu" min="1" placeholder="เช่น ${idx}">
-        <div class="invalid-feedback rate-stu-feedback"></div>
       </div>
       <div class="col">
         <label class="form-label fw-semibold small mb-1">เครดิต/คน <span class="text-danger">*</span></label>
@@ -931,14 +1057,15 @@ function addRate() {
             <i class="fas fa-coins"></i>
           </span>
         </div>
-        <div class="invalid-feedback rate-price-feedback"></div>
       </div>
       <div class="col-auto pt-3">
         <button type="button" class="btn btn-link text-danger p-0" onclick="removeRate(this)">
           <i class="fas fa-trash-alt"></i>
         </button>
       </div>
-    </div>`;
+    </div>
+    <div class="text-danger small mt-2 rate-stu-feedback" style="display:none;"></div>
+    <div class="text-danger small mt-1 rate-price-feedback" style="display:none;"></div>`;
   container.appendChild(div);
 }
 // ══════════════════════════════════════════════════════════════
@@ -1096,7 +1223,10 @@ function doRepeatGenerate() {
             row.querySelectorAll('.time-input').forEach(initTimeInput);
             addedCount++;
           });
-          if (addedCount > 0) totalUpdated++;
+          if (addedCount > 0) {
+            sortSlotsInGroup(existingGroup, addSlotBtn); // เรียงหลังเพิ่มแล้ว
+            totalUpdated++;
+          }
         }
       } else {
         // ── วันใหม่: สร้าง group ใหม่ ──
@@ -1122,6 +1252,7 @@ function doRepeatGenerate() {
           group.insertBefore(row, addSlotBtn);
           row.querySelectorAll('.time-input').forEach(initTimeInput);
         });
+        sortSlotsInGroup(group, addSlotBtn); // เรียงก่อน insert เข้า DOM
         insertIntoWeekdaySection(pyDay, group);
         totalCreated++;
       }

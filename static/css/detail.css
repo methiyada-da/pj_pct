@@ -1,469 +1,315 @@
 /* =============================================================
-   detail.css — หน้ารายละเอียดคอร์สและจองเรียน
+   detail.css — redesign v4
    ============================================================= */
 
-/* ── Breadcrumb ── */
-.detail-breadcrumb {
-  background: #fff;
-  border-bottom: 1px solid var(--pct-border);
-  padding: .6rem 0;
-  font-size: .82rem;
-  color: var(--pct-muted);
-}
-.detail-breadcrumb a { color: var(--pct-primary); text-decoration: none; }
-.detail-breadcrumb a:hover { text-decoration: underline; }
-.detail-breadcrumb .sep { margin: 0 .4rem; }
-
-/* ── Page body ── */
 .detail-body {
-  background: var(--pct-bg);
+  background: #F1F5F9;
   min-height: 80vh;
-  padding: 1.5rem 0 3rem;
+  padding: 1.5rem 0 4rem;
 }
 
-/* ── LEFT CARD: tutor profile ── */
+/* ════ LEFT: tutor card ════ */
 .tutor-card {
   background: #fff;
-  border: 1px solid var(--pct-border);
-  border-radius: 16px;
+  border: 1px solid #E2E8F0;
+  border-radius: 18px;
   padding: 1.5rem 1.25rem;
   text-align: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
 }
 .tutor-avatar-lg {
-  width: 90px; height: 90px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid var(--pct-primary-lt);
-  margin: 0 auto .75rem;
-  display: block;
+  width:88px; height:88px; border-radius:50%;
+  object-fit:cover; border:3px solid #BFDBFE;
+  margin:0 auto .75rem; display:block;
 }
 .tutor-avatar-lg-placeholder {
-  width: 90px; height: 90px;
-  border-radius: 50%;
-  background: var(--pct-primary);
-  color: #fff;
-  font-size: 2rem; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto .75rem;
+  width:88px; height:88px; border-radius:50%;
+  background:linear-gradient(135deg,#2558c6,#1D4ED8);
+  color:#fff; font-size:2rem; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto .75rem;
 }
-.tutor-name-lg {
-  font-size: 1.1rem; font-weight: 700;
-  color: var(--pct-text); margin-bottom: .25rem;
-}
+.tutor-name-lg { font-size:1.05rem; font-weight:700; color:#0F172A; margin-bottom:.5rem; }
 .btn-chat {
-  display: inline-flex; align-items: center; gap: .4rem;
-  background: var(--pct-primary-lt);
-  color: var(--pct-primary);
-  border: 1px solid #BFDBFE;
-  border-radius: 8px;
-  padding: .35rem .9rem;
-  font-size: .82rem; font-weight: 600;
-  text-decoration: none;
-  transition: background .2s;
-  margin-bottom: .75rem;
+  display:inline-flex; align-items:center; gap:.4rem;
+  background:#EFF6FF; color:#2563EB; border:1px solid #BFDBFE;
+  border-radius:8px; padding:.35rem .9rem;
+  font-size:.82rem; font-weight:600; text-decoration:none;
+  transition:background .2s; margin-bottom:.6rem;
 }
-.btn-chat:hover { background: #BFDBFE; color: var(--pct-primary); }
-
-.tutor-rating-row {
-  display: flex; align-items: center; justify-content: center;
-  gap: .35rem; margin-bottom: 1rem;
-}
-.stars-lg { color: #F59E0B; font-size: .9rem; }
-.rating-text { font-size: .85rem; font-weight: 700; }
-.rating-new { font-size: .78rem; color: var(--pct-muted); }
-
-.tutor-section-title {
-  font-size: .72rem; font-weight: 700;
-  letter-spacing: .07em; text-transform: uppercase;
-  color: var(--pct-muted); text-align: left;
-  margin: 1rem 0 .4rem;
-}
-.tutor-desc {
-  font-size: .82rem; color: var(--pct-text);
-  line-height: 1.7; text-align: left; margin: 0;
-}
-.skill-tags { display: flex; flex-wrap: wrap; gap: .35rem; text-align: left; }
-.skill-tag {
-  background: var(--pct-bg);
-  border: 1px solid var(--pct-border);
-  border-radius: 6px;
-  padding: .2rem .6rem;
-  font-size: .75rem; color: var(--pct-text);
-}
-
-/* GPAX badge */
+.btn-chat:hover { background:#DBEAFE; color:#1D4ED8; }
+.tutor-rating-row { display:flex; align-items:center; justify-content:center; gap:.35rem; margin-bottom:.85rem; }
+.stars-lg { color:#F59E0B; font-size:.9rem; letter-spacing:.05em; }
+.rating-text { font-size:.85rem; font-weight:700; color:#0F172A; }
+.rating-new { font-size:.78rem; color:#64748B; }
 .gpax-badge {
-  display: inline-flex; align-items: center; gap: .35rem;
-  background: #D1FAE5; color: #065F46;
-  border-radius: 999px; padding: .2rem .75rem;
-  font-size: .78rem; font-weight: 600;
+  display:inline-flex; align-items:center; gap:.35rem;
+  background:#D1FAE5; color:#065F46;
+  border-radius:999px; padding:.2rem .75rem;
+  font-size:.78rem; font-weight:600;
 }
+.tutor-info-row { display:flex; align-items:flex-start; gap:.45rem; font-size:.83rem; color:#334155; text-align:left; margin-bottom:.35rem; }
+.tutor-info-icon { color:#94A3B8; font-size:.78rem; margin-top:.15rem; flex-shrink:0; }
+.mj-abbr { color:#94A3B8; margin-left:.2rem; }
+.tutor-section-title {
+  font-size:.80rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:#424548; text-align:left; margin:1rem 0 .4rem;
+  padding-bottom:.25rem; border-bottom:1px solid #F1F5F9;
+}
+.tutor-desc { font-size:.82rem; color:#475569; line-height:1.75; text-align:left; margin:0; }
+.tutor-exp-desc { font-size:.78rem; color:#64748B; line-height:1.6; text-align:left; margin:.2rem 0 .5rem; padding-left:1.1rem; }
+.skill-tags { display:flex; flex-wrap:wrap; gap:.35rem; text-align:left; }
+.skill-tag { background:#EFF6FF; border:1px solid #BFDBFE; border-radius:6px; padding:.2rem .6rem; font-size:.75rem; color:#2563EB; font-weight:500; }
 
-/* ── MIDDLE: course info + booking ── */
-.course-info-card,
-.booking-card {
-  background: #fff;
-  border: 1px solid var(--pct-border);
-  border-radius: 14px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1rem;
-}
-
-.course-cover {
-  width: 100%; height: 200px;
-  object-fit: cover;
-  border-radius: 10px;
-  margin-bottom: 1rem;
-}
-.course-cover-placeholder {
-  width: 100%; height: 200px;
-  background: #EFF6FF;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 3rem; color: #BFDBFE;
-  margin-bottom: 1rem;
-}
-
-.course-group-tag {
-  display: inline-block;
-  font-size: .7rem; font-weight: 700;
-  letter-spacing: .06em; text-transform: uppercase;
-  padding: .2rem .65rem; border-radius: 999px;
-  background: var(--pct-primary-lt); color: var(--pct-primary);
-  margin-bottom: .5rem;
-}
-.course-title-lg {
-  font-size: 1.3rem; font-weight: 700;
-  color: var(--pct-text); margin-bottom: .4rem; line-height: 1.4;
-}
-.course-sub-name {
-  font-size: .82rem; color: var(--pct-muted); margin-bottom: .75rem;
-}
-.course-desc-lg {
-  font-size: .875rem; color: var(--pct-text);
-  line-height: 1.75; margin-bottom: 1rem;
-}
-
-/* ── Rates table ── */
-.rates-title {
-  font-size: .82rem; font-weight: 700; color: var(--pct-text);
-  margin-bottom: .5rem;
-}
-.rate-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: .4rem .75rem;
-  border-radius: 8px; margin-bottom: .3rem;
-  background: var(--pct-bg);
-  font-size: .85rem;
-}
-.rate-row:last-child { margin-bottom: 0; }
-.rate-count { color: var(--pct-muted); }
-.rate-price { font-weight: 700; color: var(--pct-primary); }
-.rate-total { font-size: .75rem; color: var(--pct-muted); }
-
-/* ── Booking form ── */
-.booking-section-title {
-  font-size: .78rem; font-weight: 700;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: var(--pct-muted); margin-bottom: .6rem;
-}
-
-/* วันที่ */
-.date-grid {
-  display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem;
-}
-.date-btn {
-  background: #fff;
-  border: 1.5px solid var(--pct-border);
-  border-radius: 8px;
-  padding: .35rem .85rem;
-  font-size: .82rem; font-family: inherit;
-  color: var(--pct-text); cursor: pointer;
-  transition: all .15s;
-}
-.date-btn:hover { border-color: var(--pct-primary); color: var(--pct-primary); }
-.date-btn.active {
-  background: var(--pct-primary);
-  border-color: var(--pct-primary);
-  color: #fff; font-weight: 600;
-}
-
-/* time slots */
-.slot-grid {
-  display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem;
-}
-.slot-btn {
-  background: #fff;
-  border: 1.5px solid var(--pct-border);
-  border-radius: 8px;
-  padding: .35rem .9rem;
-  font-size: .82rem; font-family: inherit;
-  color: var(--pct-text); cursor: pointer;
-  transition: all .15s;
-}
-.slot-btn:hover:not(:disabled) { border-color: var(--pct-primary); color: var(--pct-primary); }
-.slot-btn.active {
-  background: var(--pct-primary);
-  border-color: var(--pct-primary);
-  color: #fff; font-weight: 600;
-}
-.slot-btn:disabled {
-  background: #F1F5F9; color: #CBD5E1;
-  border-color: var(--pct-border); cursor: not-allowed;
-}
-.no-slot-msg {
-  font-size: .82rem; color: var(--pct-muted);
-  padding: .4rem 0;
-}
-
-/* จำนวนผู้เรียน */
-.stu-count-wrap {
-  display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem;
-}
-.stu-count-input {
-  width: 80px;
-  border: 1.5px solid var(--pct-border);
-  border-radius: 8px;
-  padding: .4rem .6rem;
-  font-size: .9rem; font-family: inherit;
-  text-align: center; color: var(--pct-text);
-  transition: border-color .2s;
-}
-.stu-count-input:focus { outline: none; border-color: var(--pct-primary); }
-.stu-max-hint { font-size: .78rem; color: var(--pct-muted); }
-
-/* textarea */
-.bk-textarea {
-  width: 100%;
-  border: 1.5px solid var(--pct-border);
-  border-radius: 8px;
-  padding: .6rem .75rem;
-  font-size: .85rem; font-family: inherit;
-  color: var(--pct-text); resize: vertical; min-height: 80px;
-  transition: border-color .2s;
-}
-.bk-textarea:focus { outline: none; border-color: var(--pct-primary); }
-
-/* ── RIGHT: summary card ── */
-.summary-card {
-  background: #fff;
-  border: 1px solid var(--pct-border);
-  border-radius: 14px;
-  padding: 1.25rem;
-}
-.summary-title {
-  font-size: .95rem; font-weight: 700;
-  color: var(--pct-text); margin-bottom: 1rem;
-  padding-bottom: .6rem;
-  border-bottom: 1px solid var(--pct-border);
-}
-.summary-row {
-  display: flex; justify-content: space-between;
-  font-size: .85rem; margin-bottom: .5rem;
-}
-.summary-row .label { color: var(--pct-muted); }
-.summary-row .value { font-weight: 500; color: var(--pct-text); }
-.summary-divider { border: none; border-top: 1px solid var(--pct-border); margin: .75rem 0; }
-.summary-total-row {
-  display: flex; justify-content: space-between;
-  align-items: baseline; margin-bottom: 1rem;
-}
-.summary-total-label { font-size: .9rem; font-weight: 700; color: var(--pct-text); }
-.summary-total-value { font-size: 1.4rem; font-weight: 700; color: var(--pct-primary); }
-
-.btn-book {
-  width: 100%;
-  background: var(--pct-primary);
-  color: #fff; border: none;
-  border-radius: 10px;
-  padding: .7rem;
-  font-size: .95rem; font-weight: 600; font-family: inherit;
-  transition: background .2s;
-  cursor: pointer;
-}
-.btn-book:hover:not(:disabled) { background: var(--pct-primary-dk); }
-.btn-book:disabled {
-  background: #CBD5E1; cursor: not-allowed;
-}
-
-.pending-note {
-  background: #FFF7ED;
-  border: 1px solid #FED7AA;
-  border-radius: 8px;
-  padding: .6rem .75rem;
-  font-size: .78rem; color: #92400E;
-  margin-top: .75rem;
-  line-height: 1.6;
-}
-.pending-note i { color: #F59E0B; }
-
-.credit-avail {
-  font-size: .78rem; color: var(--pct-muted);
-  text-align: center; margin-top: .5rem;
-}
-.credit-avail strong { color: var(--pct-text); }
-
-/* login prompt */
-.login-prompt {
-  background: var(--pct-primary-lt);
-  border-radius: 10px;
-  padding: .85rem 1rem;
-  text-align: center;
-  font-size: .85rem; color: var(--pct-primary);
-  margin-top: .5rem;
-}
-.login-prompt a { font-weight: 700; color: var(--pct-primary); }
-
-/* ── Responsive ── */
-@media (max-width: 991px) {
-  .tutor-card, .summary-card { position: static; margin-bottom: 1rem; }
-}
-@media (max-width: 575px) {
-  .course-title-lg { font-size: 1.1rem; }
-}
-
-/* ── tutor info rows ── */
-.tutor-info-row {
-  display: flex; align-items: flex-start; gap: .4rem;
-  font-size: .82rem; color: var(--pct-text);
-  text-align: left; margin-bottom: .3rem;
-}
-.tutor-info-icon { color: var(--pct-muted); font-size: .78rem; margin-top: .1rem; flex-shrink: 0; }
-.mj-abbr { color: var(--pct-muted); margin-left: .2rem; }
-.tutor-exp-desc {
-  font-size: .78rem; color: var(--pct-muted);
-  line-height: 1.6; text-align: left;
-  margin: .2rem 0 .5rem;
-  padding-left: 1.1rem;
-}
-
-/* ── course card: ไม่มีรูปปก ── */
-.course-meta-row {
-  font-size: .82rem; color: var(--pct-muted);
-  margin-top: .5rem;
-}
-
-/* ── booking card title ── */
-.booking-card-title {
-  font-size: 1rem; font-weight: 700;
-  color: var(--pct-text); margin-bottom: 1.1rem;
-}
-
-/* ── no schedule ── */
-.no-schedule {
-  text-align: center; padding: 2.5rem 1rem;
-  color: var(--pct-muted);
-}
-.no-schedule i { font-size: 2.2rem; color: #CBD5E1; display: block; margin-bottom: .75rem; }
-.no-schedule-title { font-size: .95rem; font-weight: 600; color: var(--pct-text); margin-bottom: .3rem; }
-.no-schedule-desc  { font-size: .82rem; }
-
-/* ── rates card (แยกออกจาก summary) ── */
+/* ── rates card: header ส้ม body ขาว ── */
 .rates-card {
   background: #fff;
-  border: 1px solid var(--pct-border);
-  border-radius: 14px;
-  padding: 1rem 1.1rem;
+  border: 1px solid #FED7AA;
+  border-radius: 16px; overflow: hidden;
   margin-top: .75rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
 }
 .rates-card-title {
-  font-size: .82rem; font-weight: 700;
-  color: var(--pct-text); margin-bottom: .65rem;
+  font-size: .84rem; font-weight: 700;
+  color: #92400E; padding: .65rem 1rem;
+  background: #FFEDD5; border-bottom: 1px solid #FED7AA; margin-bottom: 0;
 }
+.rates-card-note { font-size: .78rem; color: #64748B; padding: .55rem 1rem 0; line-height: 1.5; margin: 0; }
 .rate-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: .35rem .5rem;
-  border-radius: 6px;
-  font-size: .82rem;
-  margin-bottom: .25rem;
-  background: var(--pct-bg);
+  padding: .5rem 1rem; font-size: .84rem;
+  border-bottom: 1px solid #F1F5F9;
+  background: transparent;
 }
-.rate-count { color: var(--pct-muted); }
-.rate-price-val { font-weight: 700; color: var(--pct-primary); }
-.rate-unit { font-weight: 400; color: var(--pct-muted); font-size: .75rem; }
+.rate-row:last-of-type { border-bottom: none; }
+.rate-count { color: #334155; font-weight: 500; }
+.rate-price-val { font-weight: 700; color: #D97706; font-size: .9rem; }
+.rate-unit { font-weight: 400; color: #94A3B8; font-size: .74rem; }
+.rates-card-example { font-size: .74rem; color: #64748B; padding: .5rem 1rem .65rem; border-top: 1px solid #F1F5F9; line-height: 1.5; margin: 0; }
 
-/* ── mobile sticky bar ── */
-.mobile-book-bar {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: #fff;
-  border-top: 1px solid var(--pct-border);
-  padding: .65rem 1rem;
-  z-index: 999;
-  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+/* ════ MIDDLE ════ */
+
+/* course-info-card */
+.course-info-card {
+  background: #fff; border: 1px solid #E2E8F0;
+  border-radius: 16px; overflow: hidden;
+  margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.06);
 }
-.mobile-book-label { font-size: .72rem; color: var(--pct-muted); }
-.mobile-book-total { font-size: 1rem; font-weight: 700; color: var(--pct-primary); }
+.course-info-header {
+  background: linear-gradient(135deg,#2765d7 0%,#457cf3 100%);
+  padding: 1.1rem 1.5rem 1.1rem;
+}
+.course-group-tag {
+  display: inline-block; font-size: .8rem; font-weight: 700;
+  letter-spacing: .03em;
+  padding: .28rem .9rem; border-radius: 999px;
+  background: rgba(255,255,255,.2); color: #fff;
+  border: 1px solid rgba(255,255,255,.35);
+  white-space: nowrap; flex-shrink: 0;
+}
+/* ชื่อคอร์ส + tag บรรทัดเดียวกัน tag ฝั่งขวา */
+.course-title-row {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: .75rem; flex-wrap: wrap;
+}
+.course-title-left { display: flex; flex-direction: column; gap: .25rem; }
+.course-name-label {
+  font-size: 1.15rem; font-weight: 700; color: #fff; line-height: 1.4;
+}
+.course-subject-label {
+  font-size: .88rem; font-weight: 500; color: rgba(255,255,255,.8); line-height: 1.4;
+}
+.course-title-lg { display: none; }
+
+.course-info-body { padding: 1.25rem 1.5rem 1.4rem; }
+.course-meta-list { display: flex; flex-direction: column; gap: .75rem; }
+.course-meta-item { display: flex; align-items: baseline; gap: .65rem; }
+/* label เข้มขึ้น */
+.course-meta-label {
+  min-width: 78px; flex-shrink: 0;
+  font-weight: 700; color: #334155;
+  font-size: .95rem;
+}
+.course-meta-value { color: #1E293B; font-size: .95rem; }
+.course-desc-block { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #F1F5F9; }
+/* label รายละเอียด เข้มขึ้น */
+.course-desc-label {
+  font-size: .95rem; font-weight: 700;
+  color: #334155; margin-bottom: .4rem;
+}
+.course-desc-lg { font-size: .93rem; color: #475569; line-height: 1.8; margin-bottom: 0; }
+
+/* booking-card */
+.booking-card {
+  background: #fff; border: 1px solid #E2E8F0;
+  border-radius: 16px; overflow: hidden;
+  margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.booking-card-title {
+  font-size: .93rem; font-weight: 700; color: #fff;
+  padding: .85rem 1.5rem;
+  border-bottom: none;
+  margin-bottom: 0; background: linear-gradient(135deg,#2765d7 0%,#457cf3 100%);
+  display: flex; align-items: center; gap: .5rem;
+}
+.booking-card-title i { color: #fff; font-size: 1rem; }
+.booking-card-body { padding: 0; }
+
+.booking-section-block {
+  padding: .9rem 1.5rem;
+  border-bottom: 1px solid #F1F5F9;
+}
+.booking-section-last { border-bottom: none; }
+
+.booking-section-title {
+  font-size: .83rem; font-weight: 700; letter-spacing: .05em;
+  color: #475569; margin-bottom: .65rem;
+  display: flex; align-items: center; gap: .35rem;
+}
+.booking-section-title i { color: #2563EB; font-size: .82rem; }
+.booking-section-opt { font-weight: 400; color: #94A3B8; font-size: .75rem; }
+
+/* วันที่ */
+.date-grid { display: flex; flex-wrap: wrap; gap: .45rem; }
+.date-btn {
+  background: #fff; border: 1.5px solid #E2E8F0; border-radius: 10px;
+  padding: .4rem .7rem; min-width: 48px;
+  font-family: inherit; color: #334155; cursor: pointer;
+  transition: all .15s; text-align: center;
+  display: flex; flex-direction: column; align-items: center; line-height: 1.2;
+}
+.date-btn-day { font-size: .95rem; font-weight: 700; line-height: 1.1; }
+.date-btn-month { font-size: .68rem; color: #94A3B8; text-transform: uppercase; }
+.date-btn:hover { border-color: #2563EB; background: #EFF6FF; }
+.date-btn:hover .date-btn-month { color: #93C5FD; }
+.date-btn.active { background: #2563EB; border-color: #2563EB; box-shadow: 0 2px 8px rgba(37,99,235,.35); }
+.date-btn.active .date-btn-day,
+.date-btn.active .date-btn-month { color: #fff; }
+
+/* slot */
+.slot-grid { display: flex; flex-wrap: wrap; gap: .4rem; }
+.slot-btn {
+  background: #fff; border: 1.5px solid #E2E8F0; border-radius: 9px;
+  padding: .4rem 1rem; font-size: .83rem; font-family: inherit;
+  color: #334155; cursor: pointer; transition: all .15s; font-weight: 500;
+}
+.slot-btn:hover:not(:disabled) { border-color: #2563EB; color: #2563EB; background: #EFF6FF; }
+.slot-btn.active { background: #2563EB; border-color: #2563EB; color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(37,99,235,.3); }
+.slot-btn:disabled { background: #F8FAFC; color: #CBD5E1; border-color: #E2E8F0; cursor: not-allowed; }
+.no-slot-msg { font-size: .83rem; color: #94A3B8; padding: .2rem 0; margin: 0; }
+
+/* จำนวน */
+.stu-count-wrap { display: flex; align-items: center; gap: .75rem; }
+.stu-count-input {
+  width: 80px; border: 1.5px solid #E2E8F0; border-radius: 9px;
+  padding: .4rem .6rem; font-size: .9rem; font-family: inherit;
+  text-align: center; color: #1E293B; transition: border-color .2s;
+}
+.stu-count-input:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 3px #EFF6FF; }
+.stu-max-hint { font-size: .78rem; color: #64748B; }
+
+.bk-textarea {
+  width: 100%; border: 1.5px solid #E2E8F0; border-radius: 9px;
+  padding: .6rem .75rem; font-size: .85rem; font-family: inherit;
+  color: #1E293B; resize: vertical; min-height: 80px;
+  transition: border-color .2s; background: #FAFBFF;
+}
+.bk-textarea:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 3px #EFF6FF; }
+
+.no-schedule { text-align: center; padding: 2.5rem 1rem; color: #94A3B8; }
+.no-schedule i { font-size: 2.2rem; color: #CBD5E1; display: block; margin-bottom: .75rem; }
+.no-schedule-title { font-size: .95rem; font-weight: 600; color: #475569; margin-bottom: .3rem; }
+.no-schedule-desc { font-size: .82rem; }
+
+/* ════ RIGHT: summary ════ */
+.summary-card {
+  background: #fff; border: 1px solid #E2E8F0;
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.summary-title {
+  font-size: .93rem; font-weight: 700;
+  color: #fff; padding: .75rem 1.1rem;
+  background: linear-gradient(135deg,#2765d7 0%,#457cf3 100%);
+  border-bottom: 1px solid #1D4ED8; margin-bottom: 0;
+}
+.summary-body { padding: 1rem 1.1rem; }
+
+.summary-course-block {
+  background: #EFF6FF; border: 1px solid #BFDBFE;
+  border-radius: 10px; padding: .65rem .85rem; margin-bottom: .9rem;
+}
+.summary-course-row { display: flex; align-items: baseline; gap: 0; margin-bottom: .15rem; }
+.summary-course-row:last-child { margin-bottom: 0; }
+.summary-course-label { font-size: .87rem; font-weight: 700; color: #1E40AF; white-space: nowrap; }
+.summary-course-val { font-size: .87rem; font-weight: 600; color: #1E293B; }
+.summary-course-sub { font-size: .87rem; font-weight: 400; color: #334155; }
+
+/* summary rows — ฟ้อนเดียวกันทั้งหมด ขนาดเท่ากัน สีเข้ม */
+.summary-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: .87rem; margin-bottom: .5rem;
+}
+.summary-row .label { color: #334155; font-weight: 500; font-size: .87rem; }
+.summary-row .value { font-weight: 600; color: #0F172A; text-align: right; font-size: .87rem; }
+
+.summary-divider { border: none; border-top: 1px dashed #595b5e; margin: .75rem 0; }
+.summary-total-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 1rem; background: #EFF6FF;
+  border-radius: 10px; padding: .6rem .85rem;
+  border: 1px solid #BFDBFE;
+}
+.summary-total-label { font-size: .87rem; font-weight: 700; color: #0F172A; }
+.summary-total-value { font-size: 1.4rem; font-weight: 700; color: #2563EB; }
+.summary-total-formula { font-size: .85rem; color: #64748B; margin-bottom: .1rem; }
+
+.btn-book {
+  width: 100%; background: linear-gradient(135deg,#1D4ED8,#2563EB);
+  color: #fff; border: none; border-radius: 10px;
+  padding: .72rem; font-size: .93rem; font-weight: 600; font-family: inherit;
+  transition: opacity .2s, box-shadow .2s; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37,99,235,.3);
+}
+.btn-book:hover:not(:disabled) { opacity: .9; box-shadow: 0 4px 12px rgba(37,99,235,.4); }
+.btn-book:disabled { background: #CBD5E1; cursor: not-allowed; box-shadow: none; }
+
+.pending-note { background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 9px; padding: .6rem .75rem; font-size: .78rem; color: #92400E; margin-top: .75rem; line-height: 1.6; }
+.pending-note i { color: #F59E0B; }
+
+.login-prompt { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: .85rem 1rem; text-align: center; font-size: .85rem; color: #2563EB; margin-top: .5rem; }
+.login-prompt a { font-weight: 700; color: #1D4ED8; }
+
+/* credit card */
+.credit-card { background: #fff; border: 1px solid #BBF7D0; border-radius: 16px; overflow: hidden; margin-top: .75rem; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+.credit-card-header { padding: .65rem 1rem; font-size: .84rem; font-weight: 700; color: #166534; border-bottom: 1px solid #BBF7D0; background: #DCFCE7; }
+.credit-card-body { padding: .85rem 1rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.credit-balance { display: flex; align-items: baseline; gap: .35rem; }
+.credit-balance-num { font-size: 1.75rem; font-weight: 700; color: #16A34A; line-height: 1; }
+.credit-balance-unit { font-size: .82rem; color: #64748B; font-weight: 500; }
+.btn-credit-link { display: inline-flex; align-items: center; padding: .35rem .85rem; border-radius: 2rem; background: #DCFCE7; color: #166534; font-size: .78rem; font-weight: 600; text-decoration: none; white-space: nowrap; border: 1px solid #86EFAC; transition: background .15s; }
+.btn-credit-link:hover { background: #BBF7D0; color: #166534; }
+
+/* credit compat */
+.credit-card-green { background: #F0FDF4 !important; border-color: #BBF7D0 !important; }
+.credit-balance-num-green { color: #16A34A !important; }
+.btn-credit-link-green { background: #DCFCE7 !important; color: #166534 !important; border-color: #86EFAC !important; }
+.btn-credit-link-green:hover { background: #BBF7D0 !important; color: #166534 !important; }
+
+/* mobile */
+.mobile-book-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #E2E8F0; padding: .65rem 1rem; z-index: 999; display: flex; align-items: center; justify-content: space-between; gap: .75rem; box-shadow: 0 -2px 8px rgba(0,0,0,.07); }
+.mobile-book-label { font-size: .72rem; color: #94A3B8; }
+.mobile-book-total { font-size: 1rem; font-weight: 700; color: #2563EB; }
 .btn-book-sm { width: auto; padding: .5rem 1.25rem; font-size: .85rem; }
 
-/* ── rates card note & example ── */
-.rates-card-note {
-  font-size: .75rem; color: var(--pct-muted);
-  margin-bottom: .6rem; line-height: 1.5;
-}
-.rates-card-example {
-  font-size: .72rem; color: var(--pct-muted);
-  margin-top: .5rem; margin-bottom: 0;
-  padding-top: .5rem;
-  border-top: 1px solid var(--pct-border);
-  line-height: 1.5;
-}
+/* compat */
+.course-meta-row { font-size: .82rem; color: #94A3B8; margin-top: .5rem; }
+.summary-course-name { display: flex; flex-direction: column; gap: .1rem; margin-bottom: .4rem; }
 
-
-/* ── Credit Card ── */
-.credit-card {
-  background: #fff;
-  border: 1px solid var(--pct-border);
-  border-radius: 14px;
-  overflow: hidden;
-}
-.credit-card-header {
-  padding: .55rem 1rem;
-  font-size: .75rem;
-  font-weight: 700;
-  color: var(--pct-muted);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  border-bottom: 1px solid var(--pct-border);
-  background: var(--pct-bg);
-}
-.credit-card-body {
-  padding: .85rem 1rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .5rem;
-}
-.credit-balance {
-  display: flex;
-  align-items: baseline;
-  gap: .35rem;
-}
-.credit-balance-num {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--pct-primary);
-  line-height: 1;
-}
-.credit-balance-unit {
-  font-size: .82rem;
-  color: var(--pct-muted);
-  font-weight: 500;
-}
-.btn-credit-link {
-  display: inline-flex;
-  align-items: center;
-  padding: .35rem .8rem;
-  border-radius: 2rem;
-  background: var(--pct-primary-lt);
-  color: var(--pct-primary);
-  font-size: .78rem;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-  border: 1px solid #BFDBFE;
-  transition: background .15s;
-}
-.btn-credit-link:hover {
-  background: #BFDBFE;
-  color: var(--pct-primary);
+@media (max-width:991px) { .tutor-card,.summary-card { position: static; margin-bottom: 1rem; } }
+@media (max-width:575px) {
+  .course-title-lg { font-size: 1.05rem; }
+  .booking-section-block { padding: .85rem 1rem; }
+  .course-info-header { padding: .9rem 1rem .9rem; }
+  .course-info-body { padding: .85rem 1rem; }
 }

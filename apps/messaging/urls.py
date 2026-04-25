@@ -12,4 +12,6 @@ urlpatterns = [
 
     # AJAX polling
     path('poll/<int:ib_id>/', views.poll_messages, name='poll'),
+
+    path('unread-count/', views.unread_count, name='unread_count'),
 ]
