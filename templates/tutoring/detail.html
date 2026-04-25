@@ -120,7 +120,7 @@
         <!-- อัตราค่าบริการ ใต้โปรไฟล์ติวเตอร์ -->
         {% if rates %}
         <div class="rates-card mt-2">
-          <p class="rates-card-title"><i class="fas fa-coins me-1"></i>อัตราค่าบริการ</p>
+          <p class="rates-card-title"><i class="fas fa-coins me-1"></i> อัตรา (เครดิต/คน)</p>
           <p class="rates-card-note">ราคาต่อคน ขึ้นอยู่กับจำนวนผู้เรียนในการจองครั้งนั้น</p>
           {% for rate in rates %}
           <div class="rate-row {% if forloop.first and rates|length == 1 %}rate-row-only{% endif %}">
@@ -137,7 +137,7 @@
           {% endfor %}
           <p class="rates-card-example">
             <i class="fas fa-info-circle me-1"></i>
-            ยิ่งมีผู้เรียนมาก อัตราต่อคนอาจถูกลง — ระบบคำนวณให้อัตโนมัติ
+            ยิ่งมีผู้เรียนมาก อัตราต่อคนอาจถูกลง 
           </p>
         </div>
         {% endif %}
@@ -151,53 +151,77 @@
 
         <!-- ── Course Info ── -->
         <div class="course-info-card">
-          <span class="course-group-tag">{{ tc.crs_id.cg_id.cg_name }}</span>
-          <h1 class="course-title-lg">{{ tc.tutc_name }}</h1>
-          <p class="course-sub-name">
-            <i class="fas fa-book me-1"></i>{{ tc.crs_id.crs_name }}
-          </p>
-          {% if tc.tutc_desc %}
-          <p class="course-desc-lg">{{ tc.tutc_desc }}</p>
-          {% endif %}
-          <!-- จำนวนรับสูงสุด -->
-          <div class="course-meta-row">
-            <span><i class="fas fa-users me-1"></i>รับสูงสุด <strong>{{ tc.tutc_max_stu }}</strong> คน/ครั้ง</span>
+          <div class="course-info-header">
+            <div class="course-title-row">
+              <div class="course-title-left">
+                <span class="course-name-label"><i class="fas fa-book me-1"></i> ชื่อคอร์ส : {{ tc.tutc_name }}</span>
+              </div>
+              <span class="course-group-tag">{{ tc.crs_id.cg_id.cg_name }}</span>
+            </div>
+          </div>
+          <div class="course-info-body">
+            <div class="course-meta-list">
+              <div class="course-meta-item">
+                <span class="course-meta-label">รายวิชา</span>
+                <span class="course-meta-value">{{ tc.crs_id.crs_name }}</span>
+              </div>
+              <div class="course-meta-item">
+                <span class="course-meta-label">กลุ่มวิชา</span>
+                <span class="course-meta-value">{{ tc.crs_id.cg_id.cg_name }}</span>
+              </div>
+              <div class="course-meta-item">
+                <span class="course-meta-label">รับสูงสุด</span>
+                <span class="course-meta-value"><strong>{{ tc.tutc_max_stu }}</strong> คน/ครั้ง</span>
+              </div>
+            </div>
+            {% if tc.tutc_desc %}
+            <div class="course-desc-block">
+              <p class="course-desc-label">รายละเอียดคอร์ส</p>
+              <p class="course-desc-lg">{{ tc.tutc_desc }}</p>
+            </div>
+            {% endif %}
           </div>
         </div>
 
         <!-- ── เลือกวันและเวลา ── -->
         <div class="booking-card">
           <h2 class="booking-card-title">
-            <i class="far fa-calendar-check me-2"></i>เลือกวันและเวลา
+            <i class="far fa-calendar-check"></i>เลือกวันและเวลา
           </h2>
+          <div class="booking-card-body">
 
           {% if available_dates %}
           <form method="post" action="{% url 'tutoring:booking_create' tc.tutc_id %}" id="booking-form">
             {% csrf_token %}
 
             <!-- วันที่ -->
-            <p class="booking-section-title">วันที่เปิดสอน</p>
-            <div class="date-grid">
-              {% for sd in available_dates %}
-              <button type="button"
-                      class="date-btn"
-                      data-sd-id="{{ sd.sd_id }}"
-                      data-date-display="{{ sd.sd_date|date:'j M Y' }}"
-                      onclick="selectDate(this)">
-                {{ sd.sd_date|date:"j M" }}
-              </button>
-              {% endfor %}
+            <div class="booking-section-block">
+              <p class="booking-section-title"><i class="fas fa-calendar-day me-1"></i>วันที่เปิดสอน</p>
+              <div class="date-grid">
+                {% for sd in available_dates %}
+                <button type="button"
+                        class="date-btn"
+                        data-sd-id="{{ sd.sd_id }}"
+                        data-date="{{ sd.sd_date|date:'Y-m-d' }}"
+                        data-date-display="{{ sd.sd_date|date:'j M Y' }}"
+                        onclick="selectDate(this)">
+                  <span class="date-btn-day">{{ sd.sd_date|date:"j" }}</span>
+                  <span class="date-btn-month">{{ sd.sd_date|date:"M" }}</span>
+                </button>
+                {% endfor %}
+              </div>
             </div>
 
             <!-- ช่วงเวลา -->
-            <p class="booking-section-title">ช่วงเวลา</p>
-            <div id="slot-area">
-              <p class="no-slot-msg"><i class="fas fa-hand-pointer me-1"></i>เลือกวันที่ก่อน</p>
+            <div class="booking-section-block">
+              <p class="booking-section-title"><i class="fas fa-clock me-1"></i>ช่วงเวลา</p>
+              <div id="slot-area">
+                <p class="no-slot-msg"><i class="fas fa-hand-pointer me-1"></i>เลือกวันที่ก่อน</p>
+              </div>
             </div>
 
             <input type="hidden" name="ts_id" id="ts_id_input" value="">
 
-            <!-- JSON ข้อมูล slot (กรอง ts_status=0 แล้วจาก view) -->
             <script>
             const slotData = {
               {% for sd in available_dates %}
@@ -213,18 +237,22 @@
             </script>
 
             <!-- จำนวนผู้เรียน -->
-            <p class="booking-section-title">จำนวนผู้เรียน</p>
-            <div class="stu-count-wrap">
-              <input type="number" name="stu_count" id="stu_count"
-                     class="stu-count-input" value="1" min="1" max="{{ tc.tutc_max_stu }}"
-                     oninput="updateSummary()">
-              <span class="stu-max-hint">รับสูงสุด {{ tc.tutc_max_stu }} คน</span>
+            <div class="booking-section-block">
+              <p class="booking-section-title"><i class="fas fa-users me-1"></i>จำนวนผู้เรียน</p>
+              <div class="stu-count-wrap">
+                <input type="number" name="stu_count" id="stu_count"
+                       class="stu-count-input" value="1" min="1" max="{{ tc.tutc_max_stu }}"
+                       oninput="updateSummary()">
+                <span class="stu-max-hint">รับสูงสุด {{ tc.tutc_max_stu }} คน</span>
+              </div>
             </div>
 
             <!-- รายละเอียดเพิ่มเติม -->
-            <p class="booking-section-title">รายละเอียดเพิ่มเติม <span style="font-weight:400;color:var(--pct-muted);">(ไม่บังคับ)</span></p>
-            <textarea name="bk_desc" class="bk-textarea"
-                      placeholder="บอกติวเตอร์ว่าคุณต้องการเน้นเรื่องอะไร..."></textarea>
+            <div class="booking-section-block booking-section-last">
+              <p class="booking-section-title"><i class="fas fa-comment-alt me-1"></i>รายละเอียดเพิ่มเติม <span class="booking-section-opt">(ไม่บังคับ)</span></p>
+              <textarea name="bk_desc" class="bk-textarea"
+                        placeholder="บอกติวเตอร์ว่าคุณต้องการเน้นเรื่องอะไร..."></textarea>
+            </div>
 
             <script id="rate-data" type="application/json">
             [{% for rate in rates %}{"start": {{ rate.start }}, "end": {{ rate.end }}, "price": {{ rate.price }}}{% if not forloop.last %},{% endif %}{% endfor %}]
@@ -239,6 +267,7 @@
             <p class="no-schedule-desc">ติวเตอร์ยังไม่ได้เพิ่มตารางสอน หรือเต็มทุกช่วงเวลาแล้ว</p>
           </div>
           {% endif %}
+          </div><!-- /booking-card-body -->
         </div>
 
       </div>
@@ -251,6 +280,18 @@
         <!-- สรุปการจอง -->
         <div class="summary-card">
           <p class="summary-title"><i class="fas fa-receipt me-2"></i>สรุปการจอง</p>
+          <div class="summary-body">
+
+          <!-- ชื่อคอร์ส -->
+        <div class="summary-row">
+          <span class="label">ชื่อคอร์ส</span>
+          <span class="value">{{ tc.tutc_name }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">ชื่อวิชา</span>
+          <span class="value">{{ tc.crs_id.crs_name }}</span>
+        </div>
+        <hr class="summary-divider">
 
           <div class="summary-row">
             <span class="label">วันที่</span>
@@ -277,7 +318,10 @@
 
           <div class="summary-total-row">
             <span class="summary-total-label">ทั้งหมด</span>
-            <span class="summary-total-value" id="sum-total">—</span>
+            <div style="display:flex; align-items:baseline; gap:.4rem; justify-content:flex-end;">
+              <span class="summary-total-formula" id="sum-formula"></span>
+              <span class="summary-total-value" id="sum-total">—</span>
+            </div>
           </div>
 
           {% if user.is_authenticated %}
@@ -297,10 +341,10 @@
 
           <div class="pending-note">
             <i class="fas fa-clock me-1"></i>
-            ติวเตอร์จะยืนยันให้ <strong>โดยเร็ว</strong>
-            เครดิตจะถูกล็อกไว้ก่อน และตัดจริงเมื่อจบคอร์สเรียนแล้ว
-          </div>
-
+            ติวเตอร์จะยืนยันคำขอจองให้ <strong>โดยเร็ว</strong>
+            เครดิตจะถูกล็อกไว้ และตัดจริงเมื่อจบคอร์สเรียนแล้ว
+          </div><!-- /pending-note -->
+          </div><!-- /summary-body -->
         </div>
 
         {% if user.is_authenticated %}
@@ -370,13 +414,26 @@
   // ── render time slots ──
   function renderSlots(sdId) {
     const area  = document.getElementById('slot-area');
-    // กรอง + dedup: เอาเฉพาะ ts_id แรกของแต่ละช่วงเวลา (ป้องกัน slot ซ้ำใน DB)
+
+    // หาวันของ sdId นี้จาก data-date ของปุ่มที่ถูกกด
+    const activeBtn = document.querySelector('.date-btn.active');
+    const btnDateStr = activeBtn ? activeBtn.dataset.date : null; // YYYY-MM-DD
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // กรอง + dedup + กรองเวลาผ่านแล้วเฉพาะวันนี้
     const _seen = new Set();
     const slots = (slotData[sdId] || []).filter(s => {
       if (!s || !s.ts_id || !s.start || !s.end) return false;
       const key = s.start + '-' + s.end;
       if (_seen.has(key)) return false;
       _seen.add(key);
+      // ถ้าเป็นวันนี้ ให้กรองสล็อตที่เวลาเริ่มต้นผ่านไปแล้ว
+      if (btnDateStr === todayStr) {
+        const [h, m] = s.start.split(':').map(Number);
+        if (h * 60 + m <= nowMinutes) return false;
+      }
       return true;
     });
     if (!slots.length) {
@@ -428,6 +485,12 @@
     setText('sum-rate',     rate ? rate.price + ' เครดิต/คน' : '—');
     setText('sum-total',    total !== null ? total + ' เครดิต' : '—');
     setText('sum-total-mobile', total !== null ? total + ' เครดิต' : '— เครดิต');
+
+    // แสดงสูตรคำนวณ เช่น 2 × 6
+    const formulaEl = document.getElementById('sum-formula');
+    if (formulaEl) {
+      formulaEl.textContent = (total !== null && stu > 0 && rate) ? stu + ' × ' + rate.price + ' =' : '';
+    }
 
     if (selectedSlot) {
       const [sh, sm] = selectedSlot.start.split(':').map(Number);
