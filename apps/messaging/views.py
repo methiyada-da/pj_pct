@@ -141,3 +141,15 @@ def poll_messages(request, ib_id):
 
     filtered = [m for m in result if m['msg_id'] > after_id or m['msg_is_read'] == 1]
     return JsonResponse({'messages': filtered})
+
+@login_required
+def unread_count(request):
+    """
+    AJAX endpoint คืน total unread สำหรับ header badge polling
+    URL: /messaging/unread-count/
+    """
+    from django.http import JsonResponse
+    me = request.user.member
+    inboxes = Inbox.objects.filter(Q(member1=me) | Q(member2=me))
+    total = sum(ib.unread_count_for(me) for ib in inboxes)
+    return JsonResponse({'total_unread': total})
