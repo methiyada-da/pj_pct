@@ -17,7 +17,7 @@
 </head>
 <body>
 
-{% include 'main/_header.html' %}
+{% block navbar %}{% include 'main/_header.html' %}{% endblock %}
 
 <!-- ===== TOAST MESSAGES ===== -->
 {% if messages %}

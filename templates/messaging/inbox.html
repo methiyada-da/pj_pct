@@ -5,9 +5,21 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/messaging.css' %}">
+{% if is_admin %}<style>.pct-navbar { display:none !important; }</style>{% endif %}
 {% endblock %}
 
 {% block content %}
+{% if is_admin %}
+<a href="{% url 'admin_panel:report_mgmt' %}"
+   style="position:fixed;top:14px;left:14px;z-index:9999;
+          width:36px;height:36px;border-radius:50%;
+          background:#fff;border:1px solid #E5E7EB;
+          display:flex;align-items:center;justify-content:center;
+          color:#6B7280;text-decoration:none;box-shadow:0 1px 4px rgba(0,0,0,.08);"
+   title="กลับแผงควบคุม">
+  <i class="fas fa-arrow-left" style="font-size:13px;"></i>
+</a>
+{% endif %}
 <div class="msg-page">
   <div class="container">
     <div class="msg-layout">

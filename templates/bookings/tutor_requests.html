@@ -4,6 +4,8 @@
 {% block title %}คำขอจองของฉัน — Puean Chuay Tu{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <style>
   .bk-card {
     border: 1.5px solid #E5E7EB;
@@ -13,15 +15,23 @@
     overflow: hidden;
   }
   .bk-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+  .bk-card.pending  { border-left: 4px solid #F59E0B; }
+  .bk-card.accepted { border-left: 4px solid #10B981; }
+  .bk-card.rejected { border-left: 4px solid #EF4444; }
+  .bk-card.other    { border-left: 4px solid #6B7280; }
+
+  /* รูปปกคอร์ส */
   .course-thumb {
-    width: 110px; flex-shrink: 0; position: relative; min-height: 100px;
+    width: 120px; flex-shrink: 0; position: relative;
   }
-  .course-thumb img, .course-thumb .thumb-fallback {
-    width: 100%; height: 100%; object-fit: cover; display: block; min-height: 100px;
+  .course-thumb img,
+  .course-thumb .thumb-fallback {
+    width: 100%; height: 100%; object-fit: cover; display: block; min-height: 120px;
   }
   .course-thumb .thumb-fallback {
     background: linear-gradient(135deg,#3B82F6,#1D4ED8);
     display: flex; align-items: center; justify-content: center;
+    min-height: 120px;
   }
   .course-thumb .thumb-label {
     position: absolute; bottom: 0; left: 0; right: 0;
@@ -32,13 +42,6 @@
     color: #fff; font-size: 9px; font-weight: 700;
     line-height: 1.3; display: block; word-break: break-word;
   }
-  .bk-card.pending   { border-left: 4px solid #F59E0B; }
-  .bk-card.accepted  { border-left: 4px solid #10B981; }
-  .bk-card.studying  { border-left: 4px solid #06B6D4; }
-  .bk-card.notified  { border-left: 4px solid #3B82F6; }
-  .bk-card.done      { border-left: 4px solid #10B981; }
-  .bk-card.rejected  { border-left: 4px solid #EF4444; }
-  .bk-card.other     { border-left: 4px solid #6B7280; }
 
   .tab-pill {
     border-radius: 999px;
@@ -53,6 +56,7 @@
   }
   .tab-pill.active { background: #2563EB; color: #fff; border-color: #2563EB; }
 
+
   .info-row {
     display: flex;
     gap: 8px;
@@ -60,7 +64,11 @@
     font-size: 13.5px;
     padding: 3px 0;
   }
-  .info-label { color: #6B7280; min-width: 110px; flex-shrink: 0; }
+  .info-label { 
+    color: #37383a;
+    font-size: 14px; 
+    min-width: 110px; 
+    flex-shrink: 0; }
   .earnings-box {
     background: #F0FDF4;
     border: 1px solid #BBF7D0;
@@ -116,7 +124,7 @@
       <!-- หัวข้อ -->
       <div>
         <h1 class="fw-bold mb-0" style="font-size:1.2rem; color:#111; line-height:1.2;">คำขอจองของฉัน</h1>
-        <p class="text-muted mb-0" style="font-size:.8rem;">จัดการคำขอจองที่นักเรียนส่งมาให้คุณ</p>
+        <p class="text-muted mb-0" style="font-size:.8rem;">จัดการคำขอจองที่ผู้เรียนส่งมาให้คุณ</p>
       </div>
 
       <!-- badge รออนุมัติ -->
@@ -143,6 +151,7 @@
       <button class="tab-pill" data-tab="notified">แจ้งจบงานแล้ว <span class="badge bg-primary ms-1">{{ notified|length }}</span></button>
       <button class="tab-pill" data-tab="done">เสร็จสิ้น <span class="badge bg-success ms-1">{{ done|length }}</span></button>
       <button class="tab-pill" data-tab="rejected">ปฏิเสธ <span class="badge bg-danger ms-1">{{ rejected|length }}</span></button>
+      <button class="tab-pill" data-tab="reported">รอพิจารณา <span class="badge ms-1" style="background:#7C3AED;" id="cnt-reported">0</span></button>
     </div>
 
     <!-- ── TAB: รอยืนยัน ── -->
@@ -151,6 +160,7 @@
         {% for bk in pending %}
         <div class="bk-card pending mb-3">
           <div class="d-flex align-items-stretch">
+            <!-- รูปปกคอร์ส -->
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
                 <img src="{{ bk.tutc_id.tutc_img.url }}" alt="">
@@ -159,48 +169,62 @@
               {% endif %}
               <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
             </div>
-            <div class="flex-fill p-3">
-              <div class="d-flex align-items-center justify-content-between mb-1">
+            <!-- รายละเอียด -->
+            <div class="flex-fill p-4 d-flex align-items-start justify-content-between gap-3 flex-wrap">
+            <div class="flex-fill">
+              <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 <span class="badge bg-warning text-dark">รอยืนยัน</span>
+                <span class="text-muted small ms-auto">{{ bk.bk_date|date:"d M Y H:i" }}</span>
               </div>
-              <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
-              <div class="text-muted small mb-2">
-                <i class="fas fa-user me-1"></i>{{ bk.member.mb_full_name }}
-                &nbsp;·&nbsp;<i class="fas fa-users me-1"></i>{{ bk.bk_stu_count }} คน
-                &nbsp;·&nbsp;<i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y" }}
-                {% if bk.ts_id %}&nbsp;·&nbsp;<i class="fas fa-clock me-1"></i>{{ bk.ts_id.ts_start_time|time:"H:i" }}–{{ bk.ts_id.ts_end_time|time:"H:i" }}{% endif %}
+              <div class="fw-bold mb-1" style="font-size:15px;"><span class="info-label">ชื่อคอร์ส :</span> {{ bk.tutc_id.tutc_name }}</div>
+              <div class="text-muted small mb-3"><span class="info-label">วิชา :</span> {{ bk.tutc_id.crs_id }}</div>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <div class="info-row"><span class="info-label"><i class="fas fa-user me-1 text-primary"></i>ผู้เรียน</span><span class="fw-semibold">{{ bk.member.mb_full_name }}</span></div>
+                  <div class="info-row"><span class="info-label"><i class="fas fa-users me-1 text-primary"></i>จำนวนผู้เรียน</span><span>{{ bk.bk_stu_count }} คน</span></div>
+                  <div class="info-row"><span class="info-label"><i class="fas fa-calendar me-1 text-primary"></i>วันเวลานัด</span><span>{{ bk.bk_stu_datetime|date:"d M Y H:i" }} น.</span></div>
+                </div>
+                <div class="col-md-6">
+                  <div class="info-row"><span class="info-label"><i class="fas fa-clock me-1 text-primary"></i>ช่วงเวลา</span>
+                    {% if bk.ts_id %}<span>{{ bk.ts_id.ts_start_time|time:"H:i" }} – {{ bk.ts_id.ts_end_time|time:"H:i" }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+                  </div>
+                  <div class="info-row"><span class="info-label"><i class="fas fa-coins me-1 text-primary"></i>ค่าเรียน/คน</span><span>{{ bk.bk_rate_per_person }} เครดิต</span></div>
+                </div>
               </div>
               {% if bk.bk_desc %}
-              <div class="mb-2 p-2 rounded-2" style="background:#F8FAFC;font-size:12px;">
-                <i class="fas fa-comment-alt text-muted me-1"></i>{{ bk.bk_desc }}
+              <div class="mt-2 p-2 rounded-2" style="background:#F8FAFC;font-size:13px;">
+                <i class="fas fa-comment-alt text-muted me-1"></i><span class="text-muted">ข้อความ:</span> {{ bk.bk_desc }}
               </div>
               {% endif %}
-              <div class="d-flex align-items-center justify-content-between mt-1">
-                <div class="earnings-box px-3 py-1" style="font-size:13px;">
-                  <span class="fw-bold text-success">{{ bk.total_credit }} เครดิต</span>
-                  <span class="text-muted small ms-1">({{ bk.bk_rate_per_person }}×{{ bk.bk_stu_count }})</span>
-                </div>
-                <div class="d-flex gap-2">
-                  <form method="post" action="{% url 'bookings:booking_accept' bk.bk_id %}" class="d-inline">
-                    {% csrf_token %}
-                    <button class="btn btn-success btn-sm fw-bold px-3 rounded-pill"><i class="fas fa-check me-1"></i>รับงาน</button>
-                  </form>
-                  <button class="btn btn-outline-danger btn-sm rounded-pill px-3"
-                          onclick="openReject({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
-                    <i class="fas fa-times me-1"></i>ปฏิเสธ
-                  </button>
-                </div>
-              </div>
             </div>
-          </div>
+            <div style="min-width:180px;">
+              <div class="earnings-box text-center mb-3">
+                <div class="text-muted small mb-1">รายได้ที่จะได้รับ</div>
+                <div class="fw-bold text-success" style="font-size:22px;">{{ bk.bk_rate_per_person }} <span style="font-size:13px;font-weight:500;">× {{ bk.bk_stu_count }}</span></div>
+                <div class="fw-bold text-success" style="font-size:18px;">= {{ bk.total_credit }} เครดิต</div>
+              </div>
+              <form method="post" action="{% url 'bookings:booking_accept' bk.bk_id %}" id="form-accept-{{ bk.bk_id }}">
+                {% csrf_token %}
+              </form>
+              <button class="btn btn-success w-100 mb-2 fw-bold"
+                      onclick="openAccept({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', '{{ bk.tutc_id.tutc_name|escapejs }}', {{ bk.total_credit }})"
+                <i class="fas fa-check me-1"></i>รับงาน
+              </button>
+              <button class="btn btn-outline-danger w-100 fw-semibold"
+                      onclick="openReject({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
+                <i class="fas fa-times me-1"></i>ปฏิเสธ
+              </button>
+            </div>
+            </div>{# /flex-fill p-4 #}
+          </div>{# /d-flex align-items-stretch #}
         </div>
         {% endfor %}
       {% else %}
         <div class="empty-state text-center text-muted">
           <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-inbox"></i></div>
           <div class="fw-semibold mb-1">ยังไม่มีคำขอจองที่รอยืนยัน</div>
-          <div class="small">เมื่อมีนักเรียนส่งคำขอ จะปรากฏที่นี่</div>
+          <div class="small">เมื่อมีผู้เรียนส่งคำขอ จะปรากฏที่นี่</div>
         </div>
       {% endif %}
     </div>
@@ -209,7 +233,7 @@
     <div id="tab-accepted" class="d-none">
       {% if accepted %}
         {% for bk in accepted %}
-        <div class="bk-card accepted mb-3">
+        <div class="bk-card mb-3" style="border-left:4px solid #10B981;">
           <div class="d-flex align-items-stretch">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -219,39 +243,33 @@
               {% endif %}
               <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
             </div>
-            <div class="flex-fill p-3">
-              <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="flex-fill p-4 d-flex align-items-start justify-content-between gap-3 flex-wrap">
+          <div class="flex-fill">
+              <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 <span class="badge bg-success">รับงานแล้ว</span>
+
               </div>
               <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
-              <div class="text-muted small mb-2">
-                <i class="fas fa-user me-1"></i>{{ bk.member.mb_full_name }}
-                &nbsp;·&nbsp;<i class="fas fa-users me-1"></i>{{ bk.bk_stu_count }} คน
-                &nbsp;·&nbsp;<i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y · H:i" }}
-                {% if bk.ts_id %}&nbsp;·&nbsp;<i class="fas fa-clock me-1"></i>{{ bk.ts_id.ts_start_time|time:"H:i" }}–{{ bk.ts_id.ts_end_time|time:"H:i" }}{% endif %}
-              </div>
+              <div class="text-muted small mb-1">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_count }} คน · {{ bk.bk_rate_per_person }} เครดิต/คน</div>
+              <div class="text-muted small"><i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y H:i" }} น.</div>
+            </div>
+            <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
+              <div class="fw-bold text-dark" style="font-size:18px;">{{ bk.total_credit }} เครดิต</div>
               <form method="post" action="{% url 'bookings:mark_studying' bk.bk_id %}" id="form-studying-{{ bk.bk_id }}">
                 {% csrf_token %}
               </form>
-              <div class="d-flex align-items-center justify-content-between mt-1">
-                <div class="earnings-box px-3 py-1" style="font-size:13px;">
-                  <span class="fw-bold text-success">{{ bk.total_credit }} เครดิต</span>
-                  <span class="text-muted small ms-1">({{ bk.bk_rate_per_person }}×{{ bk.bk_stu_count }})</span>
-                </div>
-                <div class="d-flex gap-2">
-                  <button class="btn btn-info text-white btn-sm fw-semibold rounded-pill px-3"
-                          onclick="submitAndGo('{{ bk.bk_id }}')">
-                    <i class="fas fa-graduation-cap me-1"></i>เสร็จสิ้นการสอน
-                  </button>
-                  <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
-                          onclick="openDetail({{ bk.bk_id }})">
-                    <i class="fas fa-info-circle me-1"></i>รายละเอียด
-                  </button>
-                </div>
-              </div>
+              <button class="btn btn-info text-white btn-sm fw-semibold rounded-pill px-3 w-100"
+                      onclick="openFinish('{{ bk.bk_id }}', '{{ bk.tutc_id.tutc_name|escapejs }}')">
+                <i class="fas fa-graduation-cap me-1"></i>เสร็จสิ้นการสอน
+              </button>
+              <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                      onclick="openDetail({{ bk.bk_id }})">
+                <i class="fas fa-info-circle me-1"></i>รายละเอียด
+              </button>
             </div>
-          </div>
+            </div>{# /flex-fill p-4 #}
+          </div>{# /d-flex align-items-stretch #}
         </div>
         {% endfor %}
       {% else %}
@@ -267,7 +285,7 @@
     <div id="tab-studying" class="d-none">
       {% if studying %}
         {% for bk in studying %}
-        <div class="bk-card studying mb-3">
+        <div class="bk-card mb-3" style="border-left:4px solid #06B6D4;">
           <div class="d-flex align-items-stretch">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -277,35 +295,28 @@
               {% endif %}
               <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
             </div>
-            <div class="flex-fill p-3">
-              <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="flex-fill p-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 <span class="badge bg-info">เรียนแล้ว</span>
               </div>
-              <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
-              <div class="text-muted small mb-2">
-                <i class="fas fa-user me-1"></i>{{ bk.member.mb_full_name }}
-                &nbsp;·&nbsp;<i class="fas fa-users me-1"></i>{{ bk.bk_stu_count }} คน
-                &nbsp;·&nbsp;<i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y · H:i" }}
-              </div>
-              <div class="d-flex align-items-center justify-content-between mt-1">
-                <div class="earnings-box px-3 py-1" style="font-size:13px;">
-                  <span class="fw-bold text-success">{{ bk.total_credit }} เครดิต</span>
-                  <span class="text-muted small ms-1">({{ bk.bk_rate_per_person }}×{{ bk.bk_stu_count }})</span>
-                </div>
-                <div class="d-flex gap-2">
-                  <a href="{% url 'bookings:tutoring_activity' bk.bk_id %}"
-                     class="btn btn-primary btn-sm fw-semibold rounded-pill px-3">
-                    <i class="fas fa-camera me-1"></i>บันทึกกิจกรรม
-                  </a>
-                  <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
-                          onclick="openDetail({{ bk.bk_id }})">
-                    <i class="fas fa-info-circle me-1"></i>รายละเอียด
-                  </button>
-                </div>
-              </div>
+              <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
+              <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
             </div>
-          </div>
+            <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
+              <div class="fw-bold" style="font-size:16px;">{{ bk.total_credit }} เครดิต</div>
+              <a href="{% url 'bookings:tutoring_activity' bk.bk_id %}"
+                 class="btn btn-primary btn-sm fw-semibold rounded-pill px-3">
+                <i class="fas fa-camera me-1"></i>บันทึกกิจกรรม
+              </a>
+              <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                      onclick="openDetail({{ bk.bk_id }})">
+                <i class="fas fa-info-circle me-1"></i>รายละเอียด
+              </button>
+            </div>
+            </div>{# /flex-fill p-4 #}
+          </div>{# /d-flex align-items-stretch #}
         </div>
         {% endfor %}
       {% else %}
@@ -321,7 +332,7 @@
     <div id="tab-notified" class="d-none">
       {% if notified %}
         {% for bk in notified %}
-        <div class="bk-card notified mb-3">
+        <div class="bk-card mb-3" style="border-left:4px solid #3B82F6;">
           <div class="d-flex align-items-stretch">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -331,32 +342,25 @@
               {% endif %}
               <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
             </div>
-            <div class="flex-fill p-3">
-              <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="flex-fill p-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 <span class="badge bg-primary">แจ้งจบงานแล้ว</span>
               </div>
-              <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
-              <div class="text-muted small mb-2">
-                <i class="fas fa-user me-1"></i>{{ bk.member.mb_full_name }}
-                &nbsp;·&nbsp;<i class="fas fa-users me-1"></i>{{ bk.bk_stu_count }} คน
-                &nbsp;·&nbsp;<i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y · H:i" }}
-              </div>
-              <div class="d-flex align-items-center justify-content-between mt-1">
-                <div class="earnings-box px-3 py-1" style="font-size:13px;">
-                  <span class="fw-bold text-success">{{ bk.total_credit }} เครดิต</span>
-                  <span class="text-muted small ms-1">({{ bk.bk_rate_per_person }}×{{ bk.bk_stu_count }})</span>
-                </div>
-                <div class="d-flex gap-2 align-items-center">
-                  <span class="text-muted small"><i class="fas fa-clock me-1"></i>รอผู้เรียนยืนยัน</span>
-                  <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
-                          onclick="openDetail({{ bk.bk_id }})">
-                    <i class="fas fa-info-circle me-1"></i>รายละเอียด
-                  </button>
-                </div>
-              </div>
+              <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
+              <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
             </div>
-          </div>
+            <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
+              <div class="fw-bold" style="font-size:16px;">{{ bk.total_credit }} เครดิต</div>
+              <span class="text-muted small"><i class="fas fa-clock me-1"></i>รอผู้เรียนยืนยัน</span>
+              <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                      onclick="openDetail({{ bk.bk_id }})">
+                <i class="fas fa-info-circle me-1"></i>รายละเอียด
+              </button>
+            </div>
+            </div>{# /flex-fill p-4 #}
+          </div>{# /d-flex align-items-stretch #}
         </div>
         {% endfor %}
       {% else %}
@@ -372,7 +376,7 @@
     <div id="tab-done" class="d-none">
       {% if done %}
         {% for bk in done %}
-        <div class="bk-card done mb-3">
+        <div class="bk-card mb-3" style="border-left:4px solid #10B981;">
           <div class="d-flex align-items-stretch">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -382,34 +386,27 @@
               {% endif %}
               <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
             </div>
-            <div class="flex-fill p-3">
-              <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="flex-fill p-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 <span class="badge {% if bk.bk_status == 5 %}bg-success{% else %}bg-secondary{% endif %}">
-                  {% if bk.bk_status == 5 %}รีวิวแล้ว{% else %}ยังไม่มีรีวิว{% endif %}
+                  {% if bk.bk_status == 5 %}รีวิวแล้ว{% else %}ยังไม่รีวิว{% endif %}
                 </span>
               </div>
-              <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
-              <div class="text-muted small mb-2">
-                <i class="fas fa-user me-1"></i>{{ bk.member.mb_full_name }}
-                &nbsp;·&nbsp;<i class="fas fa-users me-1"></i>{{ bk.bk_stu_count }} คน
-                &nbsp;·&nbsp;<i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y · H:i" }}
-              </div>
-              <div class="d-flex align-items-center justify-content-between mt-1">
-                <div class="earnings-box px-3 py-1" style="font-size:13px;">
-                  <span class="fw-bold text-success">{{ bk.total_credit }} เครดิต</span>
-                  <span class="text-muted small ms-1">({{ bk.bk_rate_per_person }}×{{ bk.bk_stu_count }})</span>
-                </div>
-                <div class="d-flex gap-2 align-items-center">
-                  <span class="text-success small fw-semibold"><i class="fas fa-check-circle me-1"></i>เสร็จสมบูรณ์</span>
-                  <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
-                          onclick="openDetail({{ bk.bk_id }})">
-                    <i class="fas fa-info-circle me-1"></i>รายละเอียด
-                  </button>
-                </div>
-              </div>
+              <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
+              <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
             </div>
-          </div>
+            <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
+              <div class="fw-bold text-success" style="font-size:16px;">{{ bk.total_credit }} เครดิต</div>
+              <span class="text-success small fw-semibold"><i class="fas fa-check-circle me-1"></i>เสร็จสมบูรณ์</span>
+              <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                      onclick="openDetail({{ bk.bk_id }})">
+                <i class="fas fa-info-circle me-1"></i>รายละเอียด
+              </button>
+            </div>
+            </div>{# /flex-fill p-4 #}
+          </div>{# /d-flex align-items-stretch #}
         </div>
         {% endfor %}
       {% else %}
@@ -424,7 +421,7 @@
     <div id="tab-rejected" class="d-none">
       {% if rejected %}
         {% for bk in rejected %}
-        <div class="bk-card rejected mb-3">
+        <div class="bk-card mb-3" style="border-left:4px solid #EF4444;">
           <div class="d-flex align-items-stretch">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -434,29 +431,24 @@
               {% endif %}
               <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
             </div>
-            <div class="flex-fill p-3">
-              <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="flex-fill p-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 <span class="badge bg-danger">ปฏิเสธ</span>
               </div>
-              <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
-              <div class="text-muted small mb-2">
-                <i class="fas fa-user me-1"></i>{{ bk.member.mb_full_name }}
-                &nbsp;·&nbsp;<i class="fas fa-users me-1"></i>{{ bk.bk_stu_count }} คน
-                &nbsp;·&nbsp;<i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y · H:i" }}
-              </div>
-              <div class="d-flex align-items-center justify-content-between mt-1">
-                <div class="earnings-box px-3 py-1" style="font-size:13px;">
-                  <span class="fw-bold" style="color:#6B7280;">{{ bk.total_credit }} เครดิต</span>
-                  <span class="text-muted small ms-1">({{ bk.bk_rate_per_person }}×{{ bk.bk_stu_count }})</span>
-                </div>
-                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
-                        onclick="openDetail({{ bk.bk_id }})">
-                  <i class="fas fa-info-circle me-1"></i>รายละเอียด
-                </button>
-              </div>
+              <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
+              <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
             </div>
-          </div>
+            <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
+              <div class="fw-bold" style="font-size:16px;">{{ bk.total_credit }} เครดิต</div>
+              <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                      onclick="openDetail({{ bk.bk_id }})">
+                <i class="fas fa-info-circle me-1"></i>รายละเอียด
+              </button>
+            </div>
+            </div>{# /flex-fill p-4 #}
+          </div>{# /d-flex align-items-stretch #}
         </div>
         {% endfor %}
       {% else %}
@@ -467,40 +459,57 @@
       {% endif %}
     </div>
 
+    <!-- ── TAB: รอพิจารณา ── -->
+    <div id="tab-reported" class="d-none">
+      {% for bk in all_bookings %}
+        {% if bk.bk_report_date and not bk.bk_report_resolved_date %}
+        <div class="bk-card mb-3" style="border-left:4px solid #7C3AED;">
+          <div class="d-flex align-items-center gap-2 p-2" style="background:#F5F3FF;border-bottom:1px solid #DDD6FE;">
+            <i class="fas fa-flag" style="color:#7C3AED;"></i>
+            <span class="small fw-semibold" style="color:#5B21B6;">ผู้เรียนรายงานปัญหา — รอการพิจารณาจากแอดมิน</span>
+          </div>
+          <div class="d-flex align-items-stretch">
+            <div class="course-thumb">
+              {% if bk.tutc_id.tutc_img %}
+                <img src="{{ bk.tutc_id.tutc_img.url }}" alt="">
+              {% else %}
+                <div class="thumb-fallback"><i class="fas fa-book-open text-white" style="font-size:22px;opacity:.6;"></i></div>
+              {% endif %}
+              <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
+            </div>
+            <div class="flex-fill p-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+              <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
+                  <span class="badge" style="background:#7C3AED;">รอพิจารณา</span>
+                </div>
+                <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
+                <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
+              </div>
+              <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
+                <div class="fw-bold" style="font-size:16px;">{{ bk.total_credit }} เครดิต</div>
+                <span class="small fw-semibold" style="color:#7C3AED;"><i class="fas fa-clock me-1"></i>รอผลการพิจารณา</span>
+                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                        onclick="openDetail({{ bk.bk_id }})">
+                  <i class="fas fa-info-circle me-1"></i>รายละเอียด
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+      <div id="reported-empty" class="empty-state text-center text-muted" style="display:none;">
+        <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-flag"></i></div>
+        <div class="fw-semibold mb-1">ไม่มีรายการรอพิจารณา</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<!-- ── Modal: ปฏิเสธงาน ── -->
-<div class="modal fade" id="rejectModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header border-0 pb-0">
-        <h6 class="modal-title fw-bold text-danger">
-          <i class="fas fa-times-circle me-2"></i>ปฏิเสธงาน
-        </h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form id="rejectForm" method="post">
-        {% csrf_token %}
-        <div class="modal-body pt-2">
-          <p class="text-muted small mb-3">
-            ปฏิเสธคำขอจองจาก <strong id="rejectStudentName"></strong><br>
-            เครดิตที่ล็อกไว้จะถูกคืนให้นักเรียนทันที
-          </p>
-          <label class="form-label fw-semibold small">เหตุผล (ไม่บังคับ)</label>
-          <textarea name="reject_reason" class="form-control" rows="3"
-                    placeholder="ระบุเหตุผลที่ปฏิเสธ..."></textarea>
-        </div>
-        <div class="modal-footer border-0 pt-0">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-          <button type="submit" class="btn btn-danger fw-bold px-4">
-            <i class="fas fa-times me-1"></i>ยืนยันการปฏิเสธ
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
+<!-- hidden reject form -->
+<form id="rejectForm" method="post" style="display:none">{% csrf_token %}<textarea name="reject_reason" id="rejectReason"></textarea></form>
 
 <!-- ── Modal: ดูรายละเอียด ── -->
 <div class="modal fade" id="detailModal" tabindex="-1">
@@ -535,6 +544,10 @@ const bookingData = {
     datetime: "{{ bk.bk_stu_datetime|date:'d M Y' }} เวลา {{ bk.bk_stu_datetime|date:'H:i' }} น.",
     booked:   "{{ bk.bk_date|date:'d M Y H:i' }}",
     status:   {{ bk.bk_status }},
+    reported: {% if bk.bk_report_date %}true{% else %}false{% endif %},
+    report_resolved: {% if bk.bk_report_resolved_date %}true{% else %}false{% endif %},
+    report_reason:  "{{ bk.bk_report_reason|default:''|escapejs }}",
+    report_desc:    "{{ bk.bk_report_desc|default:''|escapejs }}",
     desc:     "{{ bk.bk_desc|default:''|escapejs }}",
     cmt:      "{{ bk.bk_cmt|default:''|escapejs }}",
     {% if bk.ts_id %}
@@ -588,22 +601,129 @@ function submitAndGo(bkId) {
   form.submit();
 }
 
+// ยืนยันรับงาน — SweetAlert2
+function openAccept(bkId, studentName, courseName, totalCredit) {
+  Swal.fire({
+    title: 'ยืนยันรับงาน?',
+    html: `
+      <div style="text-align:left;font-size:14px;line-height:2;">
+        <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
+          <span style="color:#6B7280;">ชื่อผู้จอง</span><span style="font-weight:600;">${studentName}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
+          <span style="color:#6B7280;">ชื่อคอร์ส</span><span style="font-weight:600;">${courseName}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;">
+          <span style="color:#6B7280;font-weight:600;">เครดิตที่จะได้รับ</span>
+          <span style="font-weight:700;color:#10B981;font-size:16px;">${totalCredit} เครดิต</span>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:8px 12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;font-size:12px;color:#166534;text-align:left;">
+        <i class="fas fa-info-circle me-1"></i>
+        เครดิตของผู้เรียนจะถูกล็อกไว้จนกว่าการสอนจะเสร็จสิ้น
+      </div>`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-check me-1"></i> ยืนยันรับงาน',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#10B981',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+      customClass: {
+        popup:         'rounded-4 shadow',
+        actions:       'gap-2',
+        confirmButton: 'rounded-3 px-4 fw-bold',
+        cancelButton:  'rounded-3 px-4 fw-semibold',
+      },
+  }).then(result => {
+    if (result.isConfirmed) {
+      document.getElementById('form-accept-' + bkId).submit();
+    }
+  });
+}
+
+// ยืนยันเสร็จสิ้นการสอน — SweetAlert2
+function openFinish(bkId, courseName) {
+  Swal.fire({
+    title: 'เสร็จสิ้นการสอน?',
+    html: `ยืนยันว่าสอนคอร์ส <strong>${courseName}</strong> เสร็จสิ้นแล้ว?<br><br><span class="text-muted small">หลังจากนี้ต้องอัปโหลดหลักฐานการสอน <br>และรอผู้เรียนยืนยันจบงานก่อนเครดิตจะถูกโอนให้คุณ</span>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ยืนยัน',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#06B6D4',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+      customClass: {
+        popup:         'rounded-4 shadow',
+        actions:       'gap-2',
+        confirmButton: 'rounded-3 px-4 fw-bold',
+        cancelButton:  'rounded-3 px-4 fw-semibold',
+      },
+  }).then(result => {
+    if (result.isConfirmed) submitAndGo(bkId);
+  });
+}
+
+
+// // Highlight tab ที่มีงานรออยู่
+// document.querySelectorAll('.tab-pill').forEach(btn => {
+//   const badge = btn.querySelector('.badge');
+//   if (badge && parseInt(badge.textContent) > 0 && !btn.classList.contains('active')) {
+//     btn.classList.add('has-items');
+//   }
+// });
+
 // Tab switching
 document.querySelectorAll('.tab-pill').forEach(btn => {
   btn.addEventListener('click', function () {
     document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
-    ['pending','accepted','studying','notified','done','rejected'].forEach(t => {
+    ['pending','accepted','studying','notified','done','rejected','reported'].forEach(t => {
       const el = document.getElementById('tab-' + t);
       if (el) el.classList.toggle('d-none', t !== this.dataset.tab);
     });
   });
 });
 
+// นับจำนวน reported
+(function() {
+  let cnt = 0;
+  Object.values(bookingData).forEach(bk => { if (bk.reported && !bk.report_resolved) cnt++; });
+  const el = document.getElementById('cnt-reported');
+  if (el) el.textContent = cnt;
+  const empty = document.getElementById('reported-empty');
+  if (empty) empty.style.display = cnt === 0 ? '' : 'none';
+})();
+
 function openReject(bkId, studentName) {
-  document.getElementById('rejectStudentName').textContent = studentName;
-  document.getElementById('rejectForm').action = `/bookings/tutor/${bkId}/reject/`;
-  new bootstrap.Modal(document.getElementById('rejectModal')).show();
+  Swal.fire({
+    title: 'ปฏิเสธงาน?',
+    html: `ปฏิเสธคำขอจองจาก <strong>${studentName}</strong><br><span class="text-muted small">เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียนทันที</span>`,
+    icon: 'error',
+    input: 'textarea',
+    inputPlaceholder: 'ระบุเหตุผลที่ปฏิเสธ... (ไม่บังคับ)',
+    inputAttributes: { rows: 3 },
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-times me-1"></i> ยืนยันการปฏิเสธ',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#EF4444',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+      customClass: {
+        popup:         'rounded-4 shadow',
+        actions:       'gap-2',
+        confirmButton: 'rounded-3 px-4 fw-bold',
+        cancelButton:  'rounded-3 px-4 fw-semibold',
+      },
+  }).then(result => {
+    if (result.isConfirmed) {
+      const form = document.getElementById('rejectForm');
+      form.action = `/bookings/tutor/${bkId}/reject/`;
+      document.getElementById('rejectReason').value = result.value || '';
+      form.submit();
+    }
+  });
 }
 
 function openDetail(bkId) {
@@ -645,7 +765,7 @@ function openDetail(bkId) {
     };
     reviewHtml = `
       <hr class="my-3">
-      <div class="fw-bold mb-2 small"><i class="fas fa-star me-2 text-warning"></i>รีวิวจากนักเรียน</div>
+      <div class="fw-bold mb-2 small"><i class="fas fa-star me-2 text-warning"></i>รีวิวจากผู้เรียน</div>
       <div class="p-3 rounded-3" style="background:#FFFBEB;border:1px solid #FDE68A;">
         ${starRow('คุณภาพการสอน', bk.rv_quality)}
         ${starRow('ความรู้ความสามารถ', bk.rv_knowledge)}
@@ -665,7 +785,7 @@ function openDetail(bkId) {
     <div class="row g-3">
       <div class="col-md-6">
         <div class="modal-detail-row"><span class="text-muted">วิชา</span><span class="fw-semibold">${bk.course}</span></div>
-        <div class="modal-detail-row"><span class="text-muted">นักเรียน</span><span>${bk.student}</span></div>
+        <div class="modal-detail-row"><span class="text-muted">ผู้เรียน</span><span>${bk.student}</span></div>
         <div class="modal-detail-row"><span class="text-muted">อีเมล</span><span class="text-muted small">${bk.email}</span></div>
         <div class="modal-detail-row"><span class="text-muted">จำนวนผู้เรียน</span><span>${bk.count} คน</span></div>
       </div>
@@ -676,8 +796,27 @@ function openDetail(bkId) {
         <div class="modal-detail-row"><span class="text-muted">รวมรายได้</span><span class="fw-bold text-success">${total} เครดิต</span></div>
       </div>
     </div>
-    ${bk.desc ? `<div class="mt-3 p-3 rounded-2" style="background:#F8FAFC;font-size:13px;"><span class="text-muted">ข้อความนักเรียน:</span> ${bk.desc}</div>` : ''}
-    ${bk.cmt  ? `<div class="mt-2 p-3 rounded-2 bg-danger bg-opacity-10" style="font-size:13px;"><span class="text-muted">หมายเหตุ:</span> ${bk.cmt}</div>` : ''}
+    ${bk.desc ? `<div class="mt-3 p-3 rounded-2" style="background:#F8FAFC;font-size:13px;"><span class="text-muted">ข้อความผู้เรียน:</span> ${bk.desc}</div>` : ''}
+    ${bk.reported ? `
+      <div class="mt-3 p-3 rounded-3" style="background:#F5F3FF;border:1px solid #DDD6FE;">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="fas fa-flag" style="color:#7C3AED;"></i>
+          <span class="fw-semibold small" style="color:#5B21B6;">
+            ${bk.report_resolved ? 'ผู้เรียนรายงานปัญหา — ดำเนินการแล้ว' : 'ผู้เรียนรายงานปัญหา — รอการพิจารณาจากแอดมิน'}
+          </span>
+        </div>
+        ${bk.report_reason ? (() => {
+          const labels = {'1':'หลักฐานการสอนไม่ตรงความจริง','2':'ไม่ได้สอนเลยแต่แจ้งจบงาน','3':'เนื้อหาไม่ตรงที่ตกลงไว้','4':'กดยืนยันพลาด แต่ยังไม่ได้เรียนจริง','other':'อื่นๆ'};
+          return `<div style="font-size:13px;color:#374151;margin-bottom:4px;"><span class="fw-semibold">สาเหตุ:</span> ${labels[bk.report_reason] || bk.report_reason}</div>`;
+        })() : ''}
+        ${bk.report_desc ? `<div style="font-size:13px;color:#374151;margin-bottom:4px;"><span class="fw-semibold">รายละเอียด:</span> ${bk.report_desc}</div>` : ''}
+        ${bk.cmt && bk.cmt.startsWith('[แอดมิน]')
+          ? `<div class="mt-2 pt-2" style="border-top:1px solid #DDD6FE;font-size:13px;color:#374151;">
+              <span class="fw-semibold" style="color:#5B21B6;">ผลการพิจารณา:</span> ${bk.cmt.replace('[แอดมิน]','').trim()}
+             </div>`
+          : `<div class="text-muted small mt-1">แอดมินจะแจ้งผลกลับมาทางการแจ้งเตือน</div>`
+        }
+      </div>` : bk.cmt ? `<div class="mt-2 p-3 rounded-2 bg-danger bg-opacity-10" style="font-size:13px;"><span class="text-muted">หมายเหตุ:</span> ${bk.cmt}</div>` : ''}
     <div class="text-muted small mt-3">จองเมื่อ: ${bk.booked}</div>
     ${activityHtml}
     ${reviewHtml}
