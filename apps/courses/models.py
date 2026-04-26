@@ -1,3 +1,4 @@
+# courses/models.py - models ของ Faculty, Major, CourseGroup, Course
 from django.db import models
 
 

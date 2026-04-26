@@ -1,17 +1,468 @@
+# tutoring/views.py - views รวมทั้งหมดของติวเตอร์ (search, detail, profile, manage)
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.core.files.base import ContentFile
+from django.utils import timezone
+from django.db import transaction
+from django.db.models import Q, OuterRef, Subquery
 
-from apps.accounts.models import Tutor
+from apps.accounts.models import Tutor, Member
 from apps.courses.models import CourseGroup, Course
+from apps.bookings.models import Booking
 from .forms import TutorRegisterForm
+from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 import re
 import os
-from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
-from apps.bookings.models import Booking
 
+
+# ============================================================
+# SEARCH VIEWS - ค้นหาติวเตอร์
+# ============================================================
+
+def search_tutors(request):
+    """
+    หน้าค้นหาติวเตอร์และรายวิชา
+    URL: /tutoring/search/
+    """
+    q          = request.GET.get('q', '').strip()
+    cg_id      = request.GET.get('cg_id', '')
+    crs_id     = request.GET.get('crs_id', '')
+    min_price  = request.GET.get('min_price', '')
+    max_price  = request.GET.get('max_price', '')
+    min_rating = request.GET.get('min_rating', '')
+
+    # ── Subquery: ราคาต่ำสุดของแต่ละ TutorCourse ──
+    # วิธีนี้ไม่ต้องพึ่ง related_name เลย — query TutorRate โดยตรง
+    min_rate_subquery = (
+        TutorRate.objects
+        .filter(tutc_id=OuterRef('tutc_id'))
+        .order_by('tut_rate_per_person')
+        .values('tut_rate_per_person')[:1]
+    )
+
+    # ── base queryset ──
+    tutorcourses = (
+        TutorCourse.objects
+        .filter(tutc_status=1, tut_id__tut_status=1)
+        .select_related(
+            'tut_id',           # Tutor
+            'tut_id__tut_id',   # Member (Tutor.tut_id คือ OneToOne → Member)
+            'crs_id',           # Course
+            'crs_id__cg_id',    # CourseGroup
+        )
+        .annotate(lowest_price=Subquery(min_rate_subquery))
+    )
+
+    # ── Full-text search ──
+    if q:
+        tutorcourses = tutorcourses.filter(
+            Q(tutc_name__icontains=q) |
+            Q(crs_id__crs_name__icontains=q) |
+            Q(crs_id__cg_id__cg_name__icontains=q) |
+            Q(tut_id__tut_id__mb_full_name__icontains=q)
+        )
+
+    # ── Filter: กลุ่มวิชา ──
+    if cg_id:
+        tutorcourses = tutorcourses.filter(crs_id__cg_id__cg_id=cg_id)
+
+    # ── Filter: รายวิชา ──
+    if crs_id:
+        tutorcourses = tutorcourses.filter(crs_id__crs_id=crs_id)
+
+    # ── Filter: ช่วงราคา ──
+    if min_price:
+        tutorcourses = tutorcourses.filter(lowest_price__gte=int(min_price))
+    if max_price:
+        tutorcourses = tutorcourses.filter(lowest_price__lte=int(max_price))
+
+    # ── Filter: คะแนนรีวิว ──
+    if min_rating:
+        tutorcourses = tutorcourses.filter(tut_id__tut_rating__gte=float(min_rating))
+
+    # ── Dropdown data ──
+    course_groups = CourseGroup.objects.all().order_by('cg_name')
+
+    courses = []
+    if cg_id:
+        courses = Course.objects.filter(cg_id__cg_id=cg_id).order_by('crs_name')
+
+    # ── เครดิตคงเหลือ ──
+    user_credit = None
+    if request.user.is_authenticated:
+        try:
+            member = request.user.member
+            user_credit = member.mb_deposit_crd + member.mb_income_crd - member.mb_locked_crd
+        except Exception:
+            user_credit = 0
+
+    context = {
+        'tutorcourses':  tutorcourses,
+        'course_groups': course_groups,
+        'courses':       courses,
+        'result_count':  tutorcourses.count(),
+        'q':             q,
+        'selected_cg':   cg_id,
+        'selected_crs':  crs_id,
+        'min_price':     min_price,
+        'max_price':     max_price,
+        'min_rating':    min_rating,
+        'user_credit':   user_credit,
+    }
+    return render(request, 'tutoring/search.html', context)
+
+
+def get_courses_by_group(request):
+    """
+    AJAX endpoint: คืน <option> tags ของรายวิชาตามกลุ่มที่เลือก
+    URL: /tutoring/courses-by-group/?cg_id=<id>
+    """
+    cg_id = request.GET.get('cg_id', '')
+    courses = []
+    if cg_id:
+        courses = Course.objects.filter(cg_id__cg_id=cg_id).order_by('crs_name')
+
+    return render(request, 'tutoring/_course_options.html', {'courses': courses})
+
+
+# ============================================================
+# DETAIL VIEWS - รายละเอียดติวเตอร์
+# ============================================================
+
+def course_detail(request, tutc_id):
+    tutcourse = get_object_or_404(
+        TutorCourse.objects.select_related(
+            'tut_id',
+            'tut_id__tut_id',
+            'tut_id__tut_id__mj_id',
+            'tut_id__tut_id__mj_id__fac_id',
+            'crs_id',
+            'crs_id__cg_id',
+        ),
+        tutc_id=tutc_id,
+    )
+
+    tutor  = tutcourse.tut_id
+    member = tutor.tut_id
+
+    rates_qs = list(TutorRate.objects.filter(tutc_id=tutcourse).order_by('tut_rate_stu_count'))
+
+    # สร้าง rates_with_range: แต่ละ rate จะรู้ช่วงของตัวเอง
+    # เช่น rate1(1คน, 10cr), rate2(3คน, 9cr), max=5
+    # → ช่วง: 1–2 คน = 10cr, 3–5 คน = 9cr
+    rates = []
+    for i, r in enumerate(rates_qs):
+        start = r.tut_rate_stu_count
+        if i + 1 < len(rates_qs):
+            end = rates_qs[i + 1].tut_rate_stu_count - 1
+        else:
+            end = tutcourse.tutc_max_stu
+        rates.append({
+            'start':       start,
+            'end':         end,
+            'price':       r.tut_rate_per_person,
+            'is_single':   start == end,
+        })
+
+    # ── ดึง ScheduleDate เฉพาะวันนี้เป็นต้นไป ──
+    schedule_qs = (
+        ScheduleDate.objects
+        .filter(
+            tutc_id=tutcourse,
+            sd_date__gte=timezone.localdate(),
+        )
+        .prefetch_related('time_slots')
+        .order_by('sd_date')
+    )
+
+    # กรองเฉพาะวันที่ยังมี slot ว่าง (ts_status=0) และเวลายังไม่ผ่าน
+    now_local = timezone.localtime(timezone.now())
+    today     = now_local.date()
+    now_time  = now_local.time()
+
+    available_dates = []
+    for sd in schedule_qs:
+        if sd.sd_date == today:
+            # วันนี้ — กรอง slot ที่เวลาเริ่มยังไม่ผ่าน
+            has_slot = sd.time_slots.filter(ts_status=0, ts_start_time__gt=now_time).exists()
+        else:
+            # วันอื่น (อนาคต) — กรอง slot ว่างปกติ
+            has_slot = sd.time_slots.filter(ts_status=0).exists()
+        if has_slot:
+            available_dates.append(sd)
+
+    user_credit = None
+    if request.user.is_authenticated:
+        try:
+            mb = request.user.member
+            user_credit = mb.mb_deposit_crd + mb.mb_income_crd - mb.mb_locked_crd
+        except Exception:
+            user_credit = 0
+
+    context = {
+        'tc':              tutcourse,
+        'tutor':           tutor,
+        'member':          member,
+        'rates':           rates,
+        'available_dates': available_dates,
+        'user_credit':     user_credit,
+    }
+    return render(request, 'tutoring/detail.html', context)
+
+
+@login_required
+def booking_create(request, tutc_id):
+    if request.method != 'POST':
+        return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+    tutcourse    = get_object_or_404(TutorCourse, tutc_id=tutc_id)
+    tutor_member = tutcourse.tut_id.tut_id
+
+    ts_id     = request.POST.get('ts_id', '').strip()
+    stu_count = request.POST.get('stu_count', '1')
+    bk_desc   = request.POST.get('bk_desc', '').strip()
+
+    errors = []
+
+    if not ts_id:
+        errors.append('กรุณาเลือกช่วงเวลา')
+
+    try:
+        stu_count = int(stu_count)
+        if stu_count < 1:
+            errors.append('จำนวนผู้เรียนต้องอย่างน้อย 1 คน')
+        if stu_count > tutcourse.tutc_max_stu:
+            errors.append(f'จำนวนผู้เรียนต้องไม่เกิน {tutcourse.tutc_max_stu} คน')
+    except (ValueError, TypeError):
+        errors.append('จำนวนผู้เรียนไม่ถูกต้อง')
+        stu_count = 1
+
+    rate_obj = (
+        TutorRate.objects
+        .filter(tutc_id=tutcourse, tut_rate_stu_count__gte=stu_count)
+        .order_by('tut_rate_stu_count')
+        .first()
+    ) or TutorRate.objects.filter(tutc_id=tutcourse).order_by('-tut_rate_stu_count').first()
+
+    if not rate_obj:
+        errors.append('ไม่พบอัตราค่าบริการ')
+
+    if errors:
+        for e in errors:
+            messages.error(request, e)
+        return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+    rate_per_person = rate_obj.tut_rate_per_person
+    total_credit    = rate_per_person * stu_count
+
+    try:
+        slot = TimeSlot.objects.select_related('sd_id').get(
+            ts_id=ts_id,
+            sd_id__tutc_id=tutcourse,
+            ts_status=0,
+        )
+    except TimeSlot.DoesNotExist:
+        messages.error(request, 'ช่วงเวลาที่เลือกไม่พร้อมใช้งานแล้ว กรุณาเลือกใหม่')
+        return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+    mb = request.user.member
+    available_credit = mb.mb_deposit_crd + mb.mb_income_crd - mb.mb_locked_crd
+
+    if mb == tutor_member:
+        messages.error(request, 'ไม่สามารถจองคอร์สของตัวเองได้')
+        return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+    if available_credit < total_credit:
+        messages.error(request, f'เครดิตไม่เพียงพอ (มี {available_credit} ต้องการ {total_credit})')
+        return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+    try:
+        with transaction.atomic():
+            slot.ts_status = 1
+            slot.save()
+
+            mb.mb_locked_crd += total_credit
+            mb.save()
+
+            Booking.objects.create(
+                bk_desc            = bk_desc or None,
+                bk_stu_datetime    = timezone.make_aware(
+                    timezone.datetime.combine(slot.sd_id.sd_date, slot.ts_start_time)
+                ),
+                bk_stu_count       = stu_count,
+                bk_rate_per_person = rate_per_person,
+                bk_date            = timezone.now(),
+                bk_status          = 0,
+                member             = mb,
+                tutc_id            = tutcourse,
+                ts_id              = slot,
+            )
+
+        messages.success(
+            request,
+            f'จองสำเร็จ! ติวเตอร์จะทำการยืนยันคำขอจองให้โดยเร็ว (ล็อกเครดิต {total_credit} เครดิต)'
+        )
+        return redirect('bookings:student_bookings')
+    except Exception:
+        messages.error(request, 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')
+
+    return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+
+# ============================================================
+# PROFILE VIEWS - โปรไฟล์ติวเตอร์
+# ============================================================
+
+# ─────────────────────────────────────────────
+#  หน้าโปรไฟล์ติวเตอร์ (ดูได้ทุกคน)
+#  URL: /tutoring/profile/<tut_id>/
+# ─────────────────────────────────────────────
+def tutor_profile_view(request, tut_id):
+    """
+    แสดงหน้าโปรไฟล์สาธารณะของติวเตอร์
+    """
+    member = get_object_or_404(Member, pk=tut_id)
+    tutor  = get_object_or_404(Tutor, tut_id=member)
+
+    # คอร์สที่เปิดสอน (สถานะ = 1)
+    courses = (
+        TutorCourse.objects
+        .filter(tut_id=tutor, tutc_status=1)
+        .select_related('crs_id')
+        .prefetch_related('tutorrate_set')
+    )
+
+    # ราคาต่ำสุดต่อคอร์ส
+    courses_with_min_rate = []
+    for c in courses:
+        rates    = c.tutorrate_set.all()
+        min_rate = min((r.tut_rate_per_person for r in rates), default=None)
+        courses_with_min_rate.append({'course': c, 'min_rate': min_rate})
+
+    # ดึงรีวิว + รูปกิจกรรมจาก bookings (ถ้าโมดูล bookings พร้อมแล้ว)
+    reviews         = []
+    review_count    = 0
+    activity_images = []   # list ของ URL รูปภาพ (str)
+    try:
+        from apps.bookings.models import Review, TutoringActivity
+        # รีวิวล่าสุด 5 รายการ
+        reviews_qs = (
+            Review.objects
+            .filter(bk_id__tutc_id__tut_id=tutor)
+            .select_related('bk_id__member')
+            .order_by('-rv_date')[:5]
+        )
+        # แนบค่าเฉลี่ยรวม 5 ด้านให้แต่ละ review
+        reviews = []
+        for rv in reviews_qs:
+            avg = (rv.rv_quality + rv.rv_knowledge + rv.rv_communication +
+                   rv.rv_punctuality + rv.rv_satisfaction) / 5
+            rv.rv_avg = round(avg, 2)
+            reviews.append(rv)
+        review_count = Review.objects.filter(bk_id__tutc_id__tut_id=tutor).count()
+
+        # รูปกิจกรรมทั้งหมด (ไม่จำกัดจำนวน)
+        activities_all = (
+            TutoringActivity.objects
+            .filter(bk_id__tutc_id__tut_id=tutor)
+            .order_by('-bk_id__bk_date')
+        )
+        all_images = []
+        for act in activities_all:
+            for field in ['ta_img1', 'ta_img2', 'ta_img3']:
+                img = getattr(act, field)
+                if img:
+                    all_images.append(img.url)
+        # แสดง 5 รูปแรกใน gallery, ทั้งหมดใน modal
+        activity_images = all_images[:5]
+    except Exception:
+        pass   # bookings ยังไม่พร้อม — ไม่แสดงรีวิว/รูป
+
+    # เจ้าของหรือไม่
+    is_owner = (
+        request.user.is_authenticated and
+        hasattr(request.user, 'member') and
+        request.user.member == member
+    )
+
+    # แยกทักษะ
+    skills = [s.strip() for s in (tutor.tut_skill or '').split(',') if s.strip()]
+
+    # สร้าง rating_rows สำหรับแสดงดาวแยกด้าน
+    def make_row(label, val):
+        v    = float(val or 0)
+        full = int(v)
+        half = (full + 1) if (v - full) >= 0.5 else 0
+        return {'label': label, 'val': f"{v:.2f}", 'full': full, 'half': half}
+
+    rating_rows = [
+        make_row('คุณภาพการสอน',     tutor.tut_rating_quality),
+        make_row('ความรู้ความสามารถ', tutor.tut_rating_knowledge),
+        make_row('การสื่อสาร',        tutor.tut_rating_communication),
+        make_row('ความตรงต่อเวลา',    tutor.tut_rating_punctuality),
+        make_row('ความพึงพอใจ',       tutor.tut_rating_satisfaction),
+    ]
+
+    return render(request, 'tutoring/tutor_profile.html', {
+        'tutor'                : tutor,
+        'member'               : member,
+        'courses_with_min_rate': courses_with_min_rate,
+        'is_owner'             : is_owner,
+        'skills'               : skills,
+        'tutor_mb_id'          : member.pk,
+        'faculty_name'         : member.mj_id.fac_id.fac_name if member.mj_id else '—',
+        'major_name'           : member.mj_id.mj_name          if member.mj_id else '—',
+        'reviews'              : reviews,
+        'review_count'         : review_count,
+        'activity_images'      : activity_images,
+        'rating_rows'          : rating_rows,
+    })
+
+
+# ─────────────────────────────────────────────
+#  หน้าแก้ไขโปรไฟล์ติวเตอร์ (เจ้าของเท่านั้น)
+#  URL: /tutoring/profile/edit/
+# ─────────────────────────────────────────────
+@login_required
+def tutor_profile_edit(request):
+    """
+    แก้ไขโปรไฟล์ติวเตอร์ของตัวเอง
+    """
+    member = request.user.member
+    tutor  = get_object_or_404(Tutor, tut_id=member)
+
+    skills = [s.strip() for s in (tutor.tut_skill or '').split(',') if s.strip()]
+
+    if request.method == 'POST':
+        # อัปเดตรูปโปรไฟล์
+        if 'mb_img' in request.FILES:
+            member.mb_img = request.FILES['mb_img']
+            member.save(update_fields=['mb_img'])
+
+        # อัปเดตข้อมูลติวเตอร์
+        tutor.tut_desc     = request.POST.get('tut_desc', '').strip()
+        tutor.tut_skill    = request.POST.get('tut_skill', '').strip()
+        tutor.tut_has_exp  = int(request.POST.get('tut_has_exp', 0))
+        tutor.tut_exp_desc = request.POST.get('tut_exp_desc', '').strip()
+        tutor.save(update_fields=['tut_desc', 'tut_skill', 'tut_has_exp', 'tut_exp_desc'])
+
+        messages.success(request, 'บันทึกโปรไฟล์เรียบร้อยแล้ว')
+        return redirect('tutoring:tutor_profile', tut_id=member.pk)
+
+    return render(request, 'tutoring/tutor_profile_edit.html', {
+        'tutor'       : tutor,
+        'member'      : member,
+        'skills'      : skills,
+        'faculty_name': member.mj_id.fac_id.fac_name if member.mj_id else '—',
+        'major_name'  : member.mj_id.mj_name          if member.mj_id else '—',
+    })
+
+
+# ============================================================
+# GENERAL VIEWS - ทั่วไป (จาก views.py เดิม)
+# ============================================================
 
 def _member_context(member):
     return {

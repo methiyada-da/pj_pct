@@ -1,3 +1,4 @@
+# credits/urls.py - URL routing ของ credits
 from django.urls import path
 from . import views
 

@@ -1,3 +1,4 @@
+# courses/views.py - views จัดการคณะ สาขา และรายวิชา
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages

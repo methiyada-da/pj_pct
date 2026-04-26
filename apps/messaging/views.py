@@ -1,3 +1,4 @@
+# messaging/views.py - views จัดการกล่องข้อความและแชท
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timezone as dt_timezone

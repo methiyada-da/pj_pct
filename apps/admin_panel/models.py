@@ -1,3 +1,4 @@
+# admin_panel/models.py - models ของ system config และ reports
 from django.db import models
 from django.contrib.auth.models import User
 

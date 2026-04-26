@@ -1,3 +1,4 @@
+# bookings/models.py - models ของ Booking, TutoringActivity, Review
 from django.db import models
 from apps.accounts.models import Member
 from apps.tutoring.models import TutorCourse, TimeSlot

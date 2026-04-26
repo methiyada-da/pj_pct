@@ -1,3 +1,4 @@
+# courses/forms.py - forms สำหรับจัดการรายวิชา
 from django import forms
 from .models import Faculty, Major, CourseGroup, Course
 

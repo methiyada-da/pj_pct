@@ -1,3 +1,4 @@
+# notifications/models.py - models ของ Notification
 from django.db import models
 from django.contrib.auth.models import User
 from apps.accounts.models import Member
