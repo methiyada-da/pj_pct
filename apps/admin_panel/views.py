@@ -214,7 +214,15 @@ def tutor_mgmt_detail(request, pk):
             return redirect('admin_panel:tutor_mgmt_detail', pk=pk)
         elif action == 'unsuspend':
             tutor.tut_status = 1
-            tutor.save()
+            tutor.save(update_fields=['tut_status'])
+            # แจ้งเตือนติวเตอร์
+            from apps.notifications.signals import _notif_member
+            _notif_member(
+                tutor.tut_id,
+                'tutor_approved',
+                'บัญชีติวเตอร์ของคุณได้รับการปลดระงับแล้ว คุณสามารถกลับมาสอนได้ตามปกติ',
+                '/tutoring/manage/',
+            )
             messages.success(request, f'ปลดระงับการสอนของ {tutor.tut_id.mb_full_name} เรียบร้อยแล้ว')
             return redirect('admin_panel:tutor_mgmt_detail', pk=pk)
 
@@ -455,95 +463,95 @@ def report_mgmt(request):
             ), pk=bk_id
         )
 
-        if action == 'send_back':
-            # ส่งให้ติวเตอร์แก้ไข → bk_status กลับเป็น 2
-            bk.bk_status = 2
-            bk.bk_report_desc = None
-            bk.bk_report_type = None
-            bk.bk_report_date = None
-            bk.save(update_fields=['bk_status', 'bk_report_desc', 'bk_report_type', 'bk_report_date'])
-            messages.success(request, f'ส่งกลับให้ติวเตอร์แก้ไข BK{bk.bk_id:05d} แล้ว')
-
-        elif action == 'send_note':
-            # ส่งหมายเหตุถึงผู้เรียน → บันทึกลง bk_cmt
+        if action == 'resolve_transfer':
+            # ติวเตอร์ถูก → โอนเครดิต + ปิด case
             note = request.POST.get('note', '').strip()
-            if note:
-                bk.bk_cmt = f'[แอดมิน] {note}'
-                bk.save(update_fields=['bk_cmt'])
-                messages.success(request, f'ส่งหมายเหตุถึงผู้เรียน BK{bk.bk_id:05d} แล้ว')
-            else:
-                messages.error(request, 'กรุณาระบุหมายเหตุ')
-
-        elif action == 'resolve_transfer':
-            # จัดการแล้ว + โอนเครดิตให้ติวเตอร์
+            if not note:
+                messages.error(request, 'กรุณาระบุหมายเหตุก่อนดำเนินการ')
+                return redirect('admin_panel:report_mgmt')
             try:
                 with transaction.atomic():
                     total_credit = bk.bk_rate_per_person * bk.bk_stu_count
-                    # โอนเครดิตจากล็อก → ติวเตอร์
                     bk.member.mb_locked_crd = max(0, bk.member.mb_locked_crd - total_credit)
                     bk.member.save(update_fields=['mb_locked_crd'])
                     tutor_member = bk.tutc_id.tut_id.tut_id
                     tutor_member.mb_income_crd += total_credit
                     tutor_member.save(update_fields=['mb_income_crd'])
-                    # อัปเดต JobCompletion
                     from apps.bookings.models import JobCompletion
                     JobCompletion.objects.filter(bk_id=bk).update(jc_confirm_date=timezone.now())
-                    # เปลี่ยนสถานะ + ล้าง report
-                    bk.bk_status      = 4
-                    bk.bk_report_desc = None
-                    bk.bk_report_type = None
-                    bk.bk_report_date = None
-                    bk.save(update_fields=['bk_status', 'bk_report_desc', 'bk_report_type', 'bk_report_date'])
+                    bk.bk_status                = 4
+                    bk.bk_cmt                   = f'[แอดมิน] {note}'
+                    bk.bk_report_resolved_date  = timezone.now()
+                    bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
+                    from apps.notifications.signals import _notif_member
+                    _notif_member(bk.member, 'booking_rejected',
+                        f'แอดมินตรวจสอบ BK{bk.bk_id:05d} แล้ว — {note}', '/bookings/my/')
+                    _notif_member(tutor_member, 'booking_credited',
+                        f'การจอง BK{bk.bk_id:05d} ได้รับการอนุมัติจากแอดมิน — เครดิต {total_credit} เครดิต โอนเข้าบัญชีแล้ว', '/bookings/tutor/')
                 messages.success(request, f'โอนเครดิต {total_credit} เครดิต และปิด BK{bk.bk_id:05d} แล้ว')
             except Exception as e:
                 messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
 
         elif action == 'suspend':
-            # ระงับการสอน → tut_status = 3
-            tutor = bk.tutc_id.tut_id
-            tutor.tut_status = 3
-            tutor.save(update_fields=['tut_status'])
-            bk.bk_report_desc = None
-            bk.bk_report_type = None
-            bk.bk_report_date = None
-            bk.save(update_fields=['bk_report_desc', 'bk_report_type', 'bk_report_date'])
-            messages.warning(request, f'ระงับการสอนของ {tutor.tut_id.mb_full_name} แล้ว')
-
-        elif action == 'resolve':
-            # ปิด case โดยไม่โอนเครดิต
-            bk.bk_report_desc = None
-            bk.bk_report_type = None
-            bk.bk_report_date = None
-            bk.save(update_fields=['bk_report_desc', 'bk_report_type', 'bk_report_date'])
-            messages.success(request, f'จัดการรายงานปัญหา BK{bk.bk_id:05d} เรียบร้อยแล้ว')
+            # ติวเตอร์ผิด → ระงับ + คืนเครดิตผู้เรียน
+            note = request.POST.get('note', '').strip()
+            if not note:
+                messages.error(request, 'กรุณาระบุหมายเหตุก่อนดำเนินการ')
+                return redirect('admin_panel:report_mgmt')
+            try:
+                with transaction.atomic():
+                    total_credit = bk.bk_rate_per_person * bk.bk_stu_count
+                    bk.member.mb_locked_crd  = max(0, bk.member.mb_locked_crd - total_credit)
+                    bk.member.mb_deposit_crd += total_credit
+                    bk.member.save(update_fields=['mb_locked_crd', 'mb_deposit_crd'])
+                    tutor = bk.tutc_id.tut_id
+                    tutor.tut_status = 3
+                    tutor.save(update_fields=['tut_status'])
+                    tutor_member = bk.tutc_id.tut_id.tut_id
+                    bk.bk_status                = 6
+                    bk.bk_cmt                   = f'[แอดมิน] {note}'
+                    bk.bk_report_resolved_date  = timezone.now()
+                    bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
+                    from apps.notifications.signals import _notif_member
+                    _notif_member(bk.member, 'booking_rejected',
+                        f'แอดมินตรวจสอบ BK{bk.bk_id:05d} แล้ว — เครดิต {total_credit} เครดิต ได้รับคืนเข้าบัญชีของคุณแล้ว', '/bookings/my/')
+                    _notif_member(tutor_member, 'tutor_suspended',
+                        f'บัญชีติวเตอร์ของคุณถูกระงับชั่วคราว — {note} — กรุณาติดต่อแอดมินผ่านแชทในระบบเพื่อปลดระงับ', '/messaging/')
+                messages.warning(request, f'ระงับติวเตอร์ + คืนเครดิต {total_credit} เครดิต BK{bk.bk_id:05d} เรียบร้อยแล้ว')
+            except Exception as e:
+                messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
 
         return redirect('admin_panel:report_mgmt')
 
-    # ดึง booking ที่มีการรายงานปัญหา (bk_report_desc ไม่ว่าง)
+    # ดึง booking ที่เคยรายงานปัญหา (มี bk_report_date) ทั้งรอพิจารณาและจัดการแล้ว
     qs = (
         Booking.objects
-        .filter(bk_report_desc__isnull=False)
+        .filter(bk_report_date__isnull=False)
         .select_related('member', 'tutc_id', 'tutc_id__tut_id__tut_id')
+        .prefetch_related('tutoringactivity')
         .order_by('-bk_report_date')
     )
 
-    type_filter = request.GET.get('type', '')
-    if type_filter != '':
-        qs = qs.filter(bk_report_type=type_filter)
+    all_count      = qs.count()
+    waiting_count  = qs.filter(bk_report_resolved_date__isnull=True).count()
+    resolved_count = qs.filter(bk_report_resolved_date__isnull=False).count()
 
-    pending_count = qs.count()
-    admin_count   = qs.filter(bk_report_type=1).count()
-    tutor_count   = qs.filter(bk_report_type=0).count()
+    # filter สถานะ
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'waiting':
+        qs = qs.filter(bk_report_resolved_date__isnull=True)
+    elif status_filter == 'resolved':
+        qs = qs.filter(bk_report_resolved_date__isnull=False)
 
     paginator = Paginator(qs, 15)
     page      = paginator.get_page(request.GET.get('page', 1))
 
     return render(request, 'admin_panel/report_mgmt.html', {
-        'page'          : page,
-        'pending_count' : pending_count,
-        'admin_count'   : admin_count,
-        'tutor_count'   : tutor_count,
-        'type_filter'   : type_filter,
-        'active_menu'   : 'report_mgmt',
+        'page'           : page,
+        'all_count'      : all_count,
+        'waiting_count'  : waiting_count,
+        'resolved_count' : resolved_count,
+        'status_filter'  : status_filter,
+        'active_menu'    : 'report_mgmt',
         'topbar_breadcrumb': 'รายงานปัญหา',
     })
