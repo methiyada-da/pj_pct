@@ -200,11 +200,11 @@
         <div class="card-body p-4">
             <h6 class="fw-bold mb-1"><i class="fas fa-file-alt me-2 text-primary"></i>สรุปการสอน</h6>
           <p class="text-muted small mb-3">
-            สรุปหัวข้อหลักที่เรียนและพัฒนาการของนักเรียน เพื่อช่วยให้นักเรียนยืนยันว่าเรียนจบหลักสูตรแล้ว
+            สรุปหัวข้อหลักที่เรียนและพัฒนาการของผู้เรียน เพื่อช่วยให้ผู้เรียนยืนยันว่าเรียนจบหลักสูตรแล้ว
             <span class="text-danger fw-semibold">*</span>
           </p>
           <textarea name="ta_desc" id="ta_desc" class="form-control" rows="6"
-                    placeholder="สรุปหัวข้อหลักที่เรียนและพัฒนาการของนักเรียน..."
+                    placeholder="สรุปหัวข้อหลักที่เรียนและพัฒนาการของผู้เรียน..."
                     maxlength="1000">{{ activity.ta_desc|default:'' }}</textarea>
           {% if form.ta_desc.errors %}
             <div class="text-danger small mt-1">{{ form.ta_desc.errors }}</div>
@@ -224,7 +224,7 @@
         <button type="submit" name="action" value="submit"
                 class="btn btn-primary fw-bold px-5 rounded-pill shadow-sm"
                 onclick="return confirmSubmit()">
-          <i class="fas fa-paper-plane me-2"></i>ส่งและขอการดำเนินการให้เสร็จสมบูรณ์
+          <i class="fas fa-paper-plane me-2"></i>ส่งคำขอแจ้งจบงาน
         </button>
       </div>
 

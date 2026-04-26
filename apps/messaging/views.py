@@ -46,6 +46,7 @@ def inbox_list(request):
     me = request.user.member
     return render(request, 'messaging/inbox.html', {
         'inbox_data': _build_inbox_data(me),
+        'is_admin':   request.user.is_staff,
     })
 
 
@@ -101,7 +102,8 @@ def chat_with(request, mb_id):
         'chat_messages': messages_qs,
         'form':          form,
         'me':            me,
-        'inbox_data':    _build_inbox_data(me),  # sidebar
+        'inbox_data':    _build_inbox_data(me),
+        'is_admin':      request.user.is_staff,
     })
 
 

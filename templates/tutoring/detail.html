@@ -5,6 +5,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/detail.css' %}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -326,7 +328,8 @@
 
           {% if user.is_authenticated %}
             {% if available_dates %}
-            <button type="submit" form="booking-form" class="btn-book" id="btn-book" disabled>
+            <button type="button" class="btn-book" id="btn-book" disabled
+                    onclick="openBookingConfirm()">
               <i class="fas fa-check-circle me-1"></i>ยืนยันการจอง
             </button>
             {% endif %}
@@ -379,7 +382,8 @@
     <div class="mobile-book-label">ทั้งหมด</div>
     <div class="mobile-book-total" id="sum-total-mobile">— เครดิต</div>
   </div>
-  <button type="submit" form="booking-form" class="btn-book btn-book-sm" id="btn-book-mobile" disabled>
+  <button type="button" class="btn-book btn-book-sm" id="btn-book-mobile" disabled
+          onclick="openBookingConfirm()">
     <i class="fas fa-check-circle me-1"></i>ยืนยันการจอง
   </button>
 </div>
@@ -435,6 +439,10 @@
         if (h * 60 + m <= nowMinutes) return false;
       }
       return true;
+    }).sort((a, b) => {
+      // เรียงตามเวลาเริ่มต้น HH:MM
+      const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+      return toMin(a.start) - toMin(b.start);
     });
     if (!slots.length) {
       area.innerHTML = '<p class="no-slot-msg">ไม่มีช่วงเวลาว่างในวันนี้</p>';
@@ -517,6 +525,72 @@
   }
 
   document.getElementById('stu_count')?.addEventListener('input', updateSummary);
+
+  // ── SweetAlert2 ยืนยันการจอง ──
+  window.openBookingConfirm = function() {
+    const courseName = "{{ tc.tutc_name|escapejs }}";
+    const tutorName  = "{{ member.mb_full_name|escapejs }}";
+    const date     = document.getElementById('sum-date')?.textContent || '—';
+    const time     = document.getElementById('sum-time')?.textContent || '—';
+    const duration = document.getElementById('sum-duration')?.textContent || '—';
+    const count    = document.getElementById('sum-count')?.textContent || '—';
+    const rate     = document.getElementById('sum-rate')?.textContent || '—';
+    const total    = document.getElementById('sum-total')?.textContent || '—';
+
+    Swal.fire({
+      title: 'ยืนยันการจอง?',
+      html: `
+        <div style="text-align:left;font-size:14px;line-height:2;">
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
+            <span style="color:#6B7280;">คอร์ส</span><span style="font-weight:700;color:#1E293B;">${courseName}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
+            <span style="color:#6B7280;">ติวเตอร์</span><span style="font-weight:600;">${tutorName}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
+            <span style="color:#6B7280;">วันที่นัดเรียน</span><span style="font-weight:600;">${date}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
+            <span style="color:#6B7280;">ช่วงเวลา</span><span style="font-weight:600;">${time}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
+            <span style="color:#6B7280;">ระยะเวลา</span><span>${duration}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
+            <span style="color:#6B7280;">จำนวนผู้เรียน</span><span>${count}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
+            <span style="color:#6B7280;">อัตราค่าเรียน</span><span>${rate}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;">
+            <span style="color:#6B7280;font-weight:600;">รวมเครดิตที่ถูกล็อก</span>
+            <span style="font-weight:700;color:#2563EB;font-size:16px;">${total}</span>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:8px 12px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E;text-align:left;">
+          <i class="fas fa-info-circle me-1"></i>
+          เครดิตจะถูกล็อกไว้ทันที และตัดจริงเมื่อจบคอร์สเรียนแล้ว
+        </div>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-check-circle me-1"></i> ยืนยันการจอง',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#2563EB',
+      cancelButtonColor: '#6B7280',
+      reverseButtons: true,
+      customClass: {
+        popup:   'rounded-4 shadow',
+        actions: 'gap-2',
+        confirmButton: 'rounded-3 px-4 fw-bold',
+        cancelButton:  'rounded-3 px-4 fw-semibold',
+      },
+    }).then(result => {
+      if (result.isConfirmed) {
+        document.getElementById('booking-form').submit();
+      }
+    });
+  };
+
 })();
 </script>
 {% endblock %}

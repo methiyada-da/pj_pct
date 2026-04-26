@@ -81,7 +81,7 @@ def booking_reject(request, bk_id):
 
     try:
         with transaction.atomic():
-            # คืนเครดิตที่ล็อกไว้ให้นักเรียน
+            # คืนเครดิตที่ล็อกไว้ให้ผู้เรียน
             student = bk.member
             student.mb_locked_crd = max(0, student.mb_locked_crd - total_credit)
             student.save()
@@ -95,7 +95,7 @@ def booking_reject(request, bk_id):
             bk.bk_cmt    = request.POST.get('reject_reason', '').strip() or None
             bk.save()
 
-        messages.success(request, f'ปฏิเสธงาน BK{bk.bk_id:05d} และคืนเครดิตให้นักเรียนแล้ว')
+        messages.error(request, f'ปฏิเสธงาน BK{bk.bk_id:05d} และคืนเครดิตให้ผู้เรียนแล้ว')
     except Exception:
         messages.error(request, 'เกิดข้อผิดพลาด กรุณาลองใหม่')
 
@@ -218,7 +218,7 @@ def tutoring_activity(request, bk_id):
                         bk_id=bk,
                         defaults={'jc_complete_date': timezone.now(), 'jc_confirm_date': None},
                     )
-                messages.success(request, 'ส่งคำขอเสร็จสิ้นงานเรียบร้อย กำลังรอนักเรียนยืนยัน')
+                messages.success(request, 'ส่งคำขอเสร็จสิ้นงานเรียบร้อย กำลังรอผู้เรียนยืนยัน')
                 return redirect('bookings:tutor_requests')
     else:
         form = TutoringActivityForm(instance=activity)
@@ -331,23 +331,21 @@ def report_problem(request, bk_id):
     except Exception:
         return redirect('home')
 
-    bk      = get_object_or_404(Booking, bk_id=bk_id, member=mb)
-    rp_type = int(request.POST.get('rp_type', 1))   # 0=ติวเตอร์, 1=แอดมิน
-    rp_desc = request.POST.get('rp_desc', '').strip()
+    bk        = get_object_or_404(Booking, bk_id=bk_id, member=mb)
+    rp_reason = request.POST.get('rp_reason', '').strip()
+    rp_desc   = request.POST.get('rp_desc', '').strip()
 
-    if not rp_desc:
-        messages.error(request, 'กรุณาระบุรายละเอียดปัญหา')
+    if not rp_reason:
+        messages.error(request, 'กรุณาเลือกสาเหตุของปัญหา')
         return redirect('bookings:student_bookings')
 
-    # บันทึก report ลงใน Booking field
-    bk.bk_report_desc = rp_desc
-    bk.bk_report_type = rp_type
-    bk.bk_report_date = timezone.now()
-    bk.save(update_fields=['bk_report_desc', 'bk_report_type', 'bk_report_date'])
+    # บันทึก report ลงใน Booking field (รายงานไปยังแอดมินเสมอ)
+    bk.bk_report_reason = rp_reason
+    bk.bk_report_desc   = rp_desc or None
+    bk.bk_report_date   = timezone.now()
+    bk.save(update_fields=['bk_report_reason', 'bk_report_desc', 'bk_report_date'])
 
-    messages.success(request, 'ส่งรายงานปัญหาไปยังผู้ดูแลระบบแล้ว')
-
-    return redirect('bookings:student_bookings')
+    return redirect('/bookings/my/?reported=1')
 
 
 # ─── helper: โอนเครดิตจากผู้เรียนไปให้ติวเตอร์ ──────────────────────────────
