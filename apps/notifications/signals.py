@@ -104,13 +104,20 @@ def booking_post_save(sender, instance, created, **kwargs):
             # ปฏิเสธ → แจ้ง Member
             _notif_member(member, 'booking_rejected', 'ติวเตอร์ปฏิเสธการจองของคุณ', f'/bookings/my/')
 
-    # รายงานปัญหา → แจ้ง Admin
+    # รายงานปัญหา → แจ้ง Admin + ติวเตอร์
     old_report = getattr(instance, '_old_report_date', None)
     if instance.bk_report_date and not old_report:
         _notif_admin(
             'admin_reported',
-            f'มีการรายงานปัญหาจากการจอง #{instance.pk}',
+            f'มีการรายงานปัญหาจากการจอง BK{instance.pk:05d}',
             f'/panel/report-mgmt/',
+        )
+        # แจ้งติวเตอร์ว่าผู้เรียนรายงานปัญหา
+        _notif_member(
+            tutor_member,
+            'booking_reported',
+            f'ผู้เรียนได้รายงานปัญหาการจอง BK{instance.pk:05d} ไปยังแอดมินแล้ว โปรดรอผลการพิจารณา',
+            f'/bookings/tutor/',
         )
 
 

@@ -24,9 +24,17 @@ class Booking(models.Model):
     bk_accepted_date   = models.DateTimeField(blank=True, null=True, verbose_name="วันเวลาที่รับงาน")
     bk_status          = models.IntegerField(choices=STATUS_CHOICES, default=0, verbose_name="สถานะ")
     bk_cmt             = models.TextField(blank=True, null=True, verbose_name="หมายเหตุ")
+    REPORT_REASON_CHOICES = [
+        ('1', 'หลักฐานการสอนไม่ตรงความจริง'),
+        ('2', 'ไม่ได้สอนเลยแต่แจ้งจบงาน'),
+        ('3', 'เนื้อหาไม่ตรงที่ตกลงไว้'),
+        ('4', 'ผู้เรียนกดยืนยันโดยไม่ตั้งใจ'),
+        ('other', 'อื่นๆ'),
+    ]
+    bk_report_reason   = models.CharField(max_length=10, blank=True, null=True, choices=REPORT_REASON_CHOICES, verbose_name="สาเหตุการรายงานปัญหา")
     bk_report_desc     = models.TextField(blank=True, null=True, verbose_name="รายละเอียดการรายงานปัญหา")
-    bk_report_type     = models.IntegerField(blank=True, null=True, verbose_name="ประเภทการรายงาน (0=ติวเตอร์, 1=แอดมิน)")
-    bk_report_date     = models.DateTimeField(blank=True, null=True, verbose_name="วันเวลาที่รายงาน")
+    bk_report_date          = models.DateTimeField(blank=True, null=True, verbose_name="วันเวลาที่รายงาน")
+    bk_report_resolved_date = models.DateTimeField(blank=True, null=True, verbose_name="วันเวลาที่จัดการรายงาน")
     member             = models.ForeignKey(
         Member,
         on_delete=models.CASCADE,

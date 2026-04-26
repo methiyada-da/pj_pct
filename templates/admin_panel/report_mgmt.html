@@ -4,6 +4,13 @@
 
 {% block content %}
 
+<div class="page-header">
+  <div>
+    <h1>รายงานปัญหา</h1>
+    <p>ระบบจัดการรายงานปัญหา</p>
+  </div>
+</div>
+
 <!-- Summary -->
 <div class="row g-3 mb-4">
   <div class="col-sm-4">
@@ -12,30 +19,30 @@
         <i class="bi bi-exclamation-triangle"></i>
       </div>
       <div>
-        <div class="val">{{ pending_count }}</div>
+        <div class="val">{{ all_count }}</div>
         <div class="lbl">รายงานทั้งหมด</div>
       </div>
     </div>
   </div>
   <div class="col-sm-4">
     <div class="summary-card">
-      <div class="summary-icon" style="background:#EFF6FF;color:#2563EB;">
-        <i class="bi bi-person-check"></i>
+      <div class="summary-icon" style="background:#FFF7ED;color:#F59E0B;">
+        <i class="bi bi-hourglass-split"></i>
       </div>
       <div>
-        <div class="val">{{ tutor_count }}</div>
-        <div class="lbl">แจ้งติวเตอร์</div>
+        <div class="val">{{ waiting_count }}</div>
+        <div class="lbl">รอพิจารณา</div>
       </div>
     </div>
   </div>
   <div class="col-sm-4">
     <div class="summary-card">
-      <div class="summary-icon" style="background:#FFF7ED;color:#F59E0B;">
-        <i class="bi bi-shield-exclamation"></i>
+      <div class="summary-icon" style="background:#F0FDF4;color:#16A34A;">
+        <i class="bi bi-check-circle"></i>
       </div>
       <div>
-        <div class="val">{{ admin_count }}</div>
-        <div class="lbl">แจ้งแอดมิน</div>
+        <div class="val">{{ resolved_count }}</div>
+        <div class="lbl">จัดการแล้ว</div>
       </div>
     </div>
   </div>
@@ -43,14 +50,13 @@
 
 <!-- Table -->
 <div class="card-panel">
+  <!-- Filter -->
   <div class="card-toolbar">
-    <form method="get" class="d-flex gap-2 flex-wrap align-items-center" style="flex:1;">
-      <select name="type" class="filter-select" onchange="this.form.submit()">
-        <option value="" {% if type_filter == '' %}selected{% endif %}>ทุกประเภท</option>
-        <option value="0" {% if type_filter == '0' %}selected{% endif %}>แจ้งติวเตอร์</option>
-        <option value="1" {% if type_filter == '1' %}selected{% endif %}>แจ้งแอดมิน</option>
-      </select>
-    </form>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="?status=" class="btn btn-sm {% if status_filter == '' %}btn-primary{% else %}btn-outline-secondary{% endif %} rounded-3">ทั้งหมด</a>
+      <a href="?status=waiting" class="btn btn-sm {% if status_filter == 'waiting' %}btn-warning text-white{% else %}btn-outline-warning{% endif %} rounded-3">รอพิจารณา</a>
+      <a href="?status=resolved" class="btn btn-sm {% if status_filter == 'resolved' %}btn-success{% else %}btn-outline-success{% endif %} rounded-3">จัดการแล้ว</a>
+    </div>
   </div>
 
   {% if page.object_list %}
@@ -61,8 +67,9 @@
         <th>ผู้เรียน</th>
         <th>ติวเตอร์</th>
         <th>วิชา</th>
-        <th>ประเภท</th>
+        <th>สาเหตุ</th>
         <th>รายละเอียดปัญหา</th>
+        <th>สถานะ</th>
         <th>วันที่รายงาน</th>
         <th>จัดการ</th>
       </tr>
@@ -76,20 +83,31 @@
         <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
           {{ bk.tutc_id.tutc_name }}
         </td>
-        <td>
-          {% if bk.bk_report_type == 0 %}
-            <span class="badge text-bg-primary" style="font-size:11px;">แจ้งติวเตอร์</span>
-          {% else %}
-            <span class="badge text-bg-warning" style="font-size:11px;">แจ้งแอดมิน</span>
-          {% endif %}
+        <td style="font-size:13px;">
+          {% if bk.bk_report_reason == '1' %}หลักฐานไม่ตรงความจริง
+          {% elif bk.bk_report_reason == '2' %}ไม่ได้สอนแต่แจ้งจบ
+          {% elif bk.bk_report_reason == '3' %}เนื้อหาไม่ตรง
+          {% elif bk.bk_report_reason == '4' %}กดยืนยันพลาด
+          {% elif bk.bk_report_reason == 'other' %}อื่นๆ
+          {% else %}—{% endif %}
         </td>
         <td style="max-width:200px;">
           <span style="font-size:13px;color:#374151;" title="{{ bk.bk_report_desc }}">
-            {{ bk.bk_report_desc|truncatechars:60 }}
+            {{ bk.bk_report_desc|default:"—"|truncatechars:40 }}
           </span>
+        </td>
+        <td>
+          {% if bk.bk_report_resolved_date %}
+            <span class="badge bg-success" style="font-size:11px;">จัดการแล้ว</span>
+          {% else %}
+            <span class="badge" style="background:#F59E0B;font-size:11px;">รอพิจารณา</span>
+          {% endif %}
         </td>
         <td style="font-size:13px;color:#6B7280;white-space:nowrap;">
           {{ bk.bk_report_date|date:"d M Y H:i" }}
+          {% if bk.bk_report_resolved_date %}
+          <div style="font-size:11px;color:#16A34A;">✓ {{ bk.bk_report_resolved_date|date:"d M Y H:i" }}</div>
+          {% endif %}
         </td>
         <td>
           <button class="btn-action btn-edit"
@@ -98,9 +116,16 @@
                     '{{ bk.member.mb_full_name|escapejs }}',
                     '{{ bk.tutc_id.tut_id.tut_id.mb_full_name|escapejs }}',
                     '{{ bk.tutc_id.tutc_name|escapejs }}',
-                    {% if bk.bk_report_type == 0 %}'แจ้งติวเตอร์'{% else %}'แจ้งแอดมิน'{% endif %},
                     '{{ bk.bk_report_desc|escapejs }}',
-                    '{{ bk.bk_report_date|date:"d M Y H:i" }}')"
+                    '{{ bk.bk_report_date|date:"d M Y H:i" }}',
+                    {{ bk.member.pk }},
+                    {{ bk.tutc_id.tut_id.tut_id.pk }},
+                    '{{ bk.bk_report_reason|default:""|escapejs }}',
+                    '{% if bk.tutoringactivity.ta_img1 %}{{ bk.tutoringactivity.ta_img1.url }}{% endif %}',
+                    '{% if bk.tutoringactivity.ta_img2 %}{{ bk.tutoringactivity.ta_img2.url }}{% endif %}',
+                    '{% if bk.tutoringactivity.ta_img3 %}{{ bk.tutoringactivity.ta_img3.url }}{% endif %}',
+                    '{{ bk.tutoringactivity.ta_desc|default:""|escapejs }}',
+                    {% if bk.bk_report_resolved_date %}true{% else %}false{% endif %})"
                   title="ดูรายละเอียด">
             <i class="bi bi-eye"></i>
           </button>
@@ -117,15 +142,15 @@
     </div>
     <ul class="pagination">
       <li class="page-item {% if not page.has_previous %}disabled{% endif %}">
-        <a class="page-link" href="?page={{ page.previous_page_number }}&type={{ type_filter }}">‹</a>
+        <a class="page-link" href="?page={{ page.previous_page_number }}">‹</a>
       </li>
       {% for p in page.paginator.page_range %}
       <li class="page-item {% if p == page.number %}active{% endif %}">
-        <a class="page-link" href="?page={{ p }}&type={{ type_filter }}">{{ p }}</a>
+        <a class="page-link" href="?page={{ p }}">{{ p }}</a>
       </li>
       {% endfor %}
       <li class="page-item {% if not page.has_next %}disabled{% endif %}">
-        <a class="page-link" href="?page={{ page.next_page_number }}&type={{ type_filter }}">›</a>
+        <a class="page-link" href="?page={{ page.next_page_number }}">›</a>
       </li>
     </ul>
   </div>
@@ -154,7 +179,7 @@
           <tr><td style="padding:5px 0;color:#6B7280;">ผู้เรียน</td><td id="d-student"></td></tr>
           <tr><td style="padding:5px 0;color:#6B7280;">ติวเตอร์</td><td id="d-tutor"></td></tr>
           <tr><td style="padding:5px 0;color:#6B7280;">วิชา</td><td id="d-course"></td></tr>
-          <tr><td style="padding:5px 0;color:#6B7280;">ประเภท</td><td id="d-type"></td></tr>
+          <tr><td style="padding:5px 0;color:#6B7280;">สาเหตุ</td><td id="d-reason" class="fw-semibold"></td></tr>
           <tr><td style="padding:5px 0;color:#6B7280;">วันที่รายงาน</td><td id="d-date" style="color:#6B7280;"></td></tr>
         </table>
         <div class="mb-3">
@@ -162,60 +187,63 @@
           <div id="d-desc" class="p-3 rounded" style="background:#FEF2F2;font-size:14px;line-height:1.7;color:#374151;"></div>
         </div>
 
-        <!-- หมายเหตุถึงผู้เรียน -->
+        <!-- หลักฐานการสอน -->
+        <div id="d-evidence" class="mb-3 d-none">
+          <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">
+            <i class="bi bi-images me-1 text-primary"></i>หลักฐานการสอน
+          </div>
+          <div id="d-imgs" class="row g-2 mb-2"></div>
+          <div id="d-ta-desc" class="p-2 rounded" style="background:#F8FAFC;font-size:13px;line-height:1.7;color:#374151;display:none;"></div>
+        </div>
+
+        <!-- หมายเหตุ (บังคับกรอกก่อนดำเนินการ) -->
         <div class="mb-2">
-          <label class="form-label fw-semibold" style="font-size:13px;">หมายเหตุถึงผู้เรียน (สำหรับปุ่มส่งหมายเหตุ)</label>
+          <label class="form-label fw-semibold" style="font-size:13px;">
+            หมายเหตุถึงผู้เรียนและติวเตอร์ <span class="text-danger">*</span>
+          </label>
           <textarea id="d-note" class="form-control" rows="3"
-                    placeholder="พิมพ์ข้อความอธิบายให้ผู้เรียนทราบ..."></textarea>
+                    placeholder="ระบุเหตุผลการตัดสินใจ เพื่อแจ้งทั้งผู้เรียนและติวเตอร์..."></textarea>
+          <div class="form-text text-danger d-none" id="note-error">กรุณาระบุหมายเหตุก่อนดำเนินการ</div>
         </div>
       </div>
 
       <div class="modal-footer flex-wrap gap-2">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
 
-        <!-- ส่งให้ติวเตอร์แก้ไข -->
-        <form method="post" class="d-inline" id="formSendBack">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="send_back">
-          <input type="hidden" name="bk_id" class="modal-bk-id">
-          <button type="submit" class="btn btn-warning fw-semibold"
-                  onclick="return confirm('ส่งกลับให้ติวเตอร์แก้ไขข้อมูล?')">
-            <i class="bi bi-arrow-counterclockwise me-1"></i>ส่งให้ติวเตอร์แก้ไข
-          </button>
-        </form>
+        <!-- แชทกับผู้เรียน -->
+        <button type="button" class="btn btn-outline-secondary fw-semibold" id="btnChatStudent">
+          <i class="bi bi-chat-left-text me-1"></i>แชทกับผู้เรียน
+        </button>
 
-        <!-- ส่งหมายเหตุถึงผู้เรียน -->
-        <form method="post" class="d-inline" id="formSendNote" onsubmit="syncNote(this)">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="send_note">
-          <input type="hidden" name="bk_id" class="modal-bk-id">
-          <input type="hidden" name="note" id="note-hidden">
-          <button type="submit" class="btn btn-info text-white fw-semibold">
-            <i class="bi bi-chat-left-text me-1"></i>ส่งหมายเหตุถึงผู้เรียน
-          </button>
-        </form>
+        <!-- แชทกับติวเตอร์ -->
+        <button type="button" class="btn btn-outline-info fw-semibold" id="btnChatTutor">
+          <i class="bi bi-chat-left-text me-1"></i>แชทกับติวเตอร์
+        </button>
 
-        <!-- จัดการแล้ว + โอนเครดิต -->
-        <form method="post" class="d-inline" id="formResolveTransfer">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="resolve_transfer">
-          <input type="hidden" name="bk_id" class="modal-bk-id">
-          <button type="submit" class="btn btn-success fw-semibold"
-                  onclick="return confirm('ยืนยันจัดการแล้วและโอนเครดิตให้ติวเตอร์?')">
-            <i class="bi bi-check-circle me-1"></i>จัดการแล้ว + โอนเครดิต
-          </button>
-        </form>
+        <!-- แสดงเฉพาะเมื่อยังรอพิจารณา -->
+        <div id="action-buttons">
+          <!-- ติวเตอร์ถูก → โอนเครดิต -->
+          <form method="post" class="d-inline" onsubmit="return validateNote(this)">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="resolve_transfer">
+            <input type="hidden" name="bk_id" class="modal-bk-id">
+            <input type="hidden" name="note" class="modal-note">
+            <button type="submit" class="btn btn-success fw-semibold">
+              <i class="bi bi-check-circle me-1"></i>ติวเตอร์ถูก → โอนเครดิต
+            </button>
+          </form>
 
-        <!-- ระงับการสอน -->
-        <form method="post" class="d-inline" id="formSuspend">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="suspend">
-          <input type="hidden" name="bk_id" class="modal-bk-id">
-          <button type="submit" class="btn btn-danger fw-semibold"
-                  onclick="return confirm('ระงับการสอนของติวเตอร์? ติวเตอร์จะต้องติดต่อแอดมินเพื่อขอปลดระงับ')">
-            <i class="bi bi-slash-circle me-1"></i>ระงับการสอน
-          </button>
-        </form>
+          <!-- ระงับติวเตอร์ + คืนเครดิต -->
+          <form method="post" class="d-inline" onsubmit="return validateNote(this)">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="suspend">
+            <input type="hidden" name="bk_id" class="modal-bk-id">
+            <input type="hidden" name="note" class="modal-note">
+            <button type="submit" class="btn btn-danger fw-semibold">
+              <i class="bi bi-slash-circle me-1"></i>ระงับติวเตอร์ + คืนเครดิต
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -224,26 +252,91 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script>
-function openDetail(pk, bkId, student, tutor, course, type, desc, date) {
+const REASON_MAP = {
+  "1": "หลักฐานการสอนไม่ตรงความจริง",
+  "2": "ไม่ได้สอนเลยแต่แจ้งจบงาน",
+  "3": "เนื้อหาไม่ตรงที่ตกลงไว้",
+  "4": "กดยืนยันพลาด แต่ยังไม่ได้เรียนจริง",
+  "other": "อื่นๆ",
+};
+function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tutorPk, reason, img1, img2, img3, taDesc, resolved) {
   document.getElementById('d-bkid').textContent    = bkId;
   document.getElementById('d-student').textContent = student;
   document.getElementById('d-tutor').textContent   = tutor;
   document.getElementById('d-course').textContent  = course;
-  document.getElementById('d-type').textContent    = type;
   document.getElementById('d-date').textContent    = date;
   document.getElementById('d-desc').textContent    = desc;
   document.getElementById('d-note').value          = '';
+  document.getElementById('d-reason').textContent  = REASON_MAP[reason] || reason || '—';
+  document.getElementById('note-error').classList.add('d-none');
   // set bk_id ในทุก form
   document.querySelectorAll('.modal-bk-id').forEach(el => el.value = pk);
+  // ปุ่มแชท
+  document.getElementById('btnChatStudent').onclick = () => window.open(`/messaging/with/${studentPk}/`, '_blank');
+  document.getElementById('btnChatTutor').onclick   = () => window.open(`/messaging/with/${tutorPk}/`, '_blank');
+  // หลักฐานการสอน
+  const evidenceEl = document.getElementById('d-evidence');
+  const imgsEl     = document.getElementById('d-imgs');
+  const taDescEl   = document.getElementById('d-ta-desc');
+  const imgs = [img1, img2, img3].filter(Boolean);
+  if (imgs.length || taDesc) {
+    evidenceEl.classList.remove('d-none');
+    imgsEl.innerHTML = imgs.map(src =>
+      `<div class="col-4"><img src="${src}" class="w-100 rounded-3"
+        style="aspect-ratio:4/3;object-fit:cover;cursor:pointer;"
+        onclick="window.open('${src}','_blank')"></div>`
+    ).join('');
+    if (taDesc) {
+      taDescEl.textContent = taDesc;
+      taDescEl.style.display = 'block';
+    } else {
+      taDescEl.style.display = 'none';
+    }
+  } else {
+    evidenceEl.classList.add('d-none');
+    imgsEl.innerHTML = '';
+    taDescEl.style.display = 'none';
+  }
+  // ซ่อนปุ่มตัดสินใจถ้าจัดการแล้ว
+  document.getElementById('action-buttons').style.display = resolved ? 'none' : '';
+  document.getElementById('d-note').closest('.mb-2').style.display = resolved ? 'none' : '';
   new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
 
-function syncNote(form) {
+function validateNote(form) {
   const note = document.getElementById('d-note').value.trim();
-  if (!note) { alert('กรุณาระบุหมายเหตุก่อนส่ง'); return false; }
-  document.getElementById('note-hidden').value = note;
-  return true;
+  if (!note) {
+    document.getElementById('note-error').classList.remove('d-none');
+    return false;
+  }
+  document.querySelectorAll('.modal-note').forEach(el => el.value = note);
+
+  const action   = form.querySelector('input[name="action"]').value;
+  const isDanger = action === 'suspend';
+
+  Swal.fire({
+    title: isDanger ? 'ระงับติวเตอร์ + คืนเครดิต?' : 'ติวเตอร์ถูก → โอนเครดิต?',
+    html: isDanger
+      ? 'ติวเตอร์จะถูกระงับการสอนชั่วคราว<br>และเครดิตจะถูกคืนให้ผู้เรียนทันที'
+      : 'เครดิตจะถูกโอนให้ติวเตอร์ทันที<br>และปิด case รายงานนี้',
+    icon: isDanger ? 'warning' : 'question',
+    showCancelButton: true,
+    confirmButtonText: 'ยืนยัน',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: isDanger ? '#EF4444' : '#10B981',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+    customClass: {
+      popup: 'rounded-4 shadow',
+      confirmButton: 'rounded-3 px-4 fw-bold',
+      cancelButton: 'rounded-3 px-4 fw-semibold',
+    },
+  }).then(result => {
+    if (result.isConfirmed) form.submit();
+  });
+  return false;
 }
 </script>
 {% endblock %}

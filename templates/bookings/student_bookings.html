@@ -1,9 +1,11 @@
 {% extends 'main/base.html' %}
 {% load static %}
 
-{% block title %}การจองของฉัน — Puean Chuay Tu{% endblock %}
+{% block title %}การจองเรียนของฉัน — Puean Chuay Tu{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <style>
   .bk-card {
     border: 1.5px solid #E5E7EB;
@@ -14,6 +16,29 @@
     overflow: hidden;
   }
   .bk-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.09); border-color: #CBD5E1; }
+
+  /* รูปปกคอร์ส */
+  .course-thumb {
+    width: 110px; flex-shrink: 0; position: relative;
+  }
+  .course-thumb img,
+  .course-thumb .thumb-fallback {
+    width: 100%; height: 100%; object-fit: cover; display: block; min-height: 110px;
+  }
+  .course-thumb .thumb-fallback {
+    background: linear-gradient(135deg,#3B82F6,#1D4ED8);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 110px;
+  }
+  .course-thumb .thumb-label {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,.65));
+    padding: 18px 6px 5px; text-align: center;
+  }
+  .course-thumb .thumb-label span {
+    color: #fff; font-size: 9px; font-weight: 700;
+    line-height: 1.3; display: block; word-break: break-word;
+  }
 
   .status-bar-0 { border-left: 4px solid #F59E0B; }
   .status-bar-1 { border-left: 4px solid #10B981; }
@@ -66,7 +91,7 @@
 
     <div class="d-flex align-items-center justify-content-between mb-4">
       <div>
-        <h4 class="fw-bold mb-1">การจองของฉัน</h4>
+        <h4 class="fw-bold mb-1">การจองเรียนของฉัน</h4>
         <p class="text-muted small mb-0">ติดตามสถานะการจองเรียนทั้งหมดของคุณ</p>
       </div>
       <div class="d-flex align-items-center gap-2">
@@ -100,83 +125,78 @@
       <button class="filter-pill" data-filter="6">
         ปฏิเสธ <span class="badge bg-danger ms-1" id="cnt-6">0</span>
       </button>
+      <button class="filter-pill" data-filter="reported">
+        รายงาน <span class="badge ms-1" style="background:#7C3AED;" id="cnt-reported">0</span>
+      </button>
     </div>
 
     {% if bookings %}
       {% for bk in bookings %}
-      <div class="bk-card status-bar-{{ bk.bk_status }} mb-3{% if bk.bk_status == 3 %} border-warning{% endif %}"
+      <div class="bk-card status-bar-{{ bk.bk_status }} mb-3{% if bk.bk_status == 3 and not bk.bk_report_date %} border-warning{% elif bk.bk_report_date %} border-purple{% endif %}"
            data-status="{{ bk.bk_status }}"
+           data-reported="{% if bk.bk_report_date %}1{% else %}0{% endif %}"
+           data-report-resolved="{% if bk.bk_report_resolved_date %}1{% else %}0{% endif %}"
            onclick="openDetail({{ bk.bk_id }})">
-        {% if bk.bk_status == 3 %}
+        {% if bk.bk_report_date %}
+        <div class="d-flex align-items-center gap-2 p-2" style="background:#F5F3FF;border-bottom:1px solid #7C3AED;">
+          <i class="fas fa-flag" style="color:#7C3AED;"></i>
+          <span class="small fw-semibold" style="color:#5B21B6;">อยู่ระหว่างการพิจารณาจากแอดมิน</span>
+        </div>
+        {% elif bk.bk_status == 3 %}
         <div class="d-flex align-items-center gap-2 p-2" style="background:#FEF3C7;border-bottom:1px solid #F59E0B;">
           <i class="fas fa-exclamation-circle text-warning"></i>
           <span class="small fw-semibold" style="color:#92400E;">ต้องยืนยันจบงานภายใน 24 ชม. มิเช่นนั้นระบบจะยืนยันอัตโนมัติ</span>
         </div>
         {% endif %}
         <div class="d-flex align-items-stretch">
-          <!-- รูปปกวิชา -->
-          <div style="width:110px;flex-shrink:0;position:relative;min-height:100px;">
+          <!-- รูปปกคอร์ส -->
+          <div class="course-thumb">
             {% if bk.tutc_id.tutc_img %}
-              <img src="{{ bk.tutc_id.tutc_img.url }}" alt=""
-                   style="width:100%;height:100%;object-fit:cover;display:block;">
+              <img src="{{ bk.tutc_id.tutc_img.url }}" alt="">
             {% else %}
-              <div style="width:100%;height:100%;min-height:100px;
-                          background:linear-gradient(135deg,#3B82F6,#1D4ED8);
-                          display:flex;align-items:center;justify-content:center;">
-                <i class="fas fa-book-open text-white" style="font-size:22px;opacity:.6;"></i>
-              </div>
+              <div class="thumb-fallback"><i class="fas fa-book-open text-white" style="font-size:22px;opacity:.6;"></i></div>
             {% endif %}
-            <div style="position:absolute;bottom:0;left:0;right:0;
-                        background:linear-gradient(transparent,rgba(0,0,0,.65));
-                        padding:18px 6px 5px;">
-              <span style="color:#fff;font-size:9px;font-weight:700;line-height:1.3;
-                           display:block;text-align:center;word-break:break-word;">
-                {{ bk.tutc_id.tutc_name|truncatechars:24 }}
-              </span>
-            </div>
+            <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
           </div>
-          <!-- ข้อมูลการจอง -->
-          <div class="flex-fill p-3">
-            <div class="d-flex align-items-center justify-content-between mb-1">
+          <!-- เนื้อหาการ์ด (เหมือนเดิมทุกอย่าง) -->
+          <div class="flex-fill p-4 d-flex align-items-start justify-content-between gap-3 flex-wrap">
+          <div class="flex-fill">
+            <div class="d-flex align-items-center gap-2 mb-2">
               <span class="text-muted small fw-semibold">BK{{ bk.bk_id|stringformat:"05d" }}</span>
               <span class="badge
                 {% if bk.bk_status == 0 %}bg-warning text-dark
                 {% elif bk.bk_status == 1 %}bg-success
                 {% elif bk.bk_status == 2 %}bg-info
-                {% elif bk.bk_status == 3 %}bg-warning text-dark
-                {% elif bk.bk_status == 4 %}bg-warning text-dark
+                {% elif bk.bk_status == 3 %}bg-primary
+                {% elif bk.bk_status == 4 %}bg-secondary
                 {% elif bk.bk_status == 5 %}bg-success
                 {% elif bk.bk_status == 6 %}bg-danger
                 {% endif %}">
                 {% if bk.bk_status == 0 %}จองแล้ว
-                {% elif bk.bk_status == 1 %}รับงานแล้ว
+                {% elif bk.bk_status == 1 %}อนุมัติแล้ว
                 {% elif bk.bk_status == 2 %}เรียนแล้ว
-                {% elif bk.bk_status == 3 %}รอยืนยันจบงาน
-                {% elif bk.bk_status == 4 %}รอรีวิว
+                {% elif bk.bk_status == 3 %}ยืนยันจบงาน
+                {% elif bk.bk_status == 4 %}เสร็จสิ้น
                 {% elif bk.bk_status == 5 %}รีวิวแล้ว
                 {% elif bk.bk_status == 6 %}ปฏิเสธ
                 {% endif %}
               </span>
             </div>
-            <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
-            <div class="text-muted small mb-2">
-              <i class="fas fa-user me-1"></i>{{ bk.tutc_id.tut_id.tut_id.mb_full_name }}
-              &nbsp;·&nbsp;
-              <i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y" }}
-              {% if bk.ts_id %}&nbsp;·&nbsp;<i class="fas fa-clock me-1"></i>{{ bk.ts_id.ts_start_time|time:"H:i" }}–{{ bk.ts_id.ts_end_time|time:"H:i" }}{% endif %}
-            </div>
-            <div class="d-flex align-items-center justify-content-between">
-              <span class="fw-bold text-primary" style="font-size:15px;">
-                {{ bk.total_credit }} <span class="text-muted fw-normal small">เครดิต</span>
-              </span>
-              <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3"
-                      style="font-size:12px;"
-                      onclick="event.stopPropagation(); openDetail({{ bk.bk_id }})">
-                <i class="fas fa-info-circle me-1"></i>รายละเอียด
-              </button>
+            <div class="fw-bold mb-1" style="font-size:15px;"><span class="info-label">ชื่อคอร์ส :</span> {{ bk.tutc_id.tutc_name }}</div>
+            <div class="text-muted small mb-2">ติวเตอร์: {{ bk.tutc_id.tut_id.tut_id.mb_full_name }}</div>
+            <div class="d-flex gap-3 flex-wrap" style="font-size:13px;">
+              <span class="text-muted"><i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y H:i" }}</span>
+              <span class="text-muted"><i class="fas fa-users me-1"></i>{{ bk.bk_stu_count }} คน</span>
+              <span class="text-muted"><i class="fas fa-coins me-1"></i>{{ bk.bk_rate_per_person }} เครดิต/คน</span>
             </div>
           </div>
-        </div>
+          <div class="text-end">
+            <div class="fw-bold" style="font-size:18px;">{{ bk.total_credit }} <span class="text-muted fw-normal small">เครดิต</span></div>
+            <div class="text-muted small">จองเมื่อ {{ bk.bk_date|date:"d M Y" }}</div>
+            <i class="fas fa-chevron-right text-muted mt-1" style="font-size:12px;"></i>
+          </div>
+          </div>{# /flex-fill p-4 #}
+        </div>{# /d-flex align-items-stretch #}
       </div>
       {% endfor %}
     {% else %}
@@ -192,6 +212,18 @@
   </div>
 </div>
 
+
+<!-- hidden forms สำหรับ SweetAlert2 -->
+<form id="confirmForm" method="post" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" id="confirmBkId" name="bk_id">
+</form>
+<form id="reportForm" method="post" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" id="reportBkId" name="bk_id">
+  <input type="hidden" id="reportReason" name="rp_reason">
+  <textarea name="rp_desc" id="reportDesc"></textarea>
+</form>
 
 <!-- Modal รายละเอียด -->
 <div class="modal fade" id="detailModal" tabindex="-1">
@@ -216,12 +248,15 @@ const bookingData = {
     id:       {{ bk.bk_id }},
     course:   "{{ bk.tutc_id.tutc_name|escapejs }}",
     tutor:    "{{ bk.tutc_id.tut_id.tut_id.mb_full_name|escapejs }}",
-    courseImg:"{% if bk.tutc_id.tutc_img %}{{ bk.tutc_id.tutc_img.url }}{% endif %}",
     count:    {{ bk.bk_stu_count }},
     rate:     {{ bk.bk_rate_per_person }},
     datetime: "{{ bk.bk_stu_datetime|date:'d M Y' }} เวลา {{ bk.bk_stu_datetime|date:'H:i' }} น.",
     booked:   "{{ bk.bk_date|date:'d M Y H:i' }}",
     status:   {{ bk.bk_status }},
+    reported: {% if bk.bk_report_date %}true{% else %}false{% endif %},
+    report_resolved: {% if bk.bk_report_resolved_date %}true{% else %}false{% endif %},
+    report_reason:  "{{ bk.bk_report_reason|default:''|escapejs }}",
+    report_desc:    "{{ bk.bk_report_desc|default:''|escapejs }}",
     desc:     "{{ bk.bk_desc|default:''|escapejs }}",
     cmt:      "{{ bk.bk_cmt|default:''|escapejs }}",
     accepted: "{{ bk.bk_accepted_date|date:'d M Y H:i'|default:'' }}",
@@ -273,7 +308,11 @@ const STEPS = ['จองแล้ว','อนุมัติ','เรียน�
 // นับจำนวนแต่ละสถานะแล้วอัปเดต badge
 (function() {
   const counts = {0:0,1:0,2:0,3:0,4:0,5:0,6:0};
-  document.querySelectorAll('.bk-card').forEach(c => counts[+c.dataset.status]++);
+  let reportedCount = 0;
+  document.querySelectorAll('.bk-card').forEach(c => {
+    counts[+c.dataset.status]++;
+    if (c.dataset.reported === '1' && c.dataset.reportResolved !== '1') reportedCount++;
+  });
   // badge แจ้งเตือนยืนยันจบงาน
   const c3 = counts[3];
   if (c3 > 0) {
@@ -285,6 +324,7 @@ const STEPS = ['จองแล้ว','อนุมัติ','เรียน�
   const el23 = document.getElementById('cnt-23'); if (el23) el23.textContent = counts[2] + counts[3];
   const el45 = document.getElementById('cnt-45'); if (el45) el45.textContent = counts[4] + counts[5];
   const el6 = document.getElementById('cnt-6'); if (el6) el6.textContent = counts[6];
+  const elRep = document.getElementById('cnt-reported'); if (elRep) elRep.textContent = reportedCount;
   const elAll = document.getElementById('cnt-all'); if (elAll) elAll.textContent = Object.values(counts).reduce((a,b)=>a+b,0);
 })();
 
@@ -298,7 +338,8 @@ document.querySelectorAll('.filter-pill').forEach(btn => {
       const s = card.dataset.status;
       let show = false;
       if (f === 'all') show = true;
-      else if (f === '23') show = s === '2' || s === '3';
+      else if (f === 'reported') show = card.dataset.reported === '1' && card.dataset.reportResolved !== '1';
+      else if (f === '23') show = (s === '2' || s === '3') && (card.dataset.reported !== '1' || card.dataset.reportResolved === '1');
       else if (f === '45') show = s === '4' || s === '5';
       else show = s === f;
       card.style.display = show ? '' : 'none';
@@ -311,7 +352,10 @@ function openDetail(bkId) {
   if (!bk) return;
   const total = bk.rate * bk.count;
   const sc    = STATUS_COLORS[bk.status] || 'secondary';
-  const label = STATUS_LABELS[bk.status] || '';
+  const isAdminAction = bk.cmt && bk.cmt.startsWith('[แอดมิน]');
+  let label = STATUS_LABELS[bk.status] || '';
+  if (bk.status === 6 && isAdminAction) label = 'คืนเครดิตแล้ว';
+  if (bk.status === 4 && isAdminAction) label = 'เสร็จสิ้น';
 
   // progress track
   let trackHtml = '';
@@ -370,8 +414,42 @@ function openDetail(bkId) {
   }
 
   // action
+  const REASON_LABELS = {
+    '1': 'หลักฐานการสอนไม่ตรงความจริง',
+    '2': 'ไม่ได้สอนเลยแต่ติวเตอร์แจ้งจบงาน',
+    '3': 'เนื้อหาไม่ตรงที่ตกลงไว้',
+    '4': 'กดยืนยันพลาด แต่ยังไม่ได้เรียนจริง',
+    'other': 'อื่นๆ',
+  };
   let actionHtml = '';
-  if (bk.status === 2 || bk.status === 3) {
+  if (bk.reported) {
+    const adminNote = bk.cmt && bk.cmt.startsWith('[แอดมิน]')
+      ? bk.cmt.replace('[แอดมิน]', '').trim() : '';
+    const reasonLabel = REASON_LABELS[bk.report_reason] || '';
+    actionHtml = `
+      <div class="mt-3 pt-3 border-top">
+        <div class="p-3 rounded-3" style="background:#F5F3FF;border:1px solid #DDD6FE;">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="fas fa-flag" style="color:#7C3AED;"></i>
+            <span class="fw-semibold small" style="color:#5B21B6;">
+              ${bk.report_resolved ? 'ดำเนินการแล้ว' : 'อยู่ระหว่างการพิจารณาจากแอดมิน'}
+            </span>
+          </div>
+          ${reasonLabel ? `<div style="font-size:13px;color:#374151;margin-bottom:4px;">
+            <span class="fw-semibold">สาเหตุ:</span> ${reasonLabel}
+          </div>` : ''}
+          ${bk.report_desc ? `<div style="font-size:13px;color:#374151;margin-bottom:4px;">
+            <span class="fw-semibold">รายละเอียด:</span> ${bk.report_desc}
+          </div>` : ''}
+          ${adminNote
+            ? `<div class="mt-2 pt-2" style="border-top:1px solid #DDD6FE;font-size:13px;color:#374151;">
+                <span class="fw-semibold" style="color:#5B21B6;">ผลการพิจารณา:</span> ${adminNote}
+               </div>`
+            : `<div class="text-muted small mt-1">แอดมินจะแจ้งผลการพิจารณากลับมาทางการแจ้งเตือน</div>`
+          }
+        </div>
+      </div>`;
+  } else if (bk.status === 2 || bk.status === 3) {
     // คำนวณเวลาที่เหลือก่อนยืนยันอัตโนมัติ
     let timeWarning = '';
     if (bk.status === 3 && bk.jc_date) {
@@ -394,7 +472,7 @@ function openDetail(bkId) {
     }
     const confirmBtn = bk.status === 3 ? `
       <button onclick="showConfirmModal(${bkId})" class="btn btn-success fw-bold w-100 py-2 rounded-3">
-        <i class="fas fa-shield-alt me-2"></i>ยืนยันการจบงานและโอนเครดิต
+      </i>ยืนยันการจบงาน
       </button>` : `
       <div class="alert alert-info py-2 small mb-0">
         <i class="fas fa-clock me-1"></i>กำลังรอติวเตอร์อัพโหลดหลักฐานการสอน
@@ -426,16 +504,7 @@ function openDetail(bkId) {
       </div>`;
   }
 
-  const courseImgHtml = bk.courseImg
-    ? `<img src="${bk.courseImg}" alt="รูปปก"
-            style="width:100%;height:160px;object-fit:cover;border-radius:10px;" class="mb-3">`
-    : `<div class="d-flex align-items-center justify-content-center rounded-3 mb-3"
-            style="height:100px;background:#EFF6FF;">
-          <i class="fas fa-book-open text-primary" style="font-size:32px;"></i>
-        </div>`;
-
   document.getElementById('detailBody').innerHTML = `
-    ${courseImgHtml}
     ${trackHtml}
     <div class="d-flex align-items-center gap-2 mb-3">
       <span class="badge bg-${sc} fs-6 px-3">${label}</span>
@@ -457,7 +526,8 @@ function openDetail(bkId) {
       </div>
     </div>
     ${bk.desc ? `<div class="mt-3 p-3 rounded-2" style="background:#F8FAFC;font-size:13px;"><span class="text-muted">ข้อความของฉัน:</span> ${bk.desc}</div>` : ''}
-    ${bk.cmt  ? `<div class="mt-2 p-3 rounded-2 ${bk.status===6?'bg-danger bg-opacity-10':'bg-warning bg-opacity-10'}" style="font-size:13px;"><span class="text-muted">หมายเหตุ:</span> ${bk.cmt}</div>` : ''}
+    ${bk.cmt && !bk.reported ? `<div class="mt-2 p-3 rounded-2 ${bk.status===6?'bg-danger bg-opacity-10':'bg-warning bg-opacity-10'}" style="font-size:13px;"><span class="text-muted">หมายเหตุ:</span> ${bk.cmt}</div>` : ''}
+    ${bk.status === 6 && isAdminAction ? `<div class="mt-2 p-3 rounded-2 d-flex align-items-center gap-2" style="background:#F0FDF4;border:1px solid #BBF7D0;font-size:13px;"><i class="fas fa-coins me-1 text-success"></i><span>เครดิต <strong>${total} เครดิต</strong> ได้รับคืนเข้าบัญชีของคุณแล้ว</span></div>` : bk.status === 6 ? `<div class="mt-2 p-3 rounded-2 d-flex align-items-center gap-2" style="background:#F0FDF4;border:1px solid #BBF7D0;font-size:13px;"><i class="fas fa-info-circle me-1"></i><span>เครดิตที่ถูกล็อกไว้ <strong>${total} เครดิต</strong> ได้รับคืนเข้าบัญชีของคุณแล้ว</span></div>` : ''}
     ${actHtml}
     ${reviewHtml}
     ${actionHtml}
@@ -465,90 +535,132 @@ function openDetail(bkId) {
   new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
 
-// Report modal
+// รายงานปัญหา — SweetAlert2
 function showReportModal(bkId) {
   bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
-  document.getElementById('reportBkId').value = bkId;
-  document.getElementById('reportForm').action = '/bookings/my/' + bkId + '/report/';
-  setTimeout(() => new bootstrap.Modal(document.getElementById('reportModal')).show(), 300);
-}
-
-// Confirm modal
-function showConfirmModal(bkId) {
-  // ปิด detail modal ก่อน
-  bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
-  document.getElementById('confirmBkId').value = bkId;
   setTimeout(() => {
-    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+    Swal.fire({
+      title: 'รายงานปัญหา',
+      html: `
+        <p class="text-muted small mb-3">เลือกสาเหตุที่ตรงกับปัญหาของคุณ</p>
+        <div style="text-align:left;">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="report_reason" id="r1" value="1">
+            <label class="form-check-label" for="r1">หลักฐานการสอนไม่ตรงความจริง</label>
+          </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="report_reason" id="r2" value="2">
+            <label class="form-check-label" for="r2">ไม่ได้สอนเลยแต่ติวเตอร์แจ้งจบงาน</label>
+          </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="report_reason" id="r3" value="3">
+            <label class="form-check-label" for="r3">เนื้อหาไม่ตรงที่ตกลงไว้</label>
+          </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="report_reason" id="r4" value="4">
+            <label class="form-check-label" for="r4">กดยืนยันพลาด แต่ยังไม่ได้เรียนจริง</label>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="radio" name="report_reason" id="r5" value="other">
+            <label class="form-check-label" for="r5">อื่นๆ</label>
+          </div>
+          <textarea id="report-desc-input" class="form-control" rows="3"
+                    placeholder="รายละเอียดเพิ่มเติม (บังคับกรอกเมื่อเลือก อื่นๆ)..."
+                    style="font-size:13px;"></textarea>
+          <div class="text-danger small mt-1 d-none" id="report-error"></div>
+        </div>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-paper-plane me-1"></i> ส่งรายงาน',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      reverseButtons: true,
+      customClass: {
+        popup:         'rounded-4 shadow',
+        actions:       'gap-2',
+        confirmButton: 'rounded-3 px-4 fw-bold',
+        cancelButton:  'rounded-3 px-4 fw-semibold',
+      },
+      preConfirm: () => {
+        const reason = document.querySelector('input[name="report_reason"]:checked');
+        const desc   = document.getElementById('report-desc-input').value.trim();
+        const errEl  = document.getElementById('report-error');
+        if (!reason) {
+          errEl.textContent = 'กรุณาเลือกสาเหตุของปัญหา';
+          errEl.classList.remove('d-none');
+          return false;
+        }
+        if (reason.value === 'other' && !desc) {
+          errEl.textContent = 'กรุณาระบุรายละเอียดเมื่อเลือก "อื่นๆ"';
+          errEl.classList.remove('d-none');
+          return false;
+        }
+        return { reason: reason.value, desc: desc };
+      }
+    }).then(result => {
+      if (result.isConfirmed) {
+        const form = document.getElementById('reportForm');
+        form.action = '/bookings/my/' + bkId + '/report/';
+        document.getElementById('reportBkId').value   = bkId;
+        document.getElementById('reportReason').value = result.value.reason;
+        document.getElementById('reportDesc').value   = result.value.desc;
+        form.submit();
+      }
+    });
   }, 300);
 }
+
+// ยืนยันจบงาน — SweetAlert2
+function showConfirmModal(bkId) {
+  bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
+  setTimeout(() => {
+    Swal.fire({
+      title: 'ยืนยันการจบงาน?',
+      html: `เครดิตจะถูกโอนให้ติวเตอร์ทันทีและ<strong>ไม่สามารถเรียกคืนได้</strong>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '</i> ยืนยันจบงาน',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#10B981',
+      cancelButtonColor: '#6B7280',
+      reverseButtons: true,
+      customClass: {
+        popup:         'rounded-4 shadow',
+        actions:       'gap-2',
+        confirmButton: 'rounded-3 px-4 fw-bold',
+        cancelButton:  'rounded-3 px-4 fw-semibold',
+      },
+    }).then(result => {
+      if (result.isConfirmed) {
+        const form = document.getElementById('confirmForm');
+        form.action = `/bookings/my/${bkId}/confirm-completion/`;
+        document.getElementById('confirmBkId').value = bkId;
+        form.submit();
+      }
+    });
+  }, 300);
+}
+
+// แจ้งเตือนหลังส่งรายงานสำเร็จ
+if (new URLSearchParams(window.location.search).get('reported') === '1') {
+  window.history.replaceState({}, document.title, window.location.pathname);
+  Swal.fire({
+    title: 'ส่งการรายงานเรียบร้อยแล้ว',
+    html: `<p class="text-muted small mb-0">
+             Admin จะตรวจสอบคำร้องของคุณ<br>
+             และแจ้งผลการพิจารณากลับมาทางการแจ้งเตือนในระบบ<br><br>
+             <strong>หมายเหตุ:</strong> เครดิตจะยังคงถูกล็อกไว้จนกว่า Admin จะพิจารณาเสร็จสิ้น
+           </p>`,
+    icon: 'success',
+    confirmButtonText: 'รับทราบ',
+    confirmButtonColor: '#10B981',
+    customClass: {
+      popup:         'rounded-4 shadow',
+      confirmButton: 'rounded-3 px-4 fw-bold',
+    },
+  });
+}
 </script>
 
-<!-- Modal รายงานปัญหา -->
-<div class="modal fade" id="reportModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header border-0 pb-0">
-        <h6 class="modal-title fw-bold text-danger"><i class="fas fa-exclamation-circle me-2"></i>รายงานปัญหา</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form id="reportForm" method="post">
-        {% csrf_token %}
-        <input type="hidden" id="reportBkId" name="bk_id">
-        <div class="modal-body">
-          <p class="text-muted small mb-3">รายงานปัญหาเกี่ยวกับกิจกรรมการติวนี้ไปยังผู้ดูแลระบบ</p>
-          <input type="hidden" name="rp_type" value="1">
-          <div class="mb-2">
-            <label class="form-label fw-semibold small">รายละเอียดปัญหา <span class="text-danger">*</span></label>
-            <textarea name="rp_desc" class="form-control" rows="4"
-                      placeholder="อธิบายปัญหาที่พบ เช่น หลักฐานไม่ตรงกับความเป็นจริง..." required></textarea>
-          </div>
-        </div>
-        <div class="modal-footer border-0 pt-0">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-          <button type="submit" class="btn btn-danger fw-bold px-4">
-            <i class="fas fa-paper-plane me-1"></i>ส่งรายงาน
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Modal ยืนยันจบงาน -->
-<div class="modal fade" id="confirmModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header border-0 pb-0">
-        <h6 class="modal-title fw-bold"><i class="fas fa-shield-alt me-2 text-success"></i>ยืนยันการจบงาน</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="alert alert-warning py-2 small">
-          <i class="fas fa-exclamation-triangle me-1"></i>
-          เครดิตจะถูกโอนให้ติวเตอร์ทันทีและ<strong>ไม่สามารถเรียกคืนได้</strong> กรุณาตรวจสอบหลักฐานให้ครบถ้วนก่อนยืนยัน
-        </div>
-        <p class="text-muted small mb-0">คุณแน่ใจว่าต้องการยืนยันการจบงานนี้?</p>
-      </div>
-      <div class="modal-footer border-0 pt-0">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-        <form method="post" id="confirmForm">
-          <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-          <input type="hidden" id="confirmBkId" name="bk_id">
-          <button type="submit" class="btn btn-success fw-bold px-4">
-            <i class="fas fa-check me-1"></i>ยืนยัน
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-// set form action ตาม bkId
-document.getElementById('confirmModal').addEventListener('show.bs.modal', function() {
-  const bkId = document.getElementById('confirmBkId').value;
-  document.getElementById('confirmForm').action = `/bookings/my/${bkId}/confirm-completion/`;
-});
-</script>
 {% endblock %}
