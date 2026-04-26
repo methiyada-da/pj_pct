@@ -1,3 +1,4 @@
+# accounts/models.py - models ของ Member และ Tutor
 from django.db import models
 from django.contrib.auth.models import User
 from apps.courses.models import Major

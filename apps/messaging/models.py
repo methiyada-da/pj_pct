@@ -1,3 +1,4 @@
+# messaging/models.py - models ของ Inbox และ Message
 from django.db import models
 from apps.accounts.models import Member
 

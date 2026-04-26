@@ -1,3 +1,4 @@
+# bookings/urls.py - URL routing ของ bookings
 from django.urls import path
 from . import views
 

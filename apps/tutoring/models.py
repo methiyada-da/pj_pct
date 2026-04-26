@@ -1,3 +1,4 @@
+# tutoring/models.py - models ของ TutorCourse, TutorRate, ScheduleDate, TimeSlot
 from django.db import models
 from apps.accounts.models import Tutor
 from apps.courses.models import Course

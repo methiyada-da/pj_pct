@@ -1,3 +1,4 @@
+# accounts/urls.py - URL routing ของ accounts
 from django.urls import path
 from . import views
 

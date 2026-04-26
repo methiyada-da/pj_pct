@@ -1,3 +1,4 @@
+# notifications/urls.py - URL routing ของ notifications
 from django.urls import path
 from . import views
 

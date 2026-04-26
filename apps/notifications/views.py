@@ -1,3 +1,4 @@
+# notifications/views.py - views จัดการการแจ้งเตือน
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST

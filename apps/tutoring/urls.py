@@ -1,9 +1,7 @@
+# tutoring/urls.py - URL routing ของ tutoring
 from django.urls import path
 
-from . import views_detail
 from . import views
-from . import views_search
-from . import views_profile   # ← เพิ่ม
 
 app_name = 'tutoring'
 
@@ -28,19 +26,19 @@ urlpatterns = [
     path('course/<str:tutc_id>/delete/', views.delete_course,        name='delete_course'),
 
     # หน้าค้นหาติวเตอร์
-    path('search/', views_search.search_tutors, name='search_tutors'),
+    path('search/', views.search_tutors, name='search_tutors'),
 
     # AJAX: โหลดรายวิชาตามกลุ่ม
-    path('courses-by-group/', views_search.get_courses_by_group, name='courses_by_group'),
+    path('courses-by-group/', views.get_courses_by_group, name='courses_by_group'),
 
     # Detail & Booking
-    path('course/<str:tutc_id>/',      views_detail.course_detail,  name='course_detail'),
-    path('course/<str:tutc_id>/book/', views_detail.booking_create, name='booking_create'),
+    path('course/<str:tutc_id>/',      views.course_detail,  name='course_detail'),
+    path('course/<str:tutc_id>/book/', views.booking_create, name='booking_create'),
 
-    # ── โปรไฟล์ติวเตอร์ (ใหม่) ──
+    # ── โปรไฟล์ติวเตอร์ ──
     # แก้ไขโปรไฟล์ของตัวเอง (ต้องมาก่อน <int:tut_id> เพื่อไม่ให้ชนกัน)
-    path('profile/edit/', views_profile.tutor_profile_edit, name='tutor_profile_edit'),
+    path('profile/edit/', views.tutor_profile_edit, name='tutor_profile_edit'),
 
     # ดูโปรไฟล์ติวเตอร์ (ใครก็ดูได้)
-    path('profile/<int:tut_id>/', views_profile.tutor_profile_view, name='tutor_profile'),
+    path('profile/<int:tut_id>/', views.tutor_profile_view, name='tutor_profile'),
 ]

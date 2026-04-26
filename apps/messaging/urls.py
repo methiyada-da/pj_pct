@@ -1,3 +1,4 @@
+# messaging/urls.py - URL routing ของ messaging
 from django.urls import path
 from . import views
 

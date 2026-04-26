@@ -1,3 +1,4 @@
+# messaging/forms.py - forms สำหรับส่งข้อความ
 from django import forms
 from .models import Message
 

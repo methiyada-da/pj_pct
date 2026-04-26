@@ -1,3 +1,4 @@
+# admin_panel/urls.py - URL routing ของ admin_panel
 from django.urls import path
 from . import views
 
