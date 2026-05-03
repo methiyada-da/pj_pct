@@ -275,7 +275,7 @@ def booking_create(request, tutc_id):
         return redirect('tutoring:course_detail', tutc_id=tutc_id)
 
     if available_credit < total_credit:
-        messages.error(request, f'เครดิตไม่เพียงพอ (มี {available_credit} ต้องการ {total_credit})')
+        messages.error(request, f'เครดิตไม่เพียงพอ (ต้องการ {total_credit} เครดิต)')
         return redirect('tutoring:course_detail', tutc_id=tutc_id)
 
     try:
