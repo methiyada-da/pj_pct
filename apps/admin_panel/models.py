@@ -21,6 +21,7 @@ class System(models.Model):
     crd_val                  = models.DecimalField(max_digits=5,  decimal_places=2, verbose_name="มูลค่าเครดิต")
     deposit_withdraw_fee_pct = models.DecimalField(max_digits=5,  decimal_places=2, verbose_name="อัตราร้อยละค่าธรรมเนียมการถอนยอดเครดิตนำฝาก")
     income_withdraw_fee_pct  = models.DecimalField(max_digits=5,  decimal_places=2, verbose_name="อัตราร้อยละค่าธรรมเนียมการถอนยอดเครดิตรายได้")
+    total_accumulated_fee    = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name="ค่าธรรมเนียมสะสมทั้งหมด")
 
     class Meta:
         db_table     = 'system'

@@ -11,6 +11,12 @@ from .models import Refill, Withdrawals
 from apps.admin_panel.models import System
 from apps.bookings.models import Booking, JobCompletion
 
+# --- สำหรับอ่าน QR Code ---
+import cv2
+import numpy as np
+from PIL import Image
+import traceback
+
 
 @login_required
 def promptpay_qr(request):
@@ -218,6 +224,8 @@ def topup_view(request):
         slip      = request.FILES.get('rf_slip')
 
         errors = []
+        qr_payload = None
+
         try:
             rf_money_f = float(rf_money)
             if rf_money_f <= 0:
@@ -232,8 +240,57 @@ def topup_view(request):
             errors.append('กรุณากรอกวันที่โอน')
         if not tx_time:
             errors.append('กรุณากรอกเวลาโอน')
+            
         if not slip:
             errors.append('กรุณาอัปโหลดสลิปการโอนเงิน')
+        else:
+            # --- ตรวจสอบ QR Code จากสลิป ---
+            try:
+                # 1. อ่านรูปภาพ
+                img_pil = Image.open(slip)
+                
+                # 2. ตรวจสอบโหมดสี
+                if img_pil.mode != 'RGB':
+                    img_pil = img_pil.convert('RGB')
+                    
+                # 3. แปลงเป็นอาร์เรย์สำหรับ OpenCV (RGB -> BGR)
+                img_cv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+
+                # 4. สร้างตัวตรวจจับ (ใช้ QRCodeDetector แบบดั้งเดิมเป็น Fallback ก่อน)
+                detector = cv2.QRCodeDetector()
+                data, bbox, _ = detector.detectAndDecode(img_cv)
+
+                if data:
+                    qr_payload = data
+                else:
+                    # 5. ถ้าแบบธรรมดาไม่เจอ ให้ลองใช้ WeChatQRCode (แม่นยำสูงกว่ามาก)
+                    try:
+                        # สร้าง WeChatQRCode object
+                        wechat_detector = cv2.wechat_qrcode_WeChatQRCode()
+                        res, points = wechat_detector.detectAndDecode(img_cv)
+                        
+                        if res and len(res) > 0:
+                            qr_payload = res[0] # ได้ข้อมูลมาแล้ว!
+                        else:
+                            # ถ้าใช้ไม้ตายสุดท้ายแล้วยังหาไม่เจออีก
+                            errors.append('ไม่พบ QR Code หรือสแกนไม่ติด กรุณาใช้รูปสลิปต้นฉบับจากแอปธนาคารที่เห็น QR Code ชัดเจน')
+                    except Exception as wechat_e:
+                        print(f"WeChat QR Scan Error: {wechat_e}")
+                        errors.append('ไม่พบ QR Code หรือสแกนไม่ติด กรุณาตรวจสอบรูปภาพอีกครั้ง')
+
+            except Exception as e:
+                # หากเกิด error ในการเปิดรูปภาพ
+                print(f"QR Scan Error: {traceback.format_exc()}")
+                errors.append('เกิดข้อผิดพลาดในการตรวจสอบไฟล์รูปภาพ กรุณาลองใหม่อีกครั้ง')
+
+            # ตรวจสอบการใช้งานซ้ำใน Database
+            if qr_payload:
+                if Refill.objects.filter(rf_qr_payload=qr_payload).exists():
+                    errors.append('สลิปนี้ถูกใช้งานเติมเครดิตในระบบไปแล้ว ไม่สามารถใช้ซ้ำได้')
+
+            # รีเซ็ต pointer ของไฟล์กลับมาที่ 0 เสมอ เพื่อให้ Django save รูปได้
+            slip.seek(0)
+            # ---------------------------
 
         if not errors:
             rf_credit = round(rf_money_f / crd_val)
@@ -241,13 +298,14 @@ def topup_view(request):
 
             # สร้าง Refill ก่อนเพื่อได้ rf_id
             refill = Refill.objects.create(
-                rf_date   = timezone.now(),
-                rf_money  = rf_money_f,
-                rf_credit = rf_credit,
-                rf_slip   = slip,
-                rf_status = 0,
-                rf_cmt    = cmt,
-                member    = member,
+                rf_date       = timezone.now(),
+                rf_money      = rf_money_f,
+                rf_credit     = rf_credit,
+                rf_slip       = slip,
+                rf_qr_payload = qr_payload, # บันทึกข้อมูลที่แกะได้จาก QR
+                rf_status     = 0,
+                rf_cmt        = cmt,
+                member        = member,
             )
 
             # rename ไฟล์สลิปเป็น rf_id{pk}.ext
@@ -315,11 +373,12 @@ def withdraw_view(request):
         available_deposit = 0
 
     if request.method == 'POST':
-        wd_type    = request.POST.get('wd_type', '0')
-        wd_credit  = request.POST.get('wd_credit', '0').strip()
-        bank_name  = request.POST.get('bank_name', '').strip()
-        acc_name   = request.POST.get('acc_name', '').strip()
-        acc_no     = request.POST.get('acc_no', '').strip()
+        wd_type      = request.POST.get('wd_type', '0')
+        wd_credit    = request.POST.get('wd_credit', '0').strip()
+        bank_name    = request.POST.get('bank_name', '').strip()
+        acc_name     = request.POST.get('acc_name', '').strip()
+        acc_no       = request.POST.get('acc_no', '').strip()
+        promptpay_no = request.POST.get('promptpay_no', '').strip()
 
         errors = []
         try:
@@ -333,11 +392,13 @@ def withdraw_view(request):
             wd_type_i = 0
 
         if not bank_name:
-            errors.append('กรุณากรอกชื่อธนาคาร')
+            errors.append('กรุณาเลือกธนาคาร')
         if not acc_name:
             errors.append('กรุณากรอกชื่อบัญชีธนาคาร')
         if not acc_no:
             errors.append('กรุณากรอกเลขที่บัญชี')
+        if not promptpay_no:
+            errors.append('กรุณากรอกหมายเลขพร้อมเพย์')
 
         if not errors:
             avail = available_income if wd_type_i == 1 else available_deposit
@@ -351,17 +412,18 @@ def withdraw_view(request):
             wd_net   = round(wd_cash - wd_fee, 2)
 
             Withdrawals.objects.create(
-                wd_req_date = timezone.now(),
-                wd_type     = wd_type_i,
-                wd_credit   = wd_credit_i,
-                wd_cash     = wd_cash,
-                wd_bank_name= bank_name,
-                wd_acc_name = acc_name,
-                wd_acc_no   = acc_no,
-                wd_fee      = wd_fee,
-                wd_net_cash = wd_net,
-                wd_status   = 0,
-                member      = member,
+                wd_req_date     = timezone.now(),
+                wd_type         = wd_type_i,
+                wd_credit       = wd_credit_i,
+                wd_cash         = wd_cash,
+                wd_bank_name    = bank_name,
+                wd_acc_name     = acc_name,
+                wd_acc_no       = acc_no,
+                wd_promptpay_no = promptpay_no,
+                wd_fee          = wd_fee,
+                wd_net_cash     = wd_net,
+                wd_status       = 0,
+                member          = member,
             )
             # หักเครดิตทันทีเมื่อส่งคำขอ
             if wd_type_i == 1:
