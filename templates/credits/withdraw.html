@@ -71,7 +71,7 @@
                   <span class="fw-semibold small">เครดิตนำฝาก</span>
                 </div>
                 <div class="fw-bold" style="font-size:20px;">
-                  {{ available_deposit }}<span class="text-muted fw-normal fs-6 ms-1">P</span>
+                  {{ available_deposit }}<span class="text-muted fw-normal fs-6 ms-1">เครดิต</span>
                 </div>
                 <div class="text-muted" style="font-size:11px;">
                   ค่าธรรมเนียม {{ deposit_fee_pct|floatformat:"0" }}%
@@ -89,7 +89,7 @@
                   <span class="fw-semibold small">เครดิตรายได้</span>
                 </div>
                 <div class="fw-bold" style="font-size:20px;">
-                  {{ available_income }}<span class="text-muted fw-normal fs-6 ms-1">P</span>
+                  {{ available_income }}<span class="text-muted fw-normal fs-6 ms-1">เครดิต</span>
                 </div>
                 <div class="text-muted" style="font-size:11px;">
                   ค่าธรรมเนียม {{ income_fee_pct|floatformat:"0" }}%
@@ -107,10 +107,10 @@
                        class="form-control" placeholder="0.00"
                        min="1" step="1" required
                        value="{{ prev.wd_credit|default:'' }}">
-                <span class="input-group-text text-muted small">CR</span>
+                <span class="input-group-text text-muted small">เครดิต</span>
               </div>
               <div class="text-muted mt-1" style="font-size:12px;">
-                คงเหลือ: <span id="availableDisplay">{{ available_deposit }}</span> CR
+                คงเหลือ: <span id="availableDisplay">{{ available_deposit }}</span> เครดิต
               </div>
             </div>
             <div class="col-md-6">
@@ -118,7 +118,7 @@
               <div class="input-group">
                 <input type="text" id="wdCashDisplay" class="form-control fw-bold text-primary"
                        value="0.00" readonly style="background:#F9FAFB;">
-                <span class="input-group-text text-muted small">THB</span>
+                <span class="input-group-text text-muted small">บาท</span>
               </div>
               <div class="text-primary mt-1" style="font-size:12px;">
                 1 เครดิต = {{ crd_val|floatformat:"2" }} บาท
@@ -126,13 +126,13 @@
             </div>
           </div>
 
-          <!-- ─── รายละเอียดบัญชีธนาคาร ─── -->
+          <!-- ─── รายละเอียดบัญชีธนาคารและพร้อมเพย์ ─── -->
           <h6 class="fw-bold mb-3">
-            <i class="fas fa-university text-primary me-2"></i>รายละเอียดบัญชีธนาคาร
+            <i class="fas fa-university text-primary me-2"></i>รายละเอียดบัญชีธนาคารและพร้อมเพย์
           </h6>
           <div class="rounded-3 border p-3 mb-4" style="background:#F8FAFC;">
             <div class="row g-3">
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <label class="form-label fw-semibold small">ชื่อธนาคาร</label>
                 <select name="bank_name" class="form-select" required
                         oninvalid="this.setCustomValidity('กรุณาเลือกธนาคาร')"
@@ -143,7 +143,7 @@
                   {% endfor %}
                 </select>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <label class="form-label fw-semibold small">ชื่อบัญชีธนาคาร</label>
                 <input type="text" name="acc_name" class="form-control"
                        placeholder="{{ member.mb_full_name }}" required
@@ -151,12 +151,20 @@
                        oninvalid="this.setCustomValidity('กรุณากรอกชื่อบัญชี')"
                        oninput="this.setCustomValidity('')">
               </div>
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <label class="form-label fw-semibold small">เลขที่บัญชี</label>
                 <input type="text" name="acc_no" class="form-control"
                        placeholder="XXX-X-XXXXX-X" required
                        value="{{ prev.acc_no|default:'' }}"
                        oninvalid="this.setCustomValidity('กรุณากรอกเลขที่บัญชี')"
+                       oninput="this.setCustomValidity('')">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">หมายเลขพร้อมเพย์</label>
+                <input type="text" name="promptpay_no" class="form-control"
+                       placeholder="เบอร์โทรศัพท์ หรือ เลขบัตรประชาชน" required
+                       value="{{ prev.promptpay_no|default:'' }}"
+                       oninvalid="this.setCustomValidity('กรุณากรอกหมายเลขพร้อมเพย์')"
                        oninput="this.setCustomValidity('')">
               </div>
             </div>
@@ -170,11 +178,13 @@
               <span id="feeGross">0.00 บาท</span>
             </div>
             <div class="fee-row">
-              <span class="text-muted">ค่าธรรมเนียมการดำเนินการ</span>
+              <span class="text-muted">
+                ค่าธรรมเนียม <span id="feePercentLabel" class="text-primary fw-semibold">(0%)</span>
+              </span>
               <span id="feeFee">0.00 บาท</span>
             </div>
             <div class="fee-row fee-total">
-              <span>ยอดรับสุทธิ</span>
+              <span>ยอดสุทธิ</span>
               <span class="text-danger" id="feeNet">0 บาท</span>
             </div>
           </div>
@@ -182,7 +192,7 @@
           <!-- ─── Actions ─── -->
           <div class="d-flex gap-3">
             <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
-              <i class="fas fa-shield-alt me-2"></i>ยืนยันคำขอถอนเงิน
+              </i>ยืนยันคำขอถอนเงิน
             </button>
           </div>
 
@@ -203,6 +213,8 @@
 {% block extra_js %}
 <script>
   const crdVal         = {{ crd_val }};
+  const depositFeePct  = {{ deposit_fee_pct }}; // ดึงค่าเปอร์เซ็นต์ตรงๆ มาเก็บไว้แสดงผล
+  const incomeFeePct   = {{ income_fee_pct  }}; // ดึงค่าเปอร์เซ็นต์ตรงๆ มาเก็บไว้แสดงผล
   const depositFee     = {{ deposit_fee_pct }} / 100;
   const incomeFee      = {{ income_fee_pct  }} / 100;
   const availDeposit   = {{ available_deposit }};
@@ -227,21 +239,37 @@
   // restore available display ตามประเภทที่เลือก
   document.getElementById('availableDisplay').textContent =
     currentType === 1 ? availIncome : availDeposit;
-
+  recalc();
   // คำนวณใหม่ถ้ามีค่าจาก prev
   if (document.getElementById('wdCredit').value) recalc();
 
   function recalc() {
-    const credits = parseInt(document.getElementById('wdCredit').value) || 0;
-    const fee_pct = currentType === 1 ? incomeFee : depositFee;
-    const gross   = credits * crdVal;
-    const fee     = gross * fee_pct;
-    const net     = gross - fee;
+  const credits = parseInt(document.getElementById('wdCredit').value) || 0;
+      
+      // กำหนดค่าธรรมเนียมตามประเภทที่เลือก
+      let fee_pct_val;
+      let fee_multiplier;
+      
+      if (currentType === 1) { // รายได้
+          fee_pct_val = incomeFeePct;
+          fee_multiplier = incomeFee;
+      } else { // นำฝาก
+          fee_pct_val = depositFeePct;
+          fee_multiplier = depositFee;
+      }
 
-    document.getElementById('wdCashDisplay').value      = gross.toFixed(2);
-    document.getElementById('feeGross').textContent     = gross.toFixed(2) + ' บาท';
-    document.getElementById('feeFee').textContent       = fee.toFixed(2)   + ' บาท';
-    document.getElementById('feeNet').textContent       = net.toFixed(2)   + ' บาท';
-  }
+      const gross   = credits * crdVal;
+      const fee     = gross * fee_multiplier;
+      const net     = gross - fee;
+
+      // อัปเดตข้อความเปอร์เซ็นต์
+      document.getElementById('feePercentLabel').textContent = `(${fee_pct_val}%)`;
+
+      // อัปเดตตัวเลขยอดเงิน
+      document.getElementById('wdCashDisplay').value      = gross.toFixed(2);
+      document.getElementById('feeGross').textContent     = gross.toFixed(2) + ' บาท';
+      document.getElementById('feeFee').textContent       = fee.toFixed(2)   + ' บาท';
+      document.getElementById('feeNet').textContent       = net.toFixed(2)   + ' บาท';
+    }
 </script>
 {% endblock %}

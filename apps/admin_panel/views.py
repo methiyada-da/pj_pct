@@ -16,6 +16,9 @@ from apps.accounts.models import Tutor, Member
 from apps.credits.models  import Refill, Withdrawals
 from apps.courses.models  import Faculty, Major
 
+# นำเข้าฟังก์ชันสร้าง QR Code จากแอป credits
+from apps.credits.views import _generate_promptpay_qr
+
 
 def is_admin(user):
     return user.is_authenticated and user.is_staff
@@ -392,6 +395,8 @@ def member_mgmt(request):
 @user_passes_test(is_admin)
 def payment_mgmt(request):
     """รายการคำขอถอนเครดิตทั้งหมด"""
+    
+    system = System.objects.first()
 
     if request.method == 'POST':
         wd_id  = request.POST.get('wd_id')
@@ -404,7 +409,12 @@ def payment_mgmt(request):
             wd.wd_paid_date = timezone.now()
             wd.wd_cmt       = note or None
             wd.save()
-            # เครดิตถูกหักไปแล้วตอน user ส่งคำขอ ไม่ต้องหักซ้ำ
+            
+            # สะสมค่าธรรมเนียมเมื่อทำรายการสำเร็จ
+            if system:
+                system.total_accumulated_fee += wd.wd_fee
+                system.save(update_fields=['total_accumulated_fee'])
+                
             messages.success(request, f'บันทึกการจ่าย WD{wd.wd_id:05d} เรียบร้อยแล้ว')
 
         elif action == 'reject' and wd.wd_status == 0:
@@ -428,21 +438,37 @@ def payment_mgmt(request):
         qs = qs.filter(wd_status=status_filter)
 
     all_wd         = Withdrawals.objects.all()
-    pending_cash   = all_wd.filter(wd_status=0).aggregate(t=Sum('wd_net_cash'))['t'] or 0
-    paid_cash      = all_wd.filter(wd_status=1).aggregate(t=Sum('wd_net_cash'))['t'] or 0
+    
+    # นับจำนวนรายการ
+    pending_count  = all_wd.filter(wd_status=0).count()
+    paid_count     = all_wd.filter(wd_status=1).count()
     rejected_count = all_wd.filter(wd_status=2).count()
+    
+    # ยอดจ่ายแล้วทั้งหมด
+    paid_cash      = all_wd.filter(wd_status=1).aggregate(t=Sum('wd_net_cash'))['t'] or 0
 
     paginator = Paginator(qs, 15)
     page      = paginator.get_page(request.GET.get('page', 1))
 
+    # สร้าง QR สำหรับรายการที่เป็นพร้อมเพย์
+    for wd in page.object_list:
+        wd.qr_code = None
+        if hasattr(wd, 'wd_promptpay_no') and wd.wd_promptpay_no and wd.wd_promptpay_no != '-':
+            try:
+                wd.qr_code = _generate_promptpay_qr(wd.wd_promptpay_no, amount=float(wd.wd_net_cash))
+            except Exception:
+                pass
+
     return render(request, 'admin_panel/payment_mgmt.html', {
-        'page'          : page,
-        'pending_cash'  : pending_cash,
-        'paid_cash'     : paid_cash,
-        'rejected_count': rejected_count,
-        'status_filter' : status_filter,
-        'active_menu'   : 'payment',
-        'topbar_breadcrumb': 'การชำระเงิน',
+        'page'                  : page,
+        'pending_count'         : pending_count,
+        'paid_count'            : paid_count,
+        'paid_cash'             : paid_cash,
+        'rejected_count'        : rejected_count,
+        'status_filter'         : status_filter,
+        'accumulated_fee'       : system.total_accumulated_fee if system else 0,
+        'active_menu'           : 'payment',
+        'topbar_breadcrumb'     : 'การชำระเงิน',
     })
 
 
