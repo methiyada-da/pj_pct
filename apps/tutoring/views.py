@@ -609,18 +609,38 @@ def manage_course(request, tutc_id=None):
     if tutc_id:
         tutc  = get_object_or_404(TutorCourse, tutc_id=tutc_id, tut_id=tutor)
         rates = TutorRate.objects.filter(tutc_id=tutc).order_by('tut_rate_stu_count')
+        _today    = timezone.localdate()
+        _now_time = timezone.localtime(timezone.now()).time()
         _sds  = list(
-            ScheduleDate.objects.filter(tutc_id=tutc)
+            ScheduleDate.objects.filter(tutc_id=tutc, sd_date__gte=_today)
             .prefetch_related('time_slots')
             .order_by('sd_date')
         )
-        # แนบ weekday (0=จ … 6=อา) ให้แต่ละ sd
+        # ลบวันที่ผ่านมาแล้วที่อาจค้างในฐานข้อมูล (ไม่มี booking อยู่)
+        ScheduleDate.objects.filter(tutc_id=tutc, sd_date__lt=_today).exclude(
+            time_slots__ts_status=1
+        ).delete()
+
+        # แนบ weekday (0=จ … 6=อา) และ available_slots (กรอง slot ที่จองแล้ว + เวลาผ่านออก)
         for sd in _sds:
             sd.weekday = sd.sd_date.weekday()
-        schedule_dates_with_slots = _sds
+            if sd.sd_date == _today:
+                # วันนี้ — ซ่อน slot ที่จองแล้ว และเวลาเริ่มผ่านไปแล้ว
+                sd.available_slots = [
+                    ts for ts in sd.time_slots.all()
+                    if ts.ts_status == 0 and ts.ts_start_time > _now_time
+                ]
+            else:
+                # วันอนาคต — ซ่อนเฉพาะ slot ที่ถูกจองแล้ว
+                sd.available_slots = [ts for ts in sd.time_slots.all() if ts.ts_status == 0]
+            # นับ slot ที่ถูกจองแล้วสำหรับแสดง badge
+            sd.booked_slot_count = sd.time_slots.filter(ts_status=1).count()
+
+        # กรองออกวันที่ไม่มี available slot เลย (ทุก slot จองหมดแล้ว)
+        schedule_dates_with_slots = [sd for sd in _sds if sd.available_slots]
         # จัดกลุ่มตาม weekday โดยใช้ dict (ไม่ขึ้นกับลำดับ)
         _wd_map = {}
-        for sd in _sds:
+        for sd in schedule_dates_with_slots:
             _wd_map.setdefault(sd.weekday, []).append(sd)
         # เรียงกลุ่มตามลำดับวันในสัปดาห์ (จ→อา)
         grouped_schedule = sorted(_wd_map.items(), key=lambda x: x[0])
@@ -636,7 +656,12 @@ def manage_course(request, tutc_id=None):
         crs_id_val   = request.POST.get('crs_id', '').strip()
 
         # ── ตรวจ new_dates + existing_sd ──
-        new_dates        = [d for d in request.POST.getlist('new_date[]') if d.strip()]
+        _today_str = timezone.localdate().isoformat()
+        # กรองเฉพาะวันในอนาคต (ไม่ยอมรับวันที่ผ่านมาแล้ว)
+        new_dates = [
+            d for d in request.POST.getlist('new_date[]')
+            if d.strip() and d.strip() >= _today_str
+        ]
         existing_sd_ids  = [
             key.split('ts_start_')[1].rstrip('[]').split('[')[0]
             for key in request.POST
@@ -794,7 +819,10 @@ def manage_course(request, tutc_id=None):
             tutc.tutc_status  = tutc_status
             tutc.crs_id       = course
             if 'tutc_img' in request.FILES:
-                tutc.tutc_img = request.FILES['tutc_img']
+                img_file = request.FILES['tutc_img']
+                ext = os.path.splitext(img_file.name)[1].lower() or '.jpg'
+                img_file.name = f'tutc_{tutc.tutc_id}{ext}'
+                tutc.tutc_img = img_file
             tutc.save()
             messages.success(request, 'อัปเดตคอร์สเรียบร้อยแล้ว')
         else:
@@ -805,6 +833,10 @@ def manage_course(request, tutc_id=None):
             else:
                 last_num = 0
             new_id = f"TUTC{last_num + 1:03d}"
+            img_file = request.FILES.get('tutc_img')
+            if img_file:
+                ext = os.path.splitext(img_file.name)[1].lower() or '.jpg'
+                img_file.name = f'tutc_{new_id}{ext}'
             tutc = TutorCourse.objects.create(
                 tutc_id      = new_id,
                 tutc_name    = tutc_name,
@@ -813,7 +845,7 @@ def manage_course(request, tutc_id=None):
                 tutc_status  = tutc_status,
                 crs_id       = course,
                 tut_id       = tutor,
-                tutc_img     = request.FILES.get('tutc_img'),
+                tutc_img     = img_file,
             )
             messages.success(request, 'เพิ่มคอร์สเรียบร้อยแล้ว')
 
@@ -833,10 +865,17 @@ def manage_course(request, tutc_id=None):
             for key in request.POST
             if key.startswith('ts_start_') and not key.startswith('ts_start_new_')
         ]
-        # ลบ sd เก่าที่ไม่ได้ส่งมา
+        # ลบ sd เก่าที่ไม่ได้ส่งมา (ผู้ใช้กดลบออก)
+        # เฉพาะที่ไม่มี slot ถูกจอง (ts_status=1) เพื่อไม่ให้กระทบ booking ที่ยังค้างอยู่
         ScheduleDate.objects.filter(tutc_id=tutc).exclude(sd_id__in=[
             int(i) for i in existing_sd_ids if i.isdigit()
-        ]).delete()
+        ]).exclude(time_slots__ts_status=1).delete()
+
+        # ลบวันที่ผ่านมาแล้วที่ค้างในฐานข้อมูล (ไม่มี booking อยู่)
+        _today_save = timezone.localdate()
+        ScheduleDate.objects.filter(
+            tutc_id=tutc, sd_date__lt=_today_save
+        ).exclude(time_slots__ts_status=1).delete()
 
         # อัปเดต time slots ของวันที่มีอยู่
         for sd_id_str in existing_sd_ids:
