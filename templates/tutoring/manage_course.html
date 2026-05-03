@@ -17,6 +17,15 @@
     color: #c8cdd6 !important;
     opacity: 1;
   }
+  /* inline error ใต้ slot-row (real-time) */
+  .slot-rt-err {
+    font-size: .78rem;
+    color: #dc3545;
+    margin-top: -6px;
+    margin-bottom: 6px;
+    padding-left: 2px;
+  }
+  .slot-rt-err i { margin-right: 3px; }
 </style>
 
 <!-- Django success messages only (error handled by JS inline) -->
@@ -185,11 +194,13 @@
       <!-- ── โหมดเพิ่มทีละวัน (manual) ── -->
       <div id="panelManual">
         <div class="d-flex gap-2 align-items-center mb-3">
-          <input type="date" id="newDateInput" class="form-control" style="max-width:180px;">
+          <input type="date" id="newDateInput" class="form-control" style="max-width:180px;"
+                 onchange="document.getElementById('err_newDate').textContent='';">
           <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="addDateSlot()">
             <i class="fas fa-plus me-1"></i> เพิ่มวัน
           </button>
         </div>
+        <div id="err_newDate" class="text-danger small mt-1" style="min-height:1.2em;"></div>
       </div>
 
       <!-- ── โหมดทำซ้ำรายสัปดาห์ (repeat) ── -->
@@ -218,7 +229,11 @@
           </div>
 
           <!-- slot template -->
-          <p class="fw-semibold small mb-2">ช่วงเวลา (ใช้กับทุกวันที่สร้าง)</p>
+          <p class="fw-semibold small mb-1">ช่วงเวลา (ใช้กับทุกวันที่สร้าง)</p>
+          <p class="text-muted mb-2" style="font-size:.75rem;">
+            <i class="fas fa-lightbulb text-warning me-1"></i>
+            แนะนำให้เผื่อเวลาอย่างน้อย <strong>10–30 นาที</strong> ระหว่างช่วง เช่น 09:00–11:00 แล้วช่วงถัดไปเริ่ม 11:30 เพื่อให้ติวเตอร์และผู้เรียนมีเวลาเตรียมตัว
+          </p>
           <div id="repeatSlotList" class="mb-2"></div>
           <button type="button" class="btn btn-outline-secondary btn-sm" style="border-style:dashed;" onclick="addRepeatSlot()">
             <i class="fas fa-plus me-1"></i> เพิ่มช่วงเวลา
@@ -263,13 +278,20 @@
                 <span class="text-muted fw-bold" style="font-size:.75rem; text-transform:uppercase; letter-spacing:.06em;">
                   {{ sd.sd_date|date:'D d/m/Y' }}
                 </span>
-                <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0"
-                        style="width:28px; height:28px;"
-                        onclick="removeSingleDay(this)" title="ลบวันนี้">
-                  <i class="fas fa-trash-alt" style="font-size:.7rem;"></i>
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                  {% if sd.booked_slot_count %}
+                  <span class="badge bg-warning text-dark" style="font-size:.65rem;">
+                    <i class="fas fa-lock me-1"></i>จองแล้ว {{ sd.booked_slot_count }} ช่วง
+                  </span>
+                  {% endif %}
+                  <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0"
+                          style="width:28px; height:28px;"
+                          onclick="removeSingleDay(this)" title="ลบวันนี้">
+                    <i class="fas fa-trash-alt" style="font-size:.7rem;"></i>
+                  </button>
+                </div>
               </div>
-              {% for ts in sd.time_slots.all %}
+              {% for ts in sd.available_slots %}
               <div class="slot-row d-flex align-items-center gap-2 bg-light border rounded-3 px-3 py-2 mb-2">
                 <input type="text" name="ts_start_{{ sd.sd_id }}[]"
                        class="form-control form-control-sm time-input flex-fill" value="{{ ts.ts_start_time|time:'H:i' }}"
@@ -654,13 +676,32 @@ function sortSlotsInGroup(group, addBtn) {
 // ── Add New Date (เพิ่มทีละวัน) — กรุ๊ปเข้ากลุ่มวันเดียวกัน ──
 let newDateCounter = 9000;
 function addDateSlot() {
-  const inp = document.getElementById('newDateInput');
+  const inp    = document.getElementById('newDateInput');
+  const errEl  = document.getElementById('err_newDate');
   const dateStr = inp.value;
-  if (!dateStr) return;
 
-  // ตรวจวันซ้ำ
+  // ล้าง error เก่า
+  errEl.textContent = '';
+  inp.classList.remove('is-invalid');
+
+  if (!dateStr) {
+    errEl.textContent = 'กรุณาเลือกวันที่';
+    inp.classList.add('is-invalid');
+    return;
+  }
+
+  // ตรวจวันซ้ำ — แสดง inline error แทน alert
   if (isDateExists(dateStr)) {
-    alert('วันนี้มีอยู่แล้ว');
+    errEl.textContent = 'วันที่นี้มีอยู่แล้ว กรุณาเลือกวันอื่น';
+    inp.classList.add('is-invalid');
+    return;
+  }
+
+  // ตรวจวันในอดีต — ห้ามเพิ่ม
+  const todayCheck = new Date().toISOString().slice(0, 10);
+  if (dateStr < todayCheck) {
+    errEl.textContent = 'ไม่สามารถเพิ่มวันที่ผ่านมาแล้วได้';
+    inp.classList.add('is-invalid');
     return;
   }
 
@@ -682,7 +723,11 @@ function addDateSlot() {
 
   const empty = document.getElementById('emptySlotMsg');
   if (empty) empty.remove();
+
+  // ล้าง input และ error หลังเพิ่มสำเร็จ
   inp.value = '';
+  inp.classList.remove('is-invalid');
+  errEl.textContent = '';
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -856,6 +901,73 @@ function initTimeInput(input) {
     } else if (this.value !== '') {
       this.classList.add('is-invalid');
     }
+    // ── เรียก real-time validate ทุกครั้งหลังกรอกเวลา ──
+    const group = this.closest('.slot-day-group');
+    if (group) validateSlotsInGroupRealtime(group);
+  });
+}
+
+// ── Real-time validation เวลาภายใน group (ซ้ำ / ทับซ้อน / end≤start) ──
+function validateSlotsInGroupRealtime(group) {
+  const timeRe = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+  const addBtn = group.querySelector('button[onclick*="addSlot"]');
+
+  // ล้าง error เก่าใน group นี้
+  group.querySelectorAll('.slot-rt-err').forEach(el => el.remove());
+  group.querySelectorAll('.slot-row').forEach(r => r.classList.remove('slot-row-error'));
+
+  const rows = [...group.querySelectorAll('.slot-row')];
+  const parsed = [];
+
+  rows.forEach(row => {
+    const inps = row.querySelectorAll('input[type="text"]');
+    if (inps.length < 2) return;
+    const sv = inps[0].value.trim();
+    const ev = inps[1].value.trim();
+    if (!timeRe.test(sv) || !timeRe.test(ev)) return; // รูปแบบไม่ถูก — ปล่อยให้ is-invalid จัดการ
+
+    let rowErr = '';
+
+    // end ต้องมากกว่า start
+    if (ev <= sv) {
+      rowErr = `เวลาสิ้นสุด (${ev}) ต้องมากกว่าเวลาเริ่มต้น (${sv})`;
+    } else {
+      // ตรวจซ้ำและทับซ้อนกับ slot ก่อนหน้า
+      for (const p of parsed) {
+        if (sv === p.start && ev === p.end) {
+          rowErr = `ช่วงเวลา ${sv}–${ev} ซ้ำกับช่วงที่มีอยู่แล้ว`;
+          break;
+        }
+        if (sv < p.end && ev > p.start) {
+          rowErr = `ช่วง ${sv}–${ev} ทับซ้อนกับ ${p.start}–${p.end}`;
+          break;
+        }
+      }
+    }
+
+    if (rowErr) {
+      row.classList.add('slot-row-error');
+      const errDiv = document.createElement('div');
+      errDiv.className = 'slot-rt-err';
+      errDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i>${rowErr}`;
+      row.after(errDiv);
+    } else {
+      // ── เตือน gap น้อยกว่า 10 นาที (ไม่บล็อก) ──
+      if (parsed.length > 0) {
+        const prev = parsed[parsed.length - 1];
+        const prevEndMin = parseInt(prev.end.split(':')[0]) * 60 + parseInt(prev.end.split(':')[1]);
+        const curStartMin = parseInt(sv.split(':')[0]) * 60 + parseInt(sv.split(':')[1]);
+        const gap = curStartMin - prevEndMin;
+        if (gap >= 0 && gap < 10) {
+          const warnDiv = document.createElement('div');
+          warnDiv.className = 'slot-rt-err';
+          warnDiv.style.color = '#fd7e14';
+          warnDiv.innerHTML = `<i class="fas fa-clock"></i> ช่วงเวลาถัดกันน้อยกว่า 10 นาที (${prev.end}–${sv}) ควรเผื่อเวลาอย่างน้อย 10–30 นาทีระหว่างคอร์ส`;
+          row.after(warnDiv);
+        }
+      }
+      parsed.push({ start: sv, end: ev, row });
+    }
   });
 }
 
@@ -913,6 +1025,7 @@ const _timeObserver = new MutationObserver(mutations => {
   }));
 });
 _timeObserver.observe(document.getElementById('slotContainer'), { childList: true, subtree: true });
+_timeObserver.observe(document.getElementById('repeatSlotList'), { childList: true, subtree: true });
 
 // ── Tiered Rate Validation ──
 function validateRateTiers() {
@@ -1112,7 +1225,17 @@ function addRepeatSlot(startVal = '', endVal = '') {
       <i class="fas fa-times"></i>
     </button>`;
   document.getElementById('repeatSlotList').appendChild(row);
-  row.querySelectorAll('.time-input').forEach(initTimeInput);
+
+  // ── ผูก initTimeInput (auto-format HH:MM) และ event ล้าง error ──
+  row.querySelectorAll('.time-input').forEach(inp => {
+    initTimeInput(inp);
+    inp.addEventListener('input', function () {
+      row.querySelectorAll('.time-input').forEach(i => i.classList.remove('is-invalid'));
+      document.querySelectorAll('#repeatSlotList .slot-rt-err').forEach(e => e.remove());
+      const repErr = document.getElementById('repeatError');
+      if (repErr) repErr.classList.add('d-none');
+    });
+  });
 }
 
 function getRepeatSlots() {
@@ -1141,6 +1264,15 @@ function doRepeatGenerate() {
   if (!slots.length)        { showRepeatError('กรุณาเพิ่มช่วงเวลาอย่างน้อย 1 ช่วง'); return; }
 
   const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  // ── ล้าง error highlight ใน repeat slot rows ก่อน ──
+  document.querySelectorAll('.repeat-slot-row').forEach(r => {
+    r.querySelectorAll('.time-input').forEach(i => i.classList.remove('is-invalid'));
+    const errEl = r.nextElementSibling;
+    if (errEl && errEl.classList.contains('slot-rt-err')) errEl.remove();
+  });
+  document.querySelectorAll('#repeatSlotList .slot-rt-err').forEach(e => e.remove());
+
   for (const sl of slots) {
     if (!timeRe.test(sl.start) || !timeRe.test(sl.end)) {
       showRepeatError(`รูปแบบเวลาไม่ถูกต้อง (${sl.start} - ${sl.end})`); return;
@@ -1149,6 +1281,32 @@ function doRepeatGenerate() {
       showRepeatError(`เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น (${sl.start} - ${sl.end})`); return;
     }
   }
+
+  // ── เช็ค overlap ระหว่าง repeat slots ──
+  const slotRows = [...document.querySelectorAll('.repeat-slot-row')];
+  let overlapErr = false;
+  for (let i = 0; i < slots.length; i++) {
+    for (let j = i + 1; j < slots.length; j++) {
+      const a = slots[i], b = slots[j];
+      if (b.start < a.end && b.end > a.start) {
+        // highlight ทั้ง 2 rows
+        [slotRows[i], slotRows[j]].forEach(row => {
+          if (row) row.querySelectorAll('.time-input').forEach(inp => inp.classList.add('is-invalid'));
+        });
+        if (!overlapErr) {
+          // แสดง error ใต้ row ที่ทับซ้อน
+          const errDiv = document.createElement('div');
+          errDiv.className = 'slot-rt-err text-danger small mb-1';
+          errDiv.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>ช่วง ${a.start}–${a.end} ทับซ้อนกับ ${b.start}–${b.end} กรุณาแก้ไขก่อนสร้าง`;
+          const list = document.getElementById('repeatSlotList');
+          if (slotRows[j]) slotRows[j].after(errDiv);
+          else list.appendChild(errDiv);
+        }
+        overlapErr = true;
+      }
+    }
+  }
+  if (overlapErr) { showRepeatError('ช่วงเวลามีการทับซ้อนกัน กรุณาแก้ไขก่อนสร้าง'); return; }
 
   const diffDays = (new Date(endStr + 'T00:00:00') - new Date(startStr + 'T00:00:00')) / 86400000;
   if (diffDays > 365) { showRepeatError('ช่วงวันที่ต้องไม่เกิน 1 ปี'); return; }
@@ -1163,13 +1321,19 @@ function doRepeatGenerate() {
   let cur = new Date(startStr + 'T00:00:00');
   const endDate = new Date(endStr + 'T00:00:00');
 
-  // แยก: วันใหม่ vs วันที่มีอยู่แล้ว
+  // แยก: วันใหม่ vs วันที่มีอยู่แล้ว (และกรองวันในอดีตออก)
+  const todayForRepeat = new Date().toISOString().slice(0, 10);
+  let totalPastSkipped = 0;
   while (cur <= endDate) {
     const jsDay  = cur.getDay();
     const pyDay  = (jsDay + 6) % 7;
     const dateStr = cur.toISOString().slice(0, 10);
     if (jsWeekdays.includes(jsDay)) {
-      byDay.get(pyDay).push(dateStr);
+      if (dateStr < todayForRepeat) {
+        totalPastSkipped++; // วันในอดีต → ข้าม
+      } else {
+        byDay.get(pyDay).push(dateStr);
+      }
     }
     cur.setDate(cur.getDate() + 1);
   }
@@ -1178,7 +1342,7 @@ function doRepeatGenerate() {
   const empty = document.getElementById('emptySlotMsg');
   if (empty) empty.remove();
 
-  let totalCreated = 0, totalUpdated = 0;
+  let totalCreated = 0, totalUpdated = 0, totalSkipped = 0;
 
   weekdays.forEach(pyDay => {
     const dates = byDay.get(pyDay);
@@ -1224,8 +1388,12 @@ function doRepeatGenerate() {
             addedCount++;
           });
           if (addedCount > 0) {
-            sortSlotsInGroup(existingGroup, addSlotBtn); // เรียงหลังเพิ่มแล้ว
+            sortSlotsInGroup(existingGroup, addSlotBtn);
+            validateSlotsInGroupRealtime(existingGroup);
             totalUpdated++;
+          } else {
+            // ซ้ำทั้งหมด → นับ skipped
+            totalSkipped++;
           }
         }
       } else {
@@ -1254,15 +1422,34 @@ function doRepeatGenerate() {
         });
         sortSlotsInGroup(group, addSlotBtn); // เรียงก่อน insert เข้า DOM
         insertIntoWeekdaySection(pyDay, group);
+        validateSlotsInGroupRealtime(group); // เช็ค overlap หลัง insert
         totalCreated++;
       }
     });
   });
 
   let summary = [];
-  if (totalCreated > 0)  summary.push(`✓ สร้างใหม่ ${totalCreated} วัน`);
-  if (totalUpdated > 0)  summary.push(`+ เพิ่มสล็อตใน ${totalUpdated} วันเดิม`);
-  summaryEl.textContent = summary.length ? summary.join(', ') : 'ไม่มีการเปลี่ยนแปลง';
+  if (totalCreated > 0)     summary.push(`✓ สร้างใหม่ ${totalCreated} วัน`);
+  if (totalUpdated > 0)     summary.push(`+ เพิ่มสล็อตใน ${totalUpdated} วันเดิม`);
+  if (totalSkipped > 0)     summary.push(`⚠ ${totalSkipped} วันมีช่วงเวลานี้อยู่แล้ว`);
+  if (totalPastSkipped > 0) summary.push(`✕ ข้าม ${totalPastSkipped} วันที่ผ่านมาแล้ว`);
+  summaryEl.textContent = summary.length ? summary.join('  ') : 'ไม่มีการเปลี่ยนแปลง';
+
+  // ── ล้าง repeat form หลังสร้างเสร็จ ──
+  if (totalCreated > 0 || totalUpdated > 0 || totalSkipped > 0 || totalPastSkipped > 0) {
+    // ล้างวันที่เลือกในสัปดาห์
+    document.querySelectorAll('.weekday-pill.btn-primary').forEach(btn => {
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-outline-secondary');
+    });
+    // ล้าง date range
+    document.getElementById('repeatStart').value = '';
+    document.getElementById('repeatEnd').value   = '';
+    // ล้าง time slots ทั้งหมดแล้วเพิ่มช่องว่างใหม่ 1 ช่วง (ว่างพร้อมกรอก)
+    document.getElementById('repeatSlotList').innerHTML = '';
+    repeatSlotCounter = 0;
+    addRepeatSlot(); // ว่างเปล่า ไม่ใส่ default
+  }
 }
 
 // ── ลบทั้ง section (header + วันทั้งหมดในกลุ่ม) ──
@@ -1285,7 +1472,7 @@ document.getElementById('repeatStart').min = todayStr;
 document.getElementById('repeatEnd').min   = todayStr;
 document.getElementById('newDateInput').min = todayStr;
 
-// เริ่มต้น: เพิ่ม slot template ว่าง 1 ช่วง
-addRepeatSlot('09:00', '10:00');
+// เริ่มต้น: เพิ่ม slot template ว่าง 1 ช่วง (ว่างเปล่า พร้อมกรอก)
+addRepeatSlot();
 </script>
 {% endblock %}
