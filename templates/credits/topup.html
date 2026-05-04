@@ -124,7 +124,7 @@
           <div class="card-body p-4">
             <h6 class="fw-bold mb-4">รายละเอียดการทำธุรกรรม</h6>
 
-            <form method="post" enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" id="topupForm">
               {% csrf_token %}
 
               <!-- hidden field ที่ส่งค่าจริงไป view -->
@@ -215,7 +215,8 @@
               </div>
 
               <div class="d-flex gap-3 mt-2">
-                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+                <button type="button" class="btn btn-primary w-100 py-2 fw-bold"
+                  onclick="openTopupConfirm()">
                   ส่งเพื่อตรวจสอบยืนยัน
                 </button>
               </div>
@@ -228,6 +229,59 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="topupConfirmModal" tabindex="-1" aria-labelledby="topupConfirmLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden;">
+      <div class="modal-header border-0 pb-0 px-4 pt-4">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+               style="width:44px;height:44px;background:#DBEAFE;">
+            <i class="fas fa-coins" style="color:#2563EB;font-size:18px;"></i>
+          </div>
+          <div>
+            <h5 class="fw-bold mb-0" id="topupConfirmLabel">ยืนยันการเติมเครดิต</h5>
+            <div class="text-muted small">กรุณาตรวจสอบข้อมูลก่อนส่ง</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <div class="rounded-3 border p-3 mb-3" style="background:#F8FAFC;">
+          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:14px;">
+            <span class="text-muted">จำนวนเครดิต</span>
+            <span class="fw-bold text-primary" id="cfCredits">—</span>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:14px;">
+            <span class="text-muted">จำนวนเงินที่ต้องโอน</span>
+            <span class="fw-bold text-primary" id="cfMoney">—</span>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:14px;">
+            <span class="text-muted">โอนจากธนาคาร</span>
+            <span class="fw-semibold" id="cfBank">—</span>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:14px;">
+            <span class="text-muted">วันที่โอน</span>
+            <span class="fw-semibold" id="cfDate">—</span>
+          </div>
+        </div>
+        <div class="alert alert-warning small mb-0 py-2">
+          <i class="fas fa-exclamation-triangle me-1"></i>
+          เมื่อส่งแล้วจะไม่สามารถแก้ไขข้อมูลได้ กรุณาตรวจสอบให้ครบถ้วน
+        </div>
+      </div>
+      <div class="modal-footer border-0 px-4 pb-4 pt-0 gap-2">
+        <button type="button" class="btn btn-light border fw-semibold flex-fill"
+                data-bs-dismiss="modal">
+          <i class="fas fa-arrow-left me-1"></i>แก้ไข
+        </button>
+        <button type="button" class="btn btn-primary fw-bold flex-fill"
+        onclick="submitTopupForm()">
+          <i class="fas fa-paper-plane me-1"></i>ยืนยันส่ง
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -258,6 +312,41 @@
         });
     }
   });
+
+  function openTopupConfirm() {
+    // ตรวจ form validity ก่อนเปิด modal
+    const form = document.getElementById('topupForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    // ดึงค่าจากฟิลด์มาแสดงใน modal
+    const credits  = document.getElementById('rfCredits').value || '0';
+    const money    = document.getElementById('moneyDisplay').textContent;
+    const bankSel  = document.querySelector('select[name="bank_from"]');
+    const bankText = bankSel.options[bankSel.selectedIndex]?.text || '—';
+    const txDate   = document.querySelector('input[name="tx_date"]').value || '—';
+    const txTime   = document.querySelector('input[name="tx_time"]').value || '';
+    const slipEl   = document.getElementById('slipFileName');
+    
+
+    document.getElementById('cfCredits').textContent = credits + ' เครดิต';
+    document.getElementById('cfMoney').textContent   = '฿' + money;
+    document.getElementById('cfBank').textContent    = bankText;
+    document.getElementById('cfDate').textContent    = txDate + (txTime ? ' ' + txTime : '');
+
+
+    new bootstrap.Modal(document.getElementById('topupConfirmModal')).show();
+  }
+
+function submitTopupForm() {
+  // สร้าง hidden submit button ใน form แล้วกด
+  // วิธีนี้รับประกันว่า enctype="multipart/form-data" และ CSRF ส่งไปครบ
+  const form = document.getElementById('topupForm');
+  const btn  = document.createElement('button');
+  btn.type   = 'submit';
+  btn.style.display = 'none';
+  form.appendChild(btn);
+  btn.click();
+  }
 
   // ── Thai validation messages ──
   function setThaiValidation(el, emptyMsg, invalidMsg) {

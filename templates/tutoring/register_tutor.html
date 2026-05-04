@@ -190,24 +190,45 @@
               </div>
               <!-- preview (ซ่อนไว้ก่อน) -->
               <div id="cardPreviewInner" class="d-none w-100 text-center" style="pointer-events:none;">
-                <a id="cardPreviewLink" href="#" target="_blank"
-                   style="pointer-events:all;"
-                   onclick="event.stopPropagation()">
-                  <img id="cardPreviewImg"
-                       style="max-height:150px;max-width:100%;border-radius:8px;object-fit:contain;"
-                       alt="preview บัตร">
-                </a>
-                <div class="text-muted mt-2" style="font-size:11px;">คลิกที่รูปเพื่อดูขนาดเต็ม | คลิกกล่องเพื่อเปลี่ยนรูป</div>
+                <img id="cardPreviewImg"
+                     style="max-height:150px;max-width:100%;border-radius:8px;object-fit:contain;
+                            cursor:zoom-in;pointer-events:all;"
+                     alt="preview บัตร"
+                     onclick="openCardModal(this.src)">
+                <div class="mt-2" style="font-size:11px;color:#16A34A;font-weight:600;">
+                  <i class="fas fa-check-circle me-1"></i>อัปโหลดแล้ว
+                </div>
+                <div class="d-flex justify-content-center gap-2 mt-2" style="pointer-events:all;">
+                  <button type="button" class="btn btn-sm btn-outline-primary px-3"
+                          onclick="openCardModal(document.getElementById('cardPreviewImg').src)">
+                    <i class="fas fa-search-plus me-1"></i>ดูรูป
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary px-3"
+                          onclick="document.getElementById('student-card-input').click()">
+                    <i class="fas fa-sync-alt me-1"></i>เปลี่ยนรูป
+                  </button>
+                </div>
               </div>
             </div>
             {% if tutor.tut_student_card %}
             <div id="cardExistingWrap" class="mt-2 text-center">
-              <a href="{{ tutor.tut_student_card.url }}" target="_blank">
-                <img src="{{ tutor.tut_student_card.url }}"
-                     style="max-height:120px;border-radius:8px;border:1px solid #E2E8F0;cursor:pointer;"
-                     alt="บัตรนักศึกษาปัจจุบัน">
-              </a>
-              <div class="text-muted mt-1" style="font-size:11px;">บัตรนักศึกษาปัจจุบัน (คลิกกล่องด้านบนเพื่อเปลี่ยน)</div>
+              <img src="{{ tutor.tut_student_card.url }}"
+                   style="max-height:120px;border-radius:8px;border:1px solid #E2E8F0;cursor:zoom-in;"
+                   alt="บัตรนักศึกษาปัจจุบัน"
+                   onclick="openCardModal(this.src)">
+              <div class="d-flex justify-content-center gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-outline-primary px-3"
+                        onclick="openCardModal('{{ tutor.tut_student_card.url }}')">
+                  <i class="fas fa-search-plus me-1"></i>ดูรูป
+                </button>
+                {% if not is_view_only %}
+                <button type="button" class="btn btn-sm btn-outline-secondary px-3"
+                        onclick="document.getElementById('student-card-input').click()">
+                  <i class="fas fa-sync-alt me-1"></i>เปลี่ยนรูป
+                </button>
+                {% endif %}
+              </div>
+              <div class="text-muted mt-1" style="font-size:11px;">บัตรนักศึกษาปัจจุบัน</div>
             </div>
             {% endif %}
           </div>
@@ -309,10 +330,36 @@
 
   </div>
 </div>
+
+<!-- Lightbox modal บัตรนักศึกษา -->
+<div class="modal fade" id="cardModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:90vw;width:fit-content;">
+    <div class="modal-content border-0" style="background:transparent;">
+      <div class="modal-body p-0 position-relative">
+        <button type="button" data-bs-dismiss="modal"
+                style="position:absolute;top:-12px;right:-12px;z-index:10;
+                       background:#fff;border:none;border-radius:50%;
+                       width:32px;height:32px;font-size:16px;
+                       box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;">
+          <i class="fas fa-times text-secondary"></i>
+        </button>
+        <img id="cardModalImg" src="" alt="บัตรนักศึกษาขนาดเต็ม"
+             style="max-width:85vw;max-height:85vh;border-radius:10px;display:block;object-fit:contain;">
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
+  /* ── เปิด lightbox บัตรนักศึกษา ── */
+  function openCardModal(src) {
+    document.getElementById('cardModalImg').src = src;
+    new bootstrap.Modal(document.getElementById('cardModal')).show();
+  }
+
   /* ── preview บัตรนักศึกษา (inline ในกล่อง) ── */
   document.getElementById('student-card-input')?.addEventListener('change', function () {
     const file = this.files[0];
@@ -321,16 +368,17 @@
     const placeholder = document.getElementById('cardUploadPlaceholder');
     const preview     = document.getElementById('cardPreviewInner');
     const img         = document.getElementById('cardPreviewImg');
-    const link        = document.getElementById('cardPreviewLink');
     const existing    = document.getElementById('cardExistingWrap');
-    img.src   = url;
-    link.href = url;
+    img.src = url;
     placeholder.classList.add('d-none');
     preview.classList.remove('d-none');
     if (existing) existing.classList.add('d-none');
     // เปลี่ยน border เป็นสีเขียว
     document.getElementById('cardUploadZone').style.borderColor = '#16A34A';
     document.getElementById('cardUploadZone').style.background  = '#F0FDF4';
+    // ปิด file input overlay — ใช้ปุ่ม "เปลี่ยนรูป" แทน
+    this.style.pointerEvents = 'none';
+    this.style.zIndex        = '-1';
   });
 
   /* ── auto-show no-profile modal on page load ── */
