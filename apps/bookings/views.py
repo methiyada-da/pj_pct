@@ -96,7 +96,7 @@ def booking_reject(request, bk_id):
             bk.bk_cmt    = request.POST.get('reject_reason', '').strip() or None
             bk.save()
 
-        messages.error(request, f'ปฏิเสธงาน BK{bk.bk_id:05d} และคืนเครดิตให้ผู้เรียนแล้ว')
+        messages.error(request, f'ปฏิเสธคำขอจอง BK{bk.bk_id:05d} และคืนเครดิตให้ผู้เรียนแล้ว')
     except Exception:
         messages.error(request, 'เกิดข้อผิดพลาด กรุณาลองใหม่')
 
@@ -182,12 +182,13 @@ def tutoring_activity(request, bk_id):
         with transaction.atomic():
             if activity is None:
                 activity = TutoringActivity(bk_id=bk)
-            if request.FILES.get('ta_img1'):
-                activity.ta_img1 = request.FILES['ta_img1']
-            if request.FILES.get('ta_img2'):
-                activity.ta_img2 = request.FILES['ta_img2']
-            if request.FILES.get('ta_img3'):
-                activity.ta_img3 = request.FILES['ta_img3']
+            import os
+            for field, key in [('ta_img1', 'ta_img1'), ('ta_img2', 'ta_img2'), ('ta_img3', 'ta_img3')]:
+                if request.FILES.get(key):
+                    img = request.FILES[key]
+                    ext = os.path.splitext(img.name)[1].lower() or '.jpg'
+                    img.name = f'activity_bk_id={bk.bk_id}_{field}{ext}'
+                    setattr(activity, field, img)
             if desc:
                 activity.ta_desc = desc
             activity.save()

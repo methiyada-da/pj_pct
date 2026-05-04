@@ -15,7 +15,7 @@ class Member(models.Model):
     user           = models.OneToOneField(User, on_delete=models.CASCADE, related_name='member')
     mb_full_name   = models.CharField(max_length=100, verbose_name="ชื่อและนามสกุล")
     mb_email       = models.CharField(max_length=50,  verbose_name="อีเมลมหาวิทยาลัย")
-    mb_img         = models.ImageField(upload_to='member/', blank=True, null=True, verbose_name="รูปโปรไฟล์")
+    mb_img         = models.ImageField(upload_to='accounts/member_profile/', blank=True, null=True, verbose_name="รูปโปรไฟล์")
     mb_deposit_crd = models.IntegerField(default=0, verbose_name="เครดิตนำฝาก")
     mb_income_crd  = models.IntegerField(default=0, verbose_name="เครดิตรายได้")
     mb_status      = models.IntegerField(choices=STATUS_CHOICES, default=1, verbose_name="สถานะ")
@@ -76,7 +76,7 @@ class Tutor(models.Model):
 
     # [เพิ่มใหม่] รูปบัตรนักศึกษาสำหรับยืนยันตัวตน
     tut_student_card = models.ImageField(
-        upload_to='tutor_cards/',
+        upload_to='tutoring/tutor_student_cards/',
         blank=True, null=True,
         verbose_name="รูปบัตรนักศึกษา"
     )

@@ -14,7 +14,7 @@ class TutorCourse(models.Model):
     tutc_id      = models.CharField(max_length=13, primary_key=True, verbose_name="รหัสรายวิชาที่รับสอน")
     tutc_name    = models.CharField(max_length=150, verbose_name="ชื่อรายวิชาเพื่อโฆษณา")
     tutc_desc    = models.TextField(blank=True, null=True, verbose_name="รายละเอียดเนื้อหา")
-    tutc_img     = models.ImageField(upload_to='tutor_course/', blank=True, null=True, verbose_name="รูปปก")
+    tutc_img     = models.ImageField(upload_to='tutoring/tutor_img_course/', blank=True, null=True, verbose_name="รูปปก")
     tutc_max_stu = models.IntegerField(verbose_name="จำนวนรับสูงสุด (คน)")
     tutc_status  = models.IntegerField(choices=STATUS_CHOICES, default=1, verbose_name="สถานะการเปิดสอน")
     crs_id       = models.ForeignKey(

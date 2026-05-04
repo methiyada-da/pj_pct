@@ -173,3 +173,6 @@ MESSAGE_TAGS = {
     messages_constants.ERROR:   'danger',
 }
  
+# ── Dev Mode: ข้ามการยืนยันอีเมล ────────────────────────────
+# ตั้งเป็น False เมื่อ deploy จริง
+SKIP_EMAIL_VERIFICATION = True

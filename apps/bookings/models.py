@@ -77,9 +77,9 @@ class TutoringActivity(models.Model):
         db_column='bk_id',
         verbose_name="รหัสการจองเรียน"
     )
-    ta_img1 = models.ImageField(upload_to='tutoring/', blank=True, null=True, verbose_name="รูปภาพการสอน 1")
-    ta_img2 = models.ImageField(upload_to='tutoring/', blank=True, null=True, verbose_name="รูปภาพการสอน 2")
-    ta_img3 = models.ImageField(upload_to='tutoring/', blank=True, null=True, verbose_name="รูปภาพการสอน 3")
+    ta_img1 = models.ImageField(upload_to='tutoring/activity/', blank=True, null=True, verbose_name="รูปภาพการสอน 1")
+    ta_img2 = models.ImageField(upload_to='tutoring/activity/', blank=True, null=True, verbose_name="รูปภาพการสอน 2")
+    ta_img3 = models.ImageField(upload_to='tutoring/activity/', blank=True, null=True, verbose_name="รูปภาพการสอน 3")
     ta_desc = models.TextField(blank=True, null=True, verbose_name="รายละเอียดเพิ่มเติม")
 
     class Meta:

@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import MemberRegisterForm
 from apps.courses.models import Major
+import os
 
 
 # ─────────────────────────────────────────────
@@ -101,8 +102,9 @@ def register_view(request):
         if form.is_valid():
             from django.core.signing import dumps
             from django.contrib.auth.hashers import make_password
-            from django.core.mail import send_mail
             from django.conf import settings as conf_settings
+            from django.contrib.auth.models import User as AuthUser
+            from django.db import transaction
 
             data = {
                 'first_name': form.cleaned_data['first_name'],
@@ -111,6 +113,49 @@ def register_view(request):
                 'email':      form.cleaned_data['mb_email'],
                 'password':   make_password(form.cleaned_data['password1']),
             }
+
+            # ── โหมด dev: ข้ามการส่งอีเมล สร้างบัญชีทันที ──────────
+            if getattr(conf_settings, 'SKIP_EMAIL_VERIFICATION', False):
+                from apps.accounts.models import Member
+                email_addr = data['email']
+                base = email_addr.split('@')[0]
+                username, n = base, 1
+                while AuthUser.objects.filter(username=username).exists():
+                    username = f'{base}{n}'
+                    n += 1
+                try:
+                    major = Major.objects.get(pk=data['mj_id'])
+                except Major.DoesNotExist:
+                    major = None
+                try:
+                    with transaction.atomic():
+                        user = AuthUser(
+                            username=username,
+                            email=email_addr,
+                            first_name=data['first_name'],
+                            last_name=data['last_name'],
+                            password=data['password'],
+                        )
+                        user.save()
+                        Member.objects.create(
+                            user=user,
+                            mb_full_name=f"{data['first_name']} {data['last_name']}".strip(),
+                            mb_email=email_addr,
+                            mb_img=None,
+                            mj_id=major,
+                        )
+                    login(request, user)
+                    messages.success(request, f'[DEV] สมัครสมาชิกสำเร็จ ยินดีต้อนรับ, {user.first_name}!')
+                    return redirect('home')
+                except Exception as e:
+                    messages.error(request, f'เกิดข้อผิดพลาด: {e}')
+                    return render(request, 'accounts/register.html', {
+                        'active_tab': 'register', 'form': form, 'faculties': faculties
+                    })
+
+            # ── โหมด production: ส่งอีเมลยืนยันตามปกติ ──────────────
+            from django.core.mail import send_mail
+
             token      = dumps(data, salt='email-verify')
             verify_url = request.build_absolute_uri(
                 f"/accounts/verify-email/?token={token}"
@@ -251,12 +296,15 @@ def profile_view(request):
         action = request.POST.get('action')
 
         if action == 'photo':
-            # อัปเดตเฉพาะรูปโปรไฟล์ — ไม่แตะรหัสผ่านหรือข้อมูลอื่น
-            if 'mb_img' in request.FILES:
-                member.mb_img = request.FILES['mb_img']
-                member.save(update_fields=['mb_img'])
-                messages.success(request, 'เปลี่ยนรูปโปรไฟล์เรียบร้อยแล้ว')
-            return redirect('accounts:profile')
+                    # อัปเดตเฉพาะรูปโปรไฟล์ — ไม่แตะรหัสผ่านหรือข้อมูลอื่น
+                    if 'mb_img' in request.FILES:
+                        img = request.FILES['mb_img']
+                        ext = os.path.splitext(img.name)[1].lower() or '.jpg'
+                        img.name = f'member_img_id={member.pk}{ext}'
+                        member.mb_img = img
+                        member.save(update_fields=['mb_img'])
+                        messages.success(request, 'เปลี่ยนรูปโปรไฟล์เรียบร้อยแล้ว')
+                    return redirect('accounts:profile')
 
         elif action == 'password':
             # เปลี่ยนเฉพาะรหัสผ่าน — ไม่แตะรูปหรือข้อมูลอื่น
