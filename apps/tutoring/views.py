@@ -302,7 +302,7 @@ def booking_create(request, tutc_id):
 
         messages.success(
             request,
-            f'จองสำเร็จ! ติวเตอร์จะทำการยืนยันคำขอจองให้โดยเร็ว (ล็อกเครดิต {total_credit} เครดิต)'
+            f'จองสำเร็จ! ติวเตอร์จะทำการยืนยันคำขอจองให้โดยเร็ว (ล็อกจำนวน {total_credit} เครดิต)'
         )
         return redirect('bookings:student_bookings')
     except Exception:
@@ -475,7 +475,7 @@ def _member_context(member):
 def _rename_student_card(file, tut_pk):
     """เปลี่ยนชื่อไฟล์บัตรนักศึกษาเป็น tut_id{pk}.ext"""
     ext  = os.path.splitext(file.name)[1].lower() or '.jpg'
-    file.name = f'tut_id{tut_pk}{ext}'
+    file.name = f'tut_stu_card_id={tut_pk}{ext}'
     return file
 
 
