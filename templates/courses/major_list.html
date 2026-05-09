@@ -2,11 +2,6 @@
 {% block title %}สาขา{% endblock %}
 
 {% block content %}
-<div class="page-breadcrumb">
-  <a href="#">การจัดการข้อมูลพื้นฐาน</a>
-  <span class="sep"><i class="bi bi-chevron-right" style="font-size:10px;"></i></span>
-  <span class="current">สาขา</span>
-</div>
 
 <div class="page-header">
   <div>
@@ -50,57 +45,57 @@
       {% endif %}
     </form>
   </div>
-
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th style="width:100px;">รหัสสาขา</th>
-        <th>ชื่อสาขา</th>
-        <th style="width:100px;">ชื่อย่อ</th>
-        <th>คณะ</th>
-        <th style="width:100px;">การปฏิบัติ</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for obj in page_obj %}
-      <tr>
-        <td><code style="font-size:13px;color:#6B7280;">MJ{{ obj.mj_id|stringformat:"03d" }}</code></td>
-        <td>
-          <strong>{{ obj.mj_name }}</strong>
-          {% if obj.mj_desc %}
-          <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">{{ obj.mj_desc|truncatechars:60 }}</div>
-          {% endif %}
-        </td>
-        <td><span class="badge-count" style="background:#F0FDF4;color:#16A34A;">{{ obj.mj_abbr }}</span></td>
-        <td style="font-size:13px;color:#6B7280;">{{ obj.fac_id.fac_name }}</td>
-        <td>
-          <div style="display:flex;gap:6px;">
-            <button class="btn-action btn-edit"
-                    onclick="openEditMajor({{ obj.mj_id }}, '{{ obj.mj_name|escapejs }}', '{{ obj.mj_abbr|escapejs }}', '{{ obj.mj_desc|default:''|escapejs }}', {{ obj.fac_id_id }})"
-                    title="แก้ไข">
-              <i class="bi bi-pencil"></i>
-            </button>
-            <button class="btn-action btn-del"
-                    onclick="openDeleteMajor({{ obj.mj_id }}, '{{ obj.mj_name|escapejs }}')"
-                    title="ลบ">
-              <i class="bi bi-trash3"></i>
-            </button>
-          </div>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="5">
-          <div class="empty-state">
-            <i class="bi bi-diagram-3 d-block"></i>
-            <p>ยังไม่มีข้อมูลสาขา{% if q %} ที่ตรงกับ "{{ q }}"{% endif %}</p>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
+  <div class="table-responsive-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:100px;">รหัสสาขา</th>
+          <th>ชื่อสาขา</th>
+          <th style="width:100px;">ชื่อย่อ</th>
+          <th>คณะ</th>
+          <th style="width:100px;">การปฏิบัติ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for obj in page_obj %}
+        <tr>
+          <td><code style="font-size:13px;color:#6B7280;">MJ{{ obj.mj_id|stringformat:"03d" }}</code></td>
+          <td>
+            <strong>{{ obj.mj_name }}</strong>
+            {% if obj.mj_desc %}
+            <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">{{ obj.mj_desc|truncatechars:60 }}</div>
+            {% endif %}
+          </td>
+          <td><span class="badge-count" style="background:#F0FDF4;color:#16A34A;">{{ obj.mj_abbr }}</span></td>
+          <td style="font-size:13px;color:#6B7280;">{{ obj.fac_id.fac_name }}</td>
+          <td>
+            <div style="display:flex;gap:6px;">
+              <button class="btn-action btn-edit"
+                      onclick="openEditMajor({{ obj.mj_id }}, '{{ obj.mj_name|escapejs }}', '{{ obj.mj_abbr|escapejs }}', '{{ obj.mj_desc|default:''|escapejs }}', {{ obj.fac_id_id }})"
+                      title="แก้ไข">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn-action btn-del"
+                      onclick="openDeleteMajor({{ obj.mj_id }}, '{{ obj.mj_name|escapejs }}')"
+                      title="ลบ">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5">
+            <div class="empty-state">
+              <i class="bi bi-diagram-3 d-block"></i>
+              <p>ยังไม่มีข้อมูลสาขา{% if q %} ที่ตรงกับ "{{ q }}"{% endif %}</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   <div class="pagination-wrap">
     <div class="pagination-info">
       แสดง {{ page_obj.start_index }}–{{ page_obj.end_index }} จาก {{ page_obj.paginator.count }} สาขา

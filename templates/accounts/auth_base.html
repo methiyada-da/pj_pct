@@ -1,41 +1,13 @@
+{% extends 'main/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>เข้าสู่ระบบ / สมัครสมาชิก — Puean Chuay Tu</title>
 
-  <!-- Library  -->
-  <link rel="stylesheet" href="{% static 'btt5/css/bootstrap.min.css' %}">
-  <link rel="stylesheet" href="{% static 'faws6/css/all.min.css' %}">
+{% block title %}เข้าสู่ระบบ / สมัครสมาชิก — Puean Chuay Tu{% endblock %}
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="{% static 'css/main.css' %}">
-  <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/auth.css' %}">
+{% endblock %}
 
-</head>
-<body class="auth-body">
-
-<!-- Minimal Navbar -->
-<nav class="navbar navbar-expand-lg pct-navbar">
-  <div class="container">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'home' %}">
-      <div class="brand-icon"><i class="fas fa-graduation-cap"></i></div>
-      <span class="brand-name">Puean Chuay Tu</span>
-    </a>
-    <div class="d-flex align-items-center gap-3">
-      <a class="nav-link" href="{% url 'home' %}">หน้าแรก</a>
-      <a class="nav-link" href="#">ค้นหาติวเตอร์</a>
-      {% if active_tab == 'login' %}
-        <a class="btn btn-primary btn-sm px-4" href="{% url 'accounts:register' %}">สมัครสมาชิก</a>
-      {% else %}
-        <a class="btn btn-outline-primary btn-sm px-4" href="{% url 'accounts:login' %}">เข้าสู่ระบบ</a>
-      {% endif %}
-    </div>
-  </div>
-</nav>
-
+{% block content %}
 <div class="auth-wrapper container py-5">
 
   <!-- Tab Navigation -->
@@ -55,7 +27,7 @@
 </div>
 
 <!-- Footer note -->
-<div class="text-center pb-4">
+<div class="text-center pb-3">
   <small class="text-muted">
     © 2024 Puean Chuay Tutor.
     {% if active_tab == 'login' %}
@@ -65,8 +37,4 @@
     {% endif %}
   </small>
 </div>
-
-<script src="{% static 'btt5/js/bootstrap.bundle.min.js' %}"></script>
-{% block extra_js %}{% endblock %}
-</body>
-</html>
+{% endblock %}
