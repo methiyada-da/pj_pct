@@ -155,93 +155,20 @@ def register_view(request):
 
             # ── โหมด production: ส่งอีเมลยืนยันตามปกติ ──────────────
             from django.core.mail import send_mail
+            from django.template.loader import render_to_string
 
             token      = dumps(data, salt='email-verify')
             verify_url = request.build_absolute_uri(
                 f"/accounts/verify-email/?token={token}"
             )
             cancel_url = request.build_absolute_uri("/accounts/verify-email/cancel/")
-            html_message = f"""
-<!DOCTYPE html>
-<html lang="th">
-<body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
-    <tr><td align="center">
-      <table width="520" cellpadding="0" cellspacing="0"
-             style="background:#ffffff;border-radius:12px;overflow:hidden;
-                    box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-
-        <!-- Header -->
-        <tr>
-          <td style="background:#4f46e5;padding:28px 32px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">
-              เพื่อนช่วยติว
-            </h1>
-          </td>
-        </tr>
-
-        <!-- Body -->
-        <tr>
-          <td style="padding:36px 32px;">
-            <p style="margin:0 0 8px;font-size:16px;color:#1f2937;">
-              สวัสดี <strong>{data['first_name']} {data['last_name']}</strong>,
-            </p>
-            <p style="margin:0 0 24px;font-size:15px;color:#4b5563;line-height:1.6;">
-              มีคำขอสมัครสมาชิกใหม่สำหรับบัญชีนี้<br>
-              กรุณากดปุ่มด้านล่างเพื่อยืนยันการสมัคร
-            </p>
-
-            <!-- Confirm button -->
-            <table cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
-              <tr>
-                <td style="border-radius:8px;background:#4f46e5;">
-                  <a href="{verify_url}"
-                     style="display:inline-block;padding:14px 36px;
-                            color:#ffffff;font-size:15px;font-weight:600;
-                            text-decoration:none;border-radius:8px;">
-                    ✅ ยืนยันการสมัครสมาชิก
-                  </a>
-                </td>
-              </tr>
-            </table>
-
-            <!-- Cancel button -->
-            <table cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="border-radius:8px;border:1px solid #d1d5db;">
-                  <a href="{cancel_url}"
-                     style="display:inline-block;padding:13px 36px;
-                            color:#6b7280;font-size:15px;font-weight:600;
-                            text-decoration:none;border-radius:8px;">
-                    ❌ ไม่ใช่ฉัน / ยกเลิก
-                  </a>
-                </td>
-              </tr>
-            </table>
-
-            <p style="margin:28px 0 0;font-size:13px;color:#9ca3af;">
-              ลิงก์นี้จะหมดอายุใน <strong>24 ชั่วโมง</strong><br>
-              หากไม่ได้สมัครสมาชิก กรุณาเพิกเฉยต่ออีเมลนี้
-            </p>
-          </td>
-        </tr>
-
-        <!-- Footer -->
-        <tr>
-          <td style="background:#f9fafb;padding:16px 32px;text-align:center;
-                     border-top:1px solid #e5e7eb;">
-            <p style="margin:0;font-size:12px;color:#9ca3af;">
-              © เพื่อนช่วยติว — RMUTI
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>
-"""
+            html_message = render_to_string('accounts/email_verify.html', {
+                'first_name' : data['first_name'],
+                'last_name'  : data['last_name'],
+                'verify_url' : verify_url,
+                'cancel_url' : cancel_url,
+            })
+            
             try:
                 send_mail(
                     subject='[เพื่อนช่วยติว] ยืนยันอีเมลของคุณ',
@@ -521,3 +448,4 @@ def verify_email_view(request):
     login(request, user)
     messages.success(request, f'ยืนยันอีเมลเรียบร้อย ยินดีต้อนรับสู่เพื่อนช่วยติว, {user.first_name}!')
     return redirect('home')
+

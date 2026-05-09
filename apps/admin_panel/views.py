@@ -21,7 +21,11 @@ from apps.credits.views import _generate_promptpay_qr
 
 
 def is_admin(user):
-    return user.is_authenticated and user.is_staff
+    # ตรวจว่าเป็น staff และต้องเป็น admin ที่ผูกกับ System เท่านั้น
+    # ป้องกัน superuser เข้า admin panel
+    if not user.is_authenticated or not user.is_staff:
+        return False
+    return System.objects.filter(admin=user).exists()
 
 
 # ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -582,3 +586,47 @@ def report_mgmt(request):
         'active_menu'    : 'report_mgmt',
         'topbar_breadcrumb': 'รายงานปัญหา',
     })
+    
+# ─── Admin Setup (ครั้งแรก) ──────────────────────────────────────────────────
+
+def admin_setup(request):
+    """หน้าลงทะเบียน admin ครั้งแรก — เข้าได้เฉพาะตอนยังไม่มี admin ในระบบ"""
+    from django.contrib.auth import login as auth_login
+
+    system = System.objects.first()
+
+    # ถ้ามี admin แล้ว → เด้งไปหน้า home
+    if system and system.admin is not None:
+        return redirect('home')
+
+    form = AdminUserForm(request.POST or None)
+
+    if request.method == 'POST':
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.is_staff     = True
+            user.is_superuser = False
+            user.save()
+
+            # ถ้ายังไม่มี System → สร้างขึ้นมาก่อน
+            if not system:
+                system = System.objects.create(
+                    admin                    = user,
+                    uni_name                 = '',
+                    bank_name                = '',
+                    acc_name                 = '',
+                    acc_no                   = '',
+                    crd_val                  = 0,
+                    deposit_withdraw_fee_pct = 0,
+                    income_withdraw_fee_pct  = 0,
+                )
+            else:
+                system.admin = user
+                system.save(update_fields=['admin'])
+
+            # login อัตโนมัติหลังสร้าง admin สำเร็จ
+            auth_login(request, user)
+            messages.success(request, f'สร้างบัญชีผู้ดูแลระบบ "{user.username}" เรียบร้อยแล้ว')
+            return redirect('admin_panel:system_settings')
+
+    return render(request, 'admin_panel/admin_setup.html', {'form': form})
