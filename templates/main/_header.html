@@ -1,147 +1,159 @@
 {% load static %}
 <!-- ===== NAVBAR ===== -->
-<nav class="navbar navbar-expand-lg pct-navbar">
+<nav class="navbar pct-navbar">
   <div class="container">
     <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'home' %}">
       <div class="brand-icon"><i class="fas fa-graduation-cap"></i></div>
       <span class="brand-name">Puean Chuay Tu</span>
     </a>
 
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-            data-bs-target="#navMain" aria-controls="navMain">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+    <!-- icon แจ้งเตือน + ข้อความ แสดงเสมอเมื่อ login (ทั้ง mobile และ desktop) -->
+    <div class="d-flex align-items-center gap-1 ms-auto me-2">
+      {% if user.is_authenticated %}
+        <!-- bell -->
+        <div class="dropdown">
+          <a id="notifBell" class="nav-link nav-icon position-relative px-2" href="#"
+          data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="far fa-bell"></i>
+            <span id="notif-badge"
+                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                  style="font-size:0.55rem;padding:.25em .45em;min-width:16px;min-height:16px;"></span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end shadow p-0"
+              style="min-width:320px;max-width:95vw;max-height:460px;overflow-y:auto;">
+            <li class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center sticky-top bg-white">
+              <span class="fw-semibold small">การแจ้งเตือน</span>
+              <a href="#" class="small text-primary text-decoration-none" onclick="markAllRead(event)">อ่านทั้งหมด</a>
+            </li>
+            <li id="notif-empty" class="px-3 py-3 text-center text-muted small">ไม่มีการแจ้งเตือน</li>
+          </ul>
+        </div>
+        <!-- message -->
+        <a class="nav-link nav-icon position-relative px-2" href="{% url 'messaging:inbox' %}">
+          <i class="far fa-comment-dots"></i>
+          {% if total_unread > 0 %}
+          <span id="msg-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                style="font-size:0.55rem;padding:.25em .45em;min-width:16px;min-height:16px;">{{ total_unread }}</span>
+          {% else %}
+          <span id="msg-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                style="font-size:0.55rem;padding:.25em .45em;min-width:16px;min-height:16px;"></span>
+          {% endif %}
+        </a>
+      {% endif %}
+    </div>
 
-    <div class="collapse navbar-collapse" id="navMain">
-      <ul class="navbar-nav ms-auto align-items-center gap-2">
-        <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"
-             href="{% url 'home' %}">หน้าแรก</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{% url 'tutoring:search_tutors' %}">ค้นหาติวเตอร์</a>
-        </li>
+    <!-- desktop links -->
+    <div class="d-none d-lg-flex align-items-center gap-2">
+      <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"
+         href="{% url 'home' %}">หน้าแรก</a>
+      <a class="nav-link" href="{% url 'tutoring:search_tutors' %}">ค้นหาติวเตอร์</a>
+
+      {% if user.is_authenticated %}
+        <!-- avatar dropdown -->
+        <div class="dropdown">
+          <a class="nav-link p-0 ms-1" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+            {% if user.member.mb_img %}
+              <img src="{{ user.member.mb_img.url }}" class="avatar-sm" alt="profile">
+            {% else %}
+              <div class="avatar-sm avatar-placeholder">{{ user.member.mb_full_name|first|upper }}</div>
+            {% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end pct-dropdown">
+            <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
+              <i class="fas fa-user-circle me-2"></i>จัดการโปรไฟล์</a></li>
+            <li>
+              {% if user.member.tutor.tut_status == 1 %}
+                <a class="dropdown-item" href="{% url 'tutoring:tutor_manage' %}">
+                  <i class="fas fa-book-open me-2"></i>จัดการข้อมูลติวเตอร์</a>
+              {% else %}
+                <a class="dropdown-item" href="{% url 'tutoring:register_tutor' %}">
+                  <i class="fas fa-chalkboard-teacher me-2"></i>สมัครเป็นติวเตอร์</a>
+              {% endif %}
+            </li>
+            <li><a class="dropdown-item" href="{% url 'credits:credit' %}">
+              <i class="fas fa-coins me-2"></i>เครดิต</a></li>
+            <li><a class="dropdown-item" href="{% url 'bookings:student_bookings' %}">
+              <i class="fas fa-calendar-check me-2"></i>การจองของฉัน</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <form method="post" action="{% url 'accounts:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item text-danger">
+                  <i class="fas fa-sign-out-alt me-2"></i>ออกจากระบบ</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+      {% else %}
+        <a class="btn btn-primary btn-sm px-4" href="{% url 'accounts:register' %}">สมัครสมาชิก</a>
+        <a class="btn btn-outline-primary btn-sm px-4" href="{% url 'accounts:login' %}">เข้าสู่ระบบ</a>
+      {% endif %}
+    </div>
+
+    <!-- mobile hamburger → dropdown popup -->
+    <div class="d-lg-none dropdown">
+      <button class="navbar-toggler border-0" type="button"
+              data-bs-toggle="dropdown" data-bs-auto-close="outside"
+              aria-expanded="false">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end pct-mobile-menu shadow">
+        <li><a class="dropdown-item" href="{% url 'home' %}">
+          <i class="fas fa-home me-2 text-muted"></i>หน้าแรก</a></li>
+        <li><a class="dropdown-item" href="{% url 'tutoring:search_tutors' %}">
+          <i class="fas fa-search me-2 text-muted"></i>ค้นหาติวเตอร์</a></li>
 
         {% if user.is_authenticated %}
-          <!-- Authenticated user icons + dropdown -->
-          <li class="nav-item dropdown">
-            <a class="nav-link nav-icon position-relative" href="#"
-               id="notifBell" role="button"
-               data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="far fa-bell"></i>
-              <span id="notif-badge"
-                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
-                    style="font-size:0.55rem; padding:.25em .45em; min-width:16px; min-height:16px;"></span>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end shadow p-0"
-                style="min-width:340px;max-height:460px;overflow-y:auto;">
-              <li class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center sticky-top bg-white">
-                <span class="fw-semibold small">การแจ้งเตือน</span>
-                <a href="#" class="small text-primary text-decoration-none" onclick="markAllRead(event)">อ่านทั้งหมด</a>
-              </li>
-              <li id="notif-empty" class="px-3 py-3 text-center text-muted small">
-                ไม่มีการแจ้งเตือน
-              </li>
-            </ul>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link nav-icon position-relative" href="{% url 'messaging:inbox' %}">
-              <i class="far fa-comment-dots"></i>
-              {% if total_unread > 0 %}
-              <span id="msg-badge"
-                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                    style="font-size:0.55rem; padding:.25em .45em; min-width:16px; min-height:16px;">{{ total_unread }}</span>
-              {% else %}
-              <span id="msg-badge"
-                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
-                    style="font-size:0.55rem; padding:.25em .45em; min-width:16px; min-height:16px;"></span>
-              {% endif %}
-            </a>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link p-0" href="#" id="userDropdown"
-               role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              {% if user.member.mb_img %}
-                <img src="{{ user.member.mb_img.url }}" class="avatar-sm" alt="profile">
-              {% else %}
-                <div class="avatar-sm avatar-placeholder">
-                  {{ user.member.mb_full_name|first|upper }}
-                </div>
-              {% endif %}
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end pct-dropdown" aria-labelledby="userDropdown">
-              <li>
-                <a class="dropdown-item" href="{% url 'accounts:profile' %}">
-                  <i class="fas fa-user-circle me-2"></i>จัดการโปรไฟล์
-                </a>
-              </li>
-              <li>
-                {% if user.member.tutor.tut_status == 1 %}
-                  <a class="dropdown-item" href="{% url 'tutoring:tutor_manage' %}">
-                    <i class="fas fa-book-open me-2"></i>จัดการข้อมูลติวเตอร์
-                  </a>
-                {% else %}
-                  <a class="dropdown-item" href="{% url 'tutoring:register_tutor' %}">
-                    <i class="fas fa-chalkboard-teacher me-2"></i>สมัครเป็นติวเตอร์
-                  </a>
-                {% endif %}
-              </li>
-              <li>
-                <a class="dropdown-item" href="{% url 'credits:credit' %}">
-                  <i class="fas fa-coins me-2"></i>เครดิต
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item" href="{% url 'bookings:student_bookings' %}">
-                  <i class="fas fa-calendar-check me-2"></i>การจองของฉัน
-                </a>
-              </li>
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <form method="post" action="{% url 'accounts:logout' %}">
-                  {% csrf_token %}
-                  <button type="submit" class="dropdown-item text-danger">
-                    <i class="fas fa-sign-out-alt me-2"></i>ออกจากระบบ
-                  </button>
-                </form>
-              </li>
-            </ul>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
+            <i class="fas fa-user-circle me-2 text-muted"></i>จัดการโปรไฟล์</a></li>
+          {% if user.member.tutor.tut_status == 1 %}
+          <li><a class="dropdown-item" href="{% url 'tutoring:tutor_manage' %}">
+            <i class="fas fa-book-open me-2 text-muted"></i>จัดการข้อมูลติวเตอร์</a></li>
+          {% else %}
+          <li><a class="dropdown-item" href="{% url 'tutoring:register_tutor' %}">
+            <i class="fas fa-chalkboard-teacher me-2 text-muted"></i>สมัครเป็นติวเตอร์</a></li>
+          {% endif %}
+          <li><a class="dropdown-item" href="{% url 'credits:credit' %}">
+            <i class="fas fa-coins me-2 text-muted"></i>เครดิต</a></li>
+          <li><a class="dropdown-item" href="{% url 'bookings:student_bookings' %}">
+            <i class="fas fa-calendar-check me-2 text-muted"></i>การจองของฉัน</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form method="post" action="{% url 'accounts:logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="dropdown-item text-danger">
+                <i class="fas fa-sign-out-alt me-2"></i>ออกจากระบบ</button>
+            </form>
           </li>
         {% else %}
-          <li class="nav-item">
-            <a class="btn btn-primary btn-sm px-4" href="{% url 'accounts:register' %}">สมัครสมาชิก</a>
-          </li>
-          <li class="nav-item">
-            <a class="btn btn-outline-primary btn-sm px-4" href="{% url 'accounts:login' %}">เข้าสู่ระบบ</a>
+          <li><hr class="dropdown-divider"></li>
+          <li class="px-3 py-1">
+            <a class="btn btn-primary btn-sm w-100 mb-2" href="{% url 'accounts:register' %}">สมัครสมาชิก</a>
+            <a class="btn btn-outline-primary btn-sm w-100" href="{% url 'accounts:login' %}">เข้าสู่ระบบ</a>
           </li>
         {% endif %}
       </ul>
     </div>
+
   </div>
 </nav>
 <!-- ===== END NAVBAR ===== -->
 
 {% if user.is_authenticated %}
 <script>
-// ── polling อัปเดต unread badge ทุก 15 วินาที ──
 (function() {
   const badge = document.getElementById('msg-badge');
   if (!badge) return;
-
   async function updateMsgBadge() {
     try {
-      const res  = await fetch('{% url "messaging:unread_count" %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      const res = await fetch('{% url "messaging:unread_count" %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
       const data = await res.json();
       const count = data.total_unread || 0;
-      if (count > 0) {
-        badge.textContent = count > 99 ? '99+' : count;
-        badge.classList.remove('d-none');
-      } else {
-        badge.classList.add('d-none');
-      }
+      if (count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.classList.remove('d-none'); }
+      else { badge.classList.add('d-none'); }
     } catch(e) {}
   }
-
   setInterval(updateMsgBadge, 15000);
 })();
 </script>
