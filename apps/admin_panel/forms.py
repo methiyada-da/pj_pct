@@ -58,17 +58,32 @@ class SystemForm(forms.ModelForm):
 
 
 class AdminUserForm(forms.ModelForm):
-    """ฟอร์มแก้ไขข้อมูล Admin (Django User) ที่ผูกกับ System แบบ OneToOne"""
+    """ฟอร์มแก้ไข/สร้างข้อมูล Admin (Django User) ที่ผูกกับ System แบบ OneToOne"""
+
+    # username — แสดงเฉพาะตอนสร้างใหม่ (ซ่อนผ่าน __init__ เมื่อแก้ไข)
+    username = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='ชื่อผู้ใช้ (Username)',
+        required=False,
+        help_text='ใช้สำหรับเข้าสู่ระบบ',
+    )
+
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={'class': 'form-control'}),
-        label='รหัสผ่านใหม่',
+        label='รหัสผ่าน',
         required=False,
-        help_text='เว้นว่างถ้าไม่ต้องการเปลี่ยนรหัสผ่าน'
+        help_text='อย่างน้อย 8 ตัวอักษร ประกอบด้วยตัวอักษรและตัวเลข',
+    )
+
+    password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        label='ยืนยันรหัสผ่าน',
+        required=False,
     )
 
     class Meta:
-        model = User
-        fields = ['first_name', 'last_name', 'email']
+        model  = User
+        fields = ['username', 'first_name', 'last_name', 'email']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name' : forms.TextInput(attrs={'class': 'form-control'}),
@@ -80,9 +95,51 @@ class AdminUserForm(forms.ModelForm):
             'email'     : 'อีเมลผู้ดูแลระบบ',
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # กรณีสร้างใหม่ — username และ password บังคับกรอก
+        if not self.instance or not self.instance.pk:
+            self.fields['username'].required  = True
+            self.fields['password'].required  = True
+            self.fields['password2'].required = True
+        else:
+            # กรณีแก้ไข — ซ่อน username (เปลี่ยนไม่ได้)
+            self.fields['username'].widget   = forms.HiddenInput()
+            self.fields['username'].required = False
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username', '').strip()
+        # ตรวจซ้ำเฉพาะตอนสร้างใหม่
+        if not self.instance or not self.instance.pk:
+            if User.objects.filter(username=username).exists():
+                raise forms.ValidationError('ชื่อผู้ใช้นี้มีในระบบแล้ว กรุณาใช้ชื่ออื่น')
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').strip()
+        # ตรวจอีเมลซ้ำกับ User อื่นในระบบ (ยกเว้น instance ตัวเอง)
+        qs = User.objects.filter(email=email)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError('อีเมลนี้มีในระบบแล้ว กรุณาใช้อีเมลอื่น')
+        return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        pw1 = cleaned_data.get('password')
+        pw2 = cleaned_data.get('password2')
+        # ตรวจรหัสผ่านตรงกันเฉพาะเมื่อกรอก pw1 มา
+        if pw1 and pw1 != pw2:
+            self.add_error('password2', 'รหัสผ่านไม่ตรงกัน กรุณากรอกใหม่อีกครั้ง')
+        return cleaned_data
+
     def save(self, commit=True):
-        user = super().save(commit=False)
+        user     = super().save(commit=False)
         password = self.cleaned_data.get('password')
+        # ตั้งค่าให้เป็น staff เสมอ ไม่ใช่ superuser
+        user.is_staff     = True
+        user.is_superuser = False
         if password:
             user.set_password(password)
         if commit:

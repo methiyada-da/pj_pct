@@ -1,0 +1,237 @@
+{% extends "main/base.html" %}
+{% load static %}
+
+{% block title %}ตั้งค่าผู้ดูแลระบบ — Puean Chuay Tu{% endblock %}
+
+{% block extra_css %}
+<style>
+  .setup-page {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    background: #f8f9fa;
+  }
+  .setup-card {
+    width: 100%;
+    max-width: 460px;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .setup-card-top {
+    background: #2563EB;
+    padding: 2rem;
+    text-align: center;
+  }
+  .setup-card-top .shield-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 26px;
+    color: #fff;
+  }
+  .setup-card-top h1 {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .setup-card-top p {
+    color: rgba(255,255,255,0.75);
+    font-size: 13px;
+    margin: 0;
+  }
+  .setup-card-body { padding: 1.75rem; }
+  .setup-note {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .setup-note i { color: #3b82f6; font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+  .setup-note p { font-size: 12px; color: #1d4ed8; line-height: 1.5; margin: 0; }
+  .setup-card .form-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  .setup-card .form-control {
+    height: 40px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    padding: 0 12px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .setup-card .form-control:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+  }
+  .setup-card .form-control.is-invalid { border-color: #dc2626; }
+  .setup-divider { border: none; border-top: 1px solid #f3f4f6; margin: 1.25rem 0; }
+  .setup-btn {
+    width: 100%;
+    height: 44px;
+    background: #2563EB;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background .15s, transform .1s;
+  }
+  .setup-btn:hover { background: #4338ca; }
+  .setup-btn:active { transform: scale(0.98); }
+  .field-error { font-size: 12px; color: #dc2626; margin-top: 4px; }
+  .pw-match-ok  { font-size: 12px; color: #16a34a; margin-top: 4px; display: none; }
+</style>
+{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="setup-page">
+  <div class="setup-card">
+
+    <div class="setup-card-top">
+      <div class="shield-icon">
+        <i class="fas fa-graduation-cap"></i>
+      </div>
+      <h1>ตั้งค่าผู้ดูแลระบบ</h1>
+      <p>สร้างบัญชีสำหรับจัดการระบบครั้งแรก</p>
+    </div>
+
+    <div class="setup-card-body">
+
+      <div class="setup-note">
+        <i class="fas fa-info-circle"></i>
+        <p>บัญชีนี้จะมีสิทธิ์เข้าถึงระบบจัดการทั้งหมด กรุณาตั้งรหัสผ่านที่ปลอดภัย</p>
+      </div>
+
+      {% if messages %}
+        {% for msg in messages %}
+          <div class="alert alert-{{ msg.tags }} alert-dismissible fade show mb-3" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <!-- username -->
+        <div class="mb-3">
+          <label class="form-label">ชื่อผู้ใช้ (Username)</label>
+          {{ form.username }}
+          {% if form.username.errors %}
+            <div class="field-error">{{ form.username.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <!-- ชื่อ-นามสกุล -->
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label">ชื่อ</label>
+            {{ form.first_name }}
+            {% if form.first_name.errors %}
+              <div class="field-error">{{ form.first_name.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="col-6">
+            <label class="form-label">นามสกุล</label>
+            {{ form.last_name }}
+            {% if form.last_name.errors %}
+              <div class="field-error">{{ form.last_name.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- อีเมล -->
+        <div class="mb-3">
+          <label class="form-label">อีเมล</label>
+          {{ form.email }}
+          {% if form.email.errors %}
+            <div class="field-error">{{ form.email.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <hr class="setup-divider">
+
+        <!-- รหัสผ่าน -->
+        <div class="mb-3">
+          <label class="form-label">รหัสผ่าน</label>
+          {{ form.password }}
+          {% if form.password.errors %}
+            <div class="field-error">{{ form.password.errors.0 }}</div>
+          {% endif %}
+          <div class="form-text mt-1" style="font-size:12px;">{{ form.password.help_text }}</div>
+        </div>
+
+        <!-- ยืนยันรหัสผ่าน -->
+        <div class="mb-4">
+          <label class="form-label">ยืนยันรหัสผ่าน</label>
+          {{ form.password2 }}
+          {% if form.password2.errors %}
+            <div class="field-error" id="pw2-error">{{ form.password2.errors.0 }}</div>
+          {% else %}
+            <div class="field-error" id="pw2-error" style="display:none;"></div>
+          {% endif %}
+          <div class="pw-match-ok" id="pw2-ok">
+            <i class="fas fa-check-circle me-1"></i>รหัสผ่านตรงกัน
+          </div>
+        </div>
+
+        <button type="submit" class="setup-btn">
+          <i class="fas fa-shield-alt"></i>
+          สร้างบัญชีผู้ดูแลระบบ
+        </button>
+
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ตรวจสอบรหัสผ่านตรงกันแบบ real-time
+  const pw1  = document.getElementById('id_password');
+  const pw2  = document.getElementById('id_password2');
+  const err  = document.getElementById('pw2-error');
+  const ok   = document.getElementById('pw2-ok');
+
+  function checkMatch() {
+    if (!pw2.value) { err.style.display='none'; ok.style.display='none'; return; }
+    if (pw1.value === pw2.value) {
+      err.style.display = 'none';
+      ok.style.display  = 'block';
+    } else {
+      err.textContent   = 'รหัสผ่านไม่ตรงกัน';
+      err.style.display = 'block';
+      ok.style.display  = 'none';
+    }
+  }
+
+  pw1.addEventListener('input', checkMatch);
+  pw2.addEventListener('input', checkMatch);
+</script>
+{% endblock %}
