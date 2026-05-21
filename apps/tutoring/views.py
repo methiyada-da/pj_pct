@@ -703,8 +703,14 @@ def manage_course(request, tutc_id=None):
                 # ถ้าเรทแรก>=1 ทุกเรทถัดไปต้อง < ก่อนหน้า
                 if i > 0:
                     prev_price = valid_rates[i - 1][1]
+                    # เรทที่ 2+ ห้ามเป็น 0 (0 ได้เฉพาะเรทแรกเท่านั้น)
+                    if price == 0:
+                        rate_errors.append(
+                            f'เรทที่ {i+1}: เครดิต 0 ได้เฉพาะเรทแรกเท่านั้น'
+                        )
+                        break
                     if first_price == 0 and i == 1:
-                        pass  # เรทที่ 2 หลังจากฟรี → ใส่อะไรก็ได้
+                        pass  # เรทที่ 2 หลังจากฟรี → ใส่อะไรก็ได้ (แต่ต้องไม่ใช่ 0 ซึ่งเช็คไปแล้ว)
                     else:
                         if price >= prev_price:
                             rate_errors.append(

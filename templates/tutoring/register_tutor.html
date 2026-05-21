@@ -234,7 +234,7 @@
           </div>
 
           <div class="mb-3" style="max-width:220px;">
-            <label class="form-label fw-semibold small">เกรดเฉลี่ยสะสม (GPAX)</label>
+            <label class="form-label fw-semibold small">เกรดเฉลี่ยสะสม (GPA)</label>
             <input type="number" name="gpa" step="0.01" min="0" max="4"
                    class="form-control {% if is_view_only %}bg-light{% endif %}"
                    placeholder="0.00"
@@ -313,7 +313,7 @@
               <i class="fas fa-arrow-left me-1"></i> กลับ
             </a>
             {% if not is_view_only %}
-              <button type="submit" class="btn btn-primary fw-semibold">
+              <button type="button" class="btn btn-primary fw-semibold" onclick="openSubmitConfirm()">
                 {% if tutor %}
                   {% if tutor.tut_status == 2 %}ส่งคำขอใหม่{% else %}อัปเดตข้อมูล{% endif %}
                 {% else %}
@@ -328,6 +328,61 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Confirm modal ก่อนส่งฟอร์ม -->
+<div class="modal fade" id="submitConfirmModal" tabindex="-1" aria-labelledby="submitConfirmLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden;">
+
+      <!-- Top accent bar -->
+      <div style="height:5px;background:linear-gradient(90deg,#3B82F6,#6366F1);"></div>
+
+      <div class="modal-body p-4 text-center">
+
+        <!-- Icon -->
+        <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle"
+             style="width:64px;height:64px;background:#FFF7ED;">
+          <i class="fas fa-paper-plane" style="font-size:28px;color:#F97316;"></i>
+        </div>
+
+        <h5 class="fw-bold mb-2" id="submitConfirmLabel" style="font-size:17px;">
+          ยืนยันการส่งคำขอ?
+        </h5>
+        <p class="text-muted mb-3" style="font-size:13.5px;line-height:1.7;">
+          เมื่อส่งแล้ว ข้อมูลจะอยู่ระหว่างการตรวจสอบโดย Admin<br>
+          <strong>ไม่สามารถแก้ไขข้อมูลได้</strong> จนกว่าจะได้รับผลการพิจารณา
+        </p>
+
+        <!-- Chips แจ้งเตือน -->
+        <div class="d-flex flex-wrap gap-2 justify-content-center mb-4">
+          <span class="badge rounded-pill px-3 py-2 fw-normal"
+                style="background:#FFF7ED;color:#9A3412;font-size:12px;">
+            <i class="fas fa-lock me-1"></i>แก้ไขข้อมูลไม่ได้ระหว่างรอผล
+          </span>
+          <span class="badge rounded-pill px-3 py-2 fw-normal"
+                style="background:#EFF6FF;color:#1D4ED8;font-size:12px;">
+            <i class="fas fa-clock me-1"></i>รอผล 1–3 วันทำการ
+          </span>
+        </div>
+
+        <!-- Buttons -->
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-primary fw-bold"
+                  style="border-radius:10px;padding:.65rem 1rem;"
+                  onclick="doSubmitForm()">
+            <i class="fas fa-paper-plane me-2"></i>ยืนยัน ส่งคำขอ
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm"
+                  style="border-radius:10px;"
+                  data-bs-dismiss="modal">
+            <i class="fas fa-arrow-left me-1"></i>กลับไปตรวจสอบข้อมูล
+          </button>
+        </div>
+
+      </div>
+    </div>
   </div>
 </div>
 
@@ -354,6 +409,69 @@
 
 {% block extra_js %}
 <script>
+  /* ── เปิด confirm modal ก่อนส่ง ── */
+  function openSubmitConfirm() {
+    // รัน client-side validation ก่อนเปิด modal
+    const form   = document.getElementById('tutor-form');
+    const errors = [];
+
+    const gpa = form.querySelector('input[name="gpa"]');
+    if (gpa && !gpa.readOnly) {
+      const val = gpa.value.trim();
+      if (val === '') {
+        errors.push('กรุณากรอก <strong>เกรดเฉลี่ยสะสม (GPA)</strong>');
+        gpa.classList.add('is-invalid');
+      } else if (parseFloat(val) < 0 || parseFloat(val) > 4) {
+        errors.push('<strong>เกรดเฉลี่ยสะสม (GPA)</strong> ต้องอยู่ระหว่าง 0.00 – 4.00');
+        gpa.classList.add('is-invalid');
+      } else { gpa.classList.remove('is-invalid'); }
+    }
+
+    const skills = form.querySelector('textarea[name="teaching_skills"]');
+    if (skills && !skills.readOnly) {
+      if (skills.value.trim() === '') {
+        errors.push('กรุณากรอก <strong>ทักษะการสอน</strong>');
+        skills.classList.add('is-invalid');
+      } else { skills.classList.remove('is-invalid'); }
+    }
+
+    const hasExpChecked = document.querySelector('input[name="has_experience"]:checked')?.value === '1';
+    const expDetail = form.querySelector('textarea[name="experience_detail"]');
+    if (hasExpChecked && expDetail && !expDetail.readOnly) {
+      if (expDetail.value.trim() === '') {
+        errors.push('กรุณากรอก <strong>รายละเอียดประสบการณ์</strong>');
+        expDetail.classList.add('is-invalid');
+      } else { expDetail.classList.remove('is-invalid'); }
+    }
+
+    // ถ้ามี error ให้แสดง alert แทน
+    if (errors.length > 0) {
+      const alertEl = document.getElementById('validation-alert');
+      const list    = document.getElementById('validation-errors');
+      list.innerHTML = errors.map(m => `<li>${m}</li>`).join('');
+      alertEl.classList.remove('d-none');
+      alertEl.classList.add('d-flex');
+      alertEl.classList.remove('shake');
+      void alertEl.offsetWidth;
+      alertEl.classList.add('shake');
+      alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    // ผ่าน validation → เปิด confirm modal
+    new bootstrap.Modal(document.getElementById('submitConfirmModal')).show();
+  }
+
+  /* ── ส่งฟอร์มจริงจาก confirm modal ── */
+  function doSubmitForm() {
+    const form = document.getElementById('tutor-form');
+    const btn  = document.createElement('button');
+    btn.type         = 'submit';
+    btn.style.display = 'none';
+    form.appendChild(btn);
+    btn.click();
+  }
+
   /* ── เปิด lightbox บัตรนักศึกษา ── */
   function openCardModal(src) {
     document.getElementById('cardModalImg').src = src;
@@ -399,55 +517,6 @@
   }
   radios.forEach(r => r.addEventListener('change', toggleDetail));
   toggleDetail();
-
-  /* ── client-side validation ── */
-  document.getElementById('tutor-form')?.addEventListener('submit', function (e) {
-    {% if is_view_only %}return;{% endif %}
-
-    const errors = [];
-
-    const gpa = this.querySelector('input[name="gpa"]');
-    if (gpa && !gpa.readOnly) {
-      const val = gpa.value.trim();
-      if (val === '') {
-        errors.push('กรุณากรอก <strong>เกรดเฉลี่ยสะสม (GPAX)</strong>');
-        gpa.classList.add('is-invalid');
-      } else if (parseFloat(val) < 0 || parseFloat(val) > 4) {
-        errors.push('<strong>เกรดเฉลี่ยสะสม (GPAX)</strong> ต้องอยู่ระหว่าง 0.00 – 4.00');
-        gpa.classList.add('is-invalid');
-      } else { gpa.classList.remove('is-invalid'); }
-    }
-
-    const skills = this.querySelector('textarea[name="teaching_skills"]');
-    if (skills && !skills.readOnly) {
-      if (skills.value.trim() === '') {
-        errors.push('กรุณากรอก <strong>ทักษะการสอน</strong>');
-        skills.classList.add('is-invalid');
-      } else { skills.classList.remove('is-invalid'); }
-    }
-
-    const hasExpChecked = document.querySelector('input[name="has_experience"]:checked')?.value === '1';
-    const expDetail = this.querySelector('textarea[name="experience_detail"]');
-    if (hasExpChecked && expDetail && !expDetail.readOnly) {
-      if (expDetail.value.trim() === '') {
-        errors.push('กรุณากรอก <strong>รายละเอียดประสบการณ์</strong>');
-        expDetail.classList.add('is-invalid');
-      } else { expDetail.classList.remove('is-invalid'); }
-    }
-
-    if (errors.length > 0) {
-      e.preventDefault();
-      const alert = document.getElementById('validation-alert');
-      const list  = document.getElementById('validation-errors');
-      list.innerHTML = errors.map(m => `<li>${m}</li>`).join('');
-      alert.classList.remove('d-none');
-      alert.classList.add('d-flex');
-      alert.classList.remove('shake');
-      void alert.offsetWidth;
-      alert.classList.add('shake');
-      alert.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  });
 
   document.getElementById('tutor-form')?.querySelectorAll('input, textarea').forEach(el => {
     el.addEventListener('input', () => el.classList.remove('is-invalid'));

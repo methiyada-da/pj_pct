@@ -4,6 +4,8 @@
 {% block title %}รีวิวติวเตอร์ — Puean Chuay Tu{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <style>
   .rv-wrap { max-width: 680px; margin: 0 auto; }
 
@@ -182,11 +184,38 @@ function validateReview() {
   const fields = ['rv_quality','rv_knowledge','rv_communication','rv_punctuality','rv_satisfaction'];
   for (const name of fields) {
     if (!document.querySelector(`input[name="${name}"]:checked`)) {
-      alert('กรุณาให้คะแนนครบทุกด้าน');
+      Swal.fire({
+        title: 'กรุณาให้คะแนนครบทุกด้าน',
+        icon: 'warning',
+        confirmButtonText: 'รับทราบ',
+        confirmButtonColor: '#2563EB',
+        customClass: { popup: 'rounded-4 shadow', confirmButton: 'rounded-3 px-4 fw-bold' },
+      });
       return false;
     }
   }
-  return true;
+  Swal.fire({
+    title: 'ยืนยันการส่งรีวิว?',
+    text: 'คุณไม่สามารถแก้ไขรีวิวได้ภายหลัง',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-paper-plane me-1"></i> ส่งรีวิว',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#2563EB',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+    customClass: {
+      popup:         'rounded-4 shadow',
+      actions:       'gap-2',
+      confirmButton: 'rounded-3 px-4 fw-bold',
+      cancelButton:  'rounded-3 px-4 fw-semibold',
+    },
+  }).then(result => {
+    if (result.isConfirmed) {
+      document.getElementById('reviewForm').submit();
+    }
+  });
+  return false;
 }
 </script>
 {% endblock %}
