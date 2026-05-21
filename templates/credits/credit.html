@@ -178,18 +178,18 @@
                 <div>
                   {% if tx.status == 0 %}
                     <span class="badge rounded-pill fw-normal px-2 py-1"
-                          style="background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;font-size:11px;">
-                      <i class="fas fa-clock me-1"></i>รอดำเนินการ
+                          style="background:#FEF3C7;color:#D97706;border:1px solid #FDE68A;font-size:11px;">
+                      <i class="fas fa-lock me-1"></i>ล็อกเครดิต
                     </span>
                   {% elif tx.status == 1 %}
                     <span class="badge rounded-pill fw-normal px-2 py-1"
                           style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;font-size:11px;">
-                      <i class="fas fa-check-circle me-1"></i>จ่ายแล้ว
+                      <i class="fas fa-check-circle me-1"></i>หักเครดิตสำเร็จ
                     </span>
                   {% else %}
                     <span class="badge rounded-pill fw-normal px-2 py-1"
                           style="background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;font-size:11px;">
-                      <i class="fas fa-times-circle me-1"></i>ปฏิเสธ
+                      <i class="fas fa-unlock me-1"></i>ปลดล็อกแล้ว
                     </span>
                   {% endif %}
                 </div>
@@ -488,14 +488,14 @@ function openWithdrawDetail(wdId, credit, netCash, bank, date, status, cmt) {
   document.getElementById('wdDate').textContent    = date;
   const banner = document.getElementById('wdStatusBanner');
   if (status === 0) {
-    banner.style.cssText = 'background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-clock me-2"></i>รอดำเนินการ';
+    banner.style.cssText = 'background:#FEF3C7;color:#D97706;border:1px solid #FDE68A;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+    banner.innerHTML = '<i class="fas fa-lock me-2"></i>เครดิตถูกล็อกไว้ (รอแอดมินตรวจสอบ)';
   } else if (status === 1) {
     banner.style.cssText = 'background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-check-circle me-2"></i>จ่ายแล้ว';
+    banner.innerHTML = '<i class="fas fa-check-circle me-2"></i>หักเครดิตสำเร็จ (จ่ายเงินเรียบร้อย)';
   } else {
     banner.style.cssText = 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-times-circle me-2"></i>ปฏิเสธการถอน';
+    banner.innerHTML = '<i class="fas fa-unlock me-2"></i>คำขอถูกปฏิเสธ (ปลดล็อกเครดิตคืนแล้ว)';
   }
   const cmtSec = document.getElementById('wdCmtSection');
   if (cmt) { document.getElementById('wdCmt').textContent = cmt; cmtSec.classList.remove('d-none'); }
