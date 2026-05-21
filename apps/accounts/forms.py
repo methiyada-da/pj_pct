@@ -168,7 +168,7 @@ class TutorRegisterForm(forms.ModelForm):
         labels = {
             'tut_desc'    : 'แนะนำตัว',
             'tut_skill'   : 'ความถนัด',
-            'tut_gpax'    : 'เกรดเฉลี่ย (GPAX)',
+            'tut_gpax'    : 'เกรดเฉลี่ย (GPA)',
             'tut_has_exp' : 'ประสบการณ์สอน',
             'tut_exp_desc': 'รายละเอียดประสบการณ์สอน',
         }

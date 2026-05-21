@@ -17,4 +17,5 @@ urlpatterns = [
     path('my/<int:bk_id>/confirm-completion/', views.confirm_completion, name='confirm_completion'), # 3→4
     path('my/<int:bk_id>/review/',             views.review,             name='review'),              # 4→5
     path('my/<int:bk_id>/report/',             views.report_problem,     name='report_problem'),
+    path('my/<int:bk_id>/cancel/',             views.student_cancel_booking, name='student_cancel_booking'),
 ]

@@ -1,10 +1,14 @@
 # bookings/views.py - views จัดการการจอง และกิจกรรมติว
+from urllib import request
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Avg
+
+from apps import bookings
 
 from .models import Booking, TutoringActivity, JobCompletion, Review
 from .forms import TutoringActivityForm, ReviewForm
@@ -31,7 +35,8 @@ def tutor_requests(request):
     studying  = [b for b in bookings if b.bk_status == 2]   # รอแจ้งจบงาน (เรียนแล้ว)
     notified  = [b for b in bookings if b.bk_status == 3]   # แจ้งจบงานแล้ว
     done      = [b for b in bookings if b.bk_status in (4, 5)]  # เสร็จสิ้น + รีวิวแล้ว
-    rejected  = [b for b in bookings if b.bk_status == 6]   # ปฏิเสธ
+    rejected  = [b for b in bookings if b.bk_status == 6 and b.bk_cmt != 'ผู้เรียนยกเลิกการจอง']
+    cancelled = [b for b in bookings if b.bk_status == 6 and b.bk_cmt == 'ผู้เรียนยกเลิกการจอง']
 
     return render(request, 'bookings/tutor_requests.html', {
         'pending':      pending,
@@ -40,6 +45,7 @@ def tutor_requests(request):
         'notified':     notified,
         'done':         done,
         'rejected':     rejected,
+        'cancelled':    cancelled,
         'all_bookings': bookings,
     })
 
@@ -151,7 +157,8 @@ def student_bookings(request):
     )
 
     return render(request, 'bookings/student_bookings.html', {
-        'bookings': bookings,
+        'bookings':   bookings,
+        'mb_credit':  mb.mb_deposit_crd + mb.mb_income_crd,
     })
 
 
@@ -348,6 +355,47 @@ def report_problem(request, bk_id):
     bk.save(update_fields=['bk_report_reason', 'bk_report_desc', 'bk_report_date'])
 
     return redirect('/bookings/my/?reported=1')
+
+# ═══════════════════════════════════════════════════════════════
+# ผู้เรียนยกเลิกการจอง — ผู้เรียนยกเลิกการจองเมื่อสถานะยังเป็น 0 (รอติวเตอร์รับ)
+# ═══════════════════════════════════════════════════════════════
+
+@login_required
+def student_cancel_booking(request, bk_id):
+    """ผู้เรียนยกเลิกการจองเมื่อสถานะยังเป็น 0 (รอติวเตอร์รับ)"""
+    from django.utils import timezone
+
+    booking = get_object_or_404(Booking, bk_id=bk_id, member=request.user.member)
+
+    # ยกเลิกได้เฉพาะสถานะ 0 เท่านั้น
+    if booking.bk_status != 0:
+        messages.error(request, 'ไม่สามารถยกเลิกการจองในสถานะนี้ได้')
+        return redirect('bookings:student_bookings')
+
+    if request.method == 'POST':
+        member = request.user.member
+        total  = booking.total_credit
+
+        with transaction.atomic():
+            # คืน slot ให้ว่างอีกครั้ง
+            if booking.ts_id:
+                booking.ts_id.ts_status = 0
+                booking.ts_id.save()
+
+            # เปลี่ยนสถานะและบันทึกหมายเหตุ
+            booking.bk_status = 6
+            booking.bk_cmt    = 'ผู้เรียนยกเลิกการจอง'
+            booking.save(update_fields=['bk_status', 'bk_cmt'])
+
+            # คืนเครดิตที่ล็อกไว้กลับเข้า deposit
+            member.mb_locked_crd  = max(0, member.mb_locked_crd - total)
+            member.mb_deposit_crd = member.mb_deposit_crd + total
+            member.save(update_fields=['mb_locked_crd', 'mb_deposit_crd'])
+
+        messages.success(request, f'ยกเลิกการจอง BK{bk_id:05d} เรียบร้อยแล้ว เครดิต {total} เครดิต ได้รับคืนแล้ว')
+        return redirect('bookings:student_bookings')
+
+    return redirect('bookings:student_bookings')
 
 
 # ─── helper: โอนเครดิตจากผู้เรียนไปให้ติวเตอร์ ──────────────────────────────
