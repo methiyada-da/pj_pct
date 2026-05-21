@@ -34,6 +34,7 @@ def is_admin(user):
 @user_passes_test(is_admin)
 def dashboard(request):
     from apps.courses.models import Faculty, Major, CourseGroup, Course
+    from apps.bookings.models import Booking
     import json
 
     # ── Summary stats ──
@@ -46,10 +47,15 @@ def dashboard(request):
     total_topup_money = approved_refills.aggregate(t=Sum('rf_money'))['t'] or 0
     pending_refills   = Refill.objects.filter(rf_status=0).count()
     pending_withdraw  = Withdrawals.objects.filter(wd_status=0).count()
+    pending_reports   = Booking.objects.filter(bk_report_date__isnull=False, bk_report_resolved_date__isnull=True).count()
 
     total_faculties   = Faculty.objects.count()
     total_majors      = Major.objects.count()
     total_courses     = Course.objects.count()
+    
+    # System revenue (fees)
+    system = System.objects.first()
+    total_fees = system.total_accumulated_fee if system else 0
 
     # ── Monthly new members (last 7 months) ──
     today = timezone.now()
@@ -59,9 +65,17 @@ def dashboard(request):
                 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
     from django.contrib.auth.models import User
     for i in range(6, -1, -1):
-        d = today - timezone.timedelta(days=i * 30)
-        cnt = User.objects.filter(date_joined__year=d.year, date_joined__month=d.month).count()
-        months_labels.append(MONTH_TH[d.month])
+        # Calculate first day of the month i months ago
+        d = today.replace(day=1) - timezone.timedelta(days=i * 30) # approximation
+        # More accurate month calculation:
+        year = today.year
+        month = today.month - i
+        while month <= 0:
+            month += 12
+            year -= 1
+        
+        cnt = User.objects.filter(date_joined__year=year, date_joined__month=month).count()
+        months_labels.append(MONTH_TH[month])
         months_data.append(cnt)
 
     # ── Top course groups by course count ──
@@ -86,9 +100,11 @@ def dashboard(request):
         'total_topup_money' : total_topup_money,
         'pending_refills'   : pending_refills,
         'pending_withdraw'  : pending_withdraw,
+        'pending_reports'   : pending_reports,
         'total_faculties'   : total_faculties,
         'total_majors'      : total_majors,
         'total_courses'     : total_courses,
+        'total_fees'        : total_fees,
         # chart
         'chart_labels'      : json.dumps(months_labels, ensure_ascii=False),
         'chart_data'        : json.dumps(months_data),
@@ -414,25 +430,31 @@ def payment_mgmt(request):
             wd.wd_cmt       = note or None
             wd.save()
             
+            # หักเครดิตออกจากระบบถาวร (หักจาก locked และยอดหลัก)
+            member = wd.member
+            member.mb_locked_crd = max(0, member.mb_locked_crd - wd.wd_credit)
+            if wd.wd_type == 1:
+                member.mb_income_crd = max(0, member.mb_income_crd - wd.wd_credit)
+            else:
+                member.mb_deposit_crd = max(0, member.mb_deposit_crd - wd.wd_credit)
+            member.save(update_fields=['mb_locked_crd', 'mb_income_crd', 'mb_deposit_crd'])
+
             # สะสมค่าธรรมเนียมเมื่อทำรายการสำเร็จ
             if system:
                 system.total_accumulated_fee += wd.wd_fee
                 system.save(update_fields=['total_accumulated_fee'])
                 
-            messages.success(request, f'บันทึกการจ่าย WD{wd.wd_id:05d} เรียบร้อยแล้ว')
+            messages.success(request, f'บันทึกการจ่าย WD{wd.wd_id:05d} เรียบร้อยแล้ว (เครดิตถูกหักออกจากบัญชีแล้ว)')
 
         elif action == 'reject' and wd.wd_status == 0:
             wd.wd_status = 2
             wd.wd_cmt    = note or None
             wd.save()
-            # คืนเครดิตให้ member เมื่อปฏิเสธ
+            # คืนเครดิตที่ล็อกไว้ให้ member เมื่อปฏิเสธ (ลดเฉพาะ locked_crd)
             member = wd.member
-            if wd.wd_type == 1:
-                member.mb_income_crd  += wd.wd_credit
-            else:
-                member.mb_deposit_crd += wd.wd_credit
-            member.save(update_fields=['mb_income_crd', 'mb_deposit_crd'])
-            messages.error(request, f'ปฏิเสธการถอน WD{wd.wd_id:05d} — เครดิตถูกคืนให้สมาชิกแล้ว')
+            member.mb_locked_crd = max(0, member.mb_locked_crd - wd.wd_credit)
+            member.save(update_fields=['mb_locked_crd'])
+            messages.error(request, f'ปฏิเสธการถอน WD{wd.wd_id:05d} — เครดิตที่ล็อกไว้ถูกปลดล็อกคืนให้สมาชิกแล้ว')
 
         return redirect('admin_panel:payment_mgmt')
 

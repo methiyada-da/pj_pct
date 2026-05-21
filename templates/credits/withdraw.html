@@ -155,17 +155,21 @@
                 <label class="form-label fw-semibold small">เลขที่บัญชี</label>
                 <input type="text" name="acc_no" class="form-control"
                        placeholder="XXX-X-XXXXX-X" required
+                       maxlength="20"
                        value="{{ prev.acc_no|default:'' }}"
                        oninvalid="this.setCustomValidity('กรุณากรอกเลขที่บัญชี')"
                        oninput="this.setCustomValidity('')">
+                <div class="text-muted" style="font-size:11px;">สูงสุด 20 ตัวอักษร</div>
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-semibold small">หมายเลขพร้อมเพย์</label>
                 <input type="text" name="promptpay_no" class="form-control"
                        placeholder="เบอร์โทรศัพท์ หรือ เลขบัตรประชาชน" required
+                       maxlength="20"
                        value="{{ prev.promptpay_no|default:'' }}"
                        oninvalid="this.setCustomValidity('กรุณากรอกหมายเลขพร้อมเพย์')"
                        oninput="this.setCustomValidity('')">
+                <div class="text-muted" style="font-size:11px;">สูงสุด 20 ตัวอักษร</div>
               </div>
             </div>
           </div>
