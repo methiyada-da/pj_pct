@@ -1094,8 +1094,13 @@ function validateRateTiers() {
     } else {
       // ถ้าเรทแรก = 0 (ฟรี): เรทที่ 2 เป็นอะไรก็ได้ แต่เรทที่ 3+ ต้อง < เรทก่อนหน้า
       // ถ้าเรทแรก >= 1: เรทถัดไปทุกเรทต้อง < เรทก่อนหน้า
-      if (firstPrice === 0 && idx === 1) {
-        // เรทที่ 2 หลังจากฟรี → ใส่อะไรก็ได้ (≥ 0)
+      // เรทที่ 2+ ห้ามเป็น 0 (0 ได้เฉพาะเรทแรกเท่านั้น)
+      if (price === 0) {
+        priceInput.classList.add('is-invalid');
+        if (priceFb) { priceFb.textContent = 'เครดิต 0 ได้เฉพาะเรทแรกเท่านั้น'; priceFb.style.display = 'block'; }
+        allValid = false;
+      } else if (firstPrice === 0 && idx === 1) {
+        // เรทที่ 2 หลังจากฟรี → ใส่เท่าไหร่ก็ได้ (แต่ต้องไม่ใช่ 0 ซึ่งเช็คไปแล้ว)
       } else {
         if (prevPrice !== null && price >= prevPrice) {
           priceInput.classList.add('is-invalid');

@@ -163,6 +163,9 @@
           <div class="flex-fill">
             <div class="d-flex align-items-center gap-2 mb-2">
               <span class="text-muted small fw-semibold">BK{{ bk.bk_id|stringformat:"05d" }}</span>
+              {% if bk.bk_status == 6 and bk.bk_cmt == 'ผู้เรียนยกเลิกการจอง' %}
+              <span class="badge" style="background:#F97316;">ยกเลิก</span>
+              {% else %}
               <span class="badge
                 {% if bk.bk_status == 0 %}bg-warning text-dark
                 {% elif bk.bk_status == 1 %}bg-success
@@ -181,6 +184,7 @@
                 {% elif bk.bk_status == 6 %}ปฏิเสธ
                 {% endif %}
               </span>
+              {% endif %}
             </div>
             <div class="fw-bold mb-1" style="font-size:15px;"><span class="info-label">ชื่อคอร์ส :</span> {{ bk.tutc_id.tutc_name }}</div>
             <div class="text-muted small mb-2">ติวเตอร์: {{ bk.tutc_id.tut_id.tut_id.mb_full_name }}</div>
@@ -224,6 +228,11 @@
   <input type="hidden" id="reportReason" name="rp_reason">
   <textarea name="rp_desc" id="reportDesc"></textarea>
 </form>
+<!-- ฟอร์มยกเลิกการจอง -->
+<form id="cancelForm" method="post" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" id="cancelBkId" name="bk_id">
+</form>
 
 <!-- Modal รายละเอียด -->
 <div class="modal fade" id="detailModal" tabindex="-1">
@@ -242,6 +251,7 @@
 
 <!-- Booking data -->
 <script>
+const MB_CREDIT = {{ mb_credit }};
 const bookingData = {
   {% for bk in bookings %}
   {{ bk.bk_id }}: {
@@ -351,11 +361,14 @@ function openDetail(bkId) {
   const bk = bookingData[bkId];
   if (!bk) return;
   const total = bk.rate * bk.count;
-  const sc    = STATUS_COLORS[bk.status] || 'secondary';
+  const sc = (bk.status === 6 && bk.cmt === 'ผู้เรียนยกเลิกการจอง')
+  ? null
+  : (STATUS_COLORS[bk.status] || 'secondary');
   const isAdminAction = bk.cmt && bk.cmt.startsWith('[แอดมิน]');
   let label = STATUS_LABELS[bk.status] || '';
   if (bk.status === 6 && isAdminAction) label = 'คืนเครดิตแล้ว';
   if (bk.status === 4 && isAdminAction) label = 'เสร็จสิ้น';
+  if (bk.status === 6 && bk.cmt === 'ผู้เรียนยกเลิกการจอง') label = 'ยกเลิก';
 
   // progress track
   let trackHtml = '';
@@ -422,7 +435,18 @@ function openDetail(bkId) {
     'other': 'อื่นๆ',
   };
   let actionHtml = '';
-  if (bk.reported) {
+  // ปุ่มยกเลิกการจอง (เฉพาะ status=0 และยังไม่มีการ reported)
+  if (bk.status === 0) {
+    actionHtml = `
+      <div class="mt-3 pt-3 border-top d-grid gap-2">
+        <div class="alert alert-warning py-2 small mb-0">
+          <i class="fas fa-clock me-1"></i>รอติวเตอร์ยืนยันรับงาน
+        </div>
+        <button onclick="showCancelModal(${bkId})" class="btn btn-outline-danger btn-sm rounded-3">
+          <i class="fas fa-times-circle me-1"></i>ยกเลิกการจอง
+        </button>
+      </div>`;
+  } else if (bk.reported) {
     const adminNote = bk.cmt && bk.cmt.startsWith('[แอดมิน]')
       ? bk.cmt.replace('[แอดมิน]', '').trim() : '';
     const reasonLabel = REASON_LABELS[bk.report_reason] || '';
@@ -507,7 +531,10 @@ function openDetail(bkId) {
   document.getElementById('detailBody').innerHTML = `
     ${trackHtml}
     <div class="d-flex align-items-center gap-2 mb-3">
-      <span class="badge bg-${sc} fs-6 px-3">${label}</span>
+      ${sc
+        ? `<span class="badge bg-${sc} fs-6 px-3">${label}</span>`
+        : `<span class="badge fs-6 px-3" style="background:#F97316;">${label}</span>`
+      }
       <span class="text-muted small">BK${String(bkId).padStart(5,'0')}</span>
     </div>
     <div class="row g-3">
@@ -617,7 +644,18 @@ function showConfirmModal(bkId) {
   setTimeout(() => {
     Swal.fire({
       title: 'ยืนยันการจบงาน?',
-      html: `เครดิตจะถูกโอนให้ติวเตอร์ทันทีและ<strong>ไม่สามารถเรียกคืนได้</strong>`,
+      html: `
+        <div class="text-start p-3 rounded-3 mb-2" style="background:#F8FAFC;font-size:13.5px;">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">เครดิตที่จะโอนให้ติวเตอร์</span>
+            <span class="fw-bold text-danger">-${bookingData[bkId].rate * bookingData[bkId].count} เครดิต</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">เครดิตคงเหลือหลังยืนยัน</span>
+            <span class="fw-bold text-success">${MB_CREDIT - (bookingData[bkId].rate * bookingData[bkId].count)} เครดิต</span>
+          </div>
+        </div>
+        <div class="text-muted small">เครดิตจะถูกโอนทันทีและ<strong>ไม่สามารถเรียกคืนได้</strong></div>`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: '</i> ยืนยันจบงาน',
@@ -660,6 +698,39 @@ if (new URLSearchParams(window.location.search).get('reported') === '1') {
       confirmButton: 'rounded-3 px-4 fw-bold',
     },
   });
+}
+
+// ยืนยันยกเลิกการจอง — SweetAlert2
+function showCancelModal(bkId) {
+  bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
+  const bk    = bookingData[bkId];
+  const total = bk.rate * bk.count;
+  setTimeout(() => {
+    Swal.fire({
+      title: 'ยืนยันการยกเลิกการจอง?',
+      html: `เครดิต <strong>${total} เครดิต</strong> ที่ล็อกไว้จะได้รับคืนเข้าบัญชีของคุณทันที`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-times-circle me-1"></i> ยืนยัน',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      reverseButtons: true,
+      customClass: {
+        popup:         'rounded-4 shadow',
+        actions:       'gap-2',
+        confirmButton: 'rounded-3 px-4 fw-bold',
+        cancelButton:  'rounded-3 px-4 fw-semibold',
+      },
+    }).then(result => {
+      if (result.isConfirmed) {
+        const form = document.getElementById('cancelForm');
+        form.action = `/bookings/my/${bkId}/cancel/`;
+        document.getElementById('cancelBkId').value = bkId;
+        form.submit();
+      }
+    });
+  }, 300);
 }
 </script>
 

@@ -4,6 +4,8 @@
 {% block title %}กิจกรรมการติว — Puean Chuay Tu{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <style>
   .upload-zone {
     border: 2px dashed #CBD5E1;
@@ -221,9 +223,9 @@
                 class="btn btn-outline-secondary fw-semibold px-4 rounded-pill">
           <i class="fas fa-save me-2"></i>บันทึกความคืบหน้า
         </button>
-        <button type="submit" name="action" value="submit"
+        <button type="button"
                 class="btn btn-primary fw-bold px-5 rounded-pill shadow-sm"
-                onclick="return confirmSubmit()">
+                onclick="confirmSubmit()">
           <i class="fas fa-paper-plane me-2"></i>ส่งคำขอแจ้งจบงาน
         </button>
       </div>
@@ -280,6 +282,70 @@ if (descTA && descCounter) {
   });
 }
 
+/* ── ยืนยันก่อนส่งแจ้งจบงาน ── */
+function confirmSubmit() {
+  const form = document.getElementById('activityForm');
+  // ตรวจสอบว่ามีรูปอย่างน้อย 1 รูป
+  const img1 = form.querySelector('input[name="ta_img1"]').files.length;
+  const img2 = form.querySelector('input[name="ta_img2"]').files.length;
+  const img3 = form.querySelector('input[name="ta_img3"]').files.length;
+  const hasExistingImg = {% if activity.ta_img1 or activity.ta_img2 or activity.ta_img3 %}true{% else %}false{% endif %};
+  const desc = document.getElementById('ta_desc').value.trim();
+
+  if (!hasExistingImg && img1 === 0 && img2 === 0 && img3 === 0) {
+    Swal.fire({
+      title: 'กรุณาอัปโหลดรูปภาพ',
+      text: 'ต้องอัปโหลดรูปภาพกิจกรรมการติวอย่างน้อย 1 รูป',
+      icon: 'warning',
+      confirmButtonText: 'รับทราบ',
+      confirmButtonColor: '#2563EB',
+      customClass: { popup: 'rounded-4 shadow', confirmButton: 'rounded-3 px-4 fw-bold' },
+    });
+    return false;
+  }
+  if (!desc) {
+    Swal.fire({
+      title: 'กรุณากรอกสรุปการสอน',
+      text: 'กรุณากรอกสรุปหัวข้อที่เรียนก่อนส่งแจ้งจบงาน',
+      icon: 'warning',
+      confirmButtonText: 'รับทราบ',
+      confirmButtonColor: '#2563EB',
+      customClass: { popup: 'rounded-4 shadow', confirmButton: 'rounded-3 px-4 fw-bold' },
+    });
+    return false;
+  }
+
+  // ยืนยันก่อนส่ง
+  Swal.fire({
+    title: 'ยืนยันการส่งแจ้งจบงาน?',
+    html: `ผู้เรียนจะได้รับการแจ้งเตือนให้ตรวจสอบและยืนยัน<br>
+           <span class="text-muted small">เครดิตจะโอนให้คุณหลังจากผู้เรียนยืนยันแล้ว</span>`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-paper-plane me-1"></i> ยืนยัน',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#2563EB',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+    customClass: {
+      popup:         'rounded-4 shadow',
+      actions:       'gap-2',
+      confirmButton: 'rounded-3 px-4 fw-bold',
+      cancelButton:  'rounded-3 px-4 fw-semibold',
+    },
+  }).then(result => {
+    if (result.isConfirmed) {
+      // ตั้ง hidden input แล้ว submit
+      const hidden = document.createElement('input');
+      hidden.type  = 'hidden';
+      hidden.name  = 'action';
+      hidden.value = 'submit';
+      form.appendChild(hidden);
+      form.submit();
+    }
+  });
+  return false; // ป้องกัน submit ตรง
+}
 </script>
 {% endblock %}
 {% endblock %}
