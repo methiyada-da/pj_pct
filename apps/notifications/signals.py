@@ -1,3 +1,5 @@
+#notifications/signals.py - สัญญาณสำหรับสร้าง Notification อัตโนมัติเมื่อเกิดเหตุการณ์ต่างๆ เช่น การจองใหม่ การอนุมัติการเป็นติวเตอร์ คำขอเติมเครดิต ฯลฯ
+
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
@@ -101,8 +103,12 @@ def booking_post_save(sender, instance, created, **kwargs):
             _notif_member(tutor_member, 'booking_reviewed', 'มีรีวิวใหม่จากผู้เรียน', f'/bookings/tutor/')
 
         elif new == 6:
-            # ปฏิเสธ → แจ้ง Member
-            _notif_member(member, 'booking_rejected', 'ติวเตอร์ปฏิเสธการจองของคุณ', f'/bookings/my/')
+            if instance.bk_cmt == 'ผู้เรียนยกเลิกการจอง':
+                # ผู้เรียนยกเลิกเอง → แจ้ง Tutor ว่าถูกยกเลิก
+                _notif_member(tutor_member, 'booking_cancelled', 'ผู้เรียนยกเลิกการจองของคุณ', f'/bookings/tutor/')
+            else:
+                # ติวเตอร์ปฏิเสธ → แจ้ง Member
+                _notif_member(member, 'booking_rejected', 'ติวเตอร์ปฏิเสธการจองของคุณ', f'/bookings/my/')
 
     # รายงานปัญหา → แจ้ง Admin + ติวเตอร์
     old_report = getattr(instance, '_old_report_date', None)
