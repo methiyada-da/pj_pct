@@ -397,8 +397,13 @@ def withdraw_view(request):
             errors.append('กรุณากรอกชื่อบัญชีธนาคาร')
         if not acc_no:
             errors.append('กรุณากรอกเลขที่บัญชี')
+        elif len(acc_no) > 20:
+            errors.append('เลขที่บัญชีต้องไม่เกิน 20 ตัวอักษร กรุณาตรวจสอบอีกครั้ง')
+            
         if not promptpay_no:
             errors.append('กรุณากรอกหมายเลขพร้อมเพย์')
+        elif len(promptpay_no) > 20:
+            errors.append('หมายเลขพร้อมเพย์ต้องไม่เกิน 20 ตัวอักษร กรุณาตรวจสอบอีกครั้ง')
 
         if not errors:
             avail = available_income if wd_type_i == 1 else available_deposit
@@ -425,13 +430,11 @@ def withdraw_view(request):
                 wd_status       = 0,
                 member          = member,
             )
-            # หักเครดิตทันทีเมื่อส่งคำขอ
-            if wd_type_i == 1:
-                member.mb_income_crd  = max(0, member.mb_income_crd  - wd_credit_i)
-            else:
-                member.mb_deposit_crd = max(0, member.mb_deposit_crd - wd_credit_i)
-            member.save(update_fields=['mb_income_crd', 'mb_deposit_crd'])
-            messages.success(request, 'ส่งคำขอถอนเครดิตเรียบร้อยแล้ว ระบบจะดำเนินการภายใน 3-5 วันทำการ')
+            # ล็อกเครดิต (ย้ายไป mb_locked_crd) เมื่อส่งคำขอ
+            member.mb_locked_crd += wd_credit_i
+            member.save(update_fields=['mb_locked_crd'])
+            
+            messages.success(request, 'ส่งคำขอถอนเครดิตเรียบร้อยแล้ว ระบบจะดำเนินการภายใน 3-5 วันทำการ (เครดิตของคุณจะถูกล็อกไว้จนกว่าแอดมินจะอนุมัติ)')
             return redirect('credits:credit')
 
         for err in errors:
