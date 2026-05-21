@@ -1,5 +1,8 @@
+<!-- ── Sidebar Overlay backdrop (mobile) ── -->
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
 <!-- ── Sidebar ── -->
-<nav class="sidebar">
+<nav class="sidebar" id="adminSidebar">
   <div class="sidebar-section-label">เมนูหลัก</div>
   <a href="{% url 'admin_panel:dashboard' %}"
      class="sidebar-link {% if active_menu == 'dashboard' %}active{% endif %}">
@@ -39,10 +42,10 @@
      class="sidebar-link {% if active_menu == 'refill_mgmt' %}active{% endif %}">
     <i class="bi bi-coin"></i> การเติมเครดิต
   </a>
-  <a href="{% url 'admin_panel:payment_mgmt' %}" class="sidebar-link {% if active_menu == 'payment' %}active{% endif %}">
+  <a href="{% url 'admin_panel:payment_mgmt' %}"
+     class="sidebar-link {% if active_menu == 'payment' %}active{% endif %}">
     <i class="bi bi-cash-stack"></i> การชำระเงิน
   </a>
-
   <a href="{% url 'admin_panel:report_mgmt' %}"
      class="sidebar-link {% if active_menu == 'report_mgmt' %}active{% endif %}">
     <i class="bi bi-exclamation-triangle"></i> รายงานปัญหา

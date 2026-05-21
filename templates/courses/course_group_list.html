@@ -2,11 +2,6 @@
 {% block title %}กลุ่มรายวิชา{% endblock %}
 
 {% block content %}
-<div class="page-breadcrumb">
-  <a href="#">การจัดการข้อมูลพื้นฐาน</a>
-  <span class="sep"><i class="bi bi-chevron-right" style="font-size:10px;"></i></span>
-  <span class="current">กลุ่มรายวิชา</span>
-</div>
 
 <div class="page-header">
   <div>
@@ -42,7 +37,7 @@
       {% endif %}
     </form>
   </div>
-
+  <div class="table-responsive-wrap">
   <table class="data-table">
     <thead>
       <tr>
@@ -87,7 +82,7 @@
       {% endfor %}
     </tbody>
   </table>
-
+  </div>
   <div class="pagination-wrap">
     <div class="pagination-info">
       แสดง {{ page_obj.start_index }}–{{ page_obj.end_index }} จาก {{ page_obj.paginator.count }} กลุ่มรายวิชา
