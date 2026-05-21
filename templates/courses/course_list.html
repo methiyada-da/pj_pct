@@ -2,11 +2,6 @@
 {% block title %}รายวิชา{% endblock %}
 
 {% block content %}
-<div class="page-breadcrumb">
-  <a href="#">การจัดการข้อมูลพื้นฐาน</a>
-  <span class="sep"><i class="bi bi-chevron-right" style="font-size:10px;"></i></span>
-  <span class="current">รายวิชา</span>
-</div>
 
 <div class="page-header">
   <div>
@@ -51,6 +46,7 @@
     </form>
   </div>
 
+  <div class="table-responsive-wrap">
   <table class="data-table" style="table-layout:fixed;width:100%;">
     <thead>
       <tr>
@@ -110,6 +106,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 
   <div class="pagination-wrap">
     <div class="pagination-info">

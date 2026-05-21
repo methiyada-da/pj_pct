@@ -1,10 +1,15 @@
 <!-- ── Topbar ── -->
 <div class="topbar">
+  <!-- hamburger: แสดงเฉพาะ mobile -->
+  <button class="sidebar-toggle-btn d-lg-none" id="sidebarToggleBtn" type="button" aria-label="เปิดเมนู">
+    <i class="bi bi-list"></i>
+  </button>
+
   <a href="{% url 'admin_panel:dashboard' %}" class="topbar-brand">
     <div class="brand-icon"><i class="bi bi-mortarboard-fill"></i></div>
-    Puean Chuay Tu
+    <span class="d-none d-sm-inline">Puean Chuay Tu</span>
   </a>
-  <div class="topbar-title">{{ topbar_breadcrumb|safe }}</div>
+  <div class="topbar-title d-none d-md-block">{{ topbar_breadcrumb|safe }}</div>
   <div class="topbar-actions">
     <!-- Bell Notification Dropdown -->
     <div class="dropdown">
@@ -18,7 +23,7 @@
               style="font-size:0.6rem">0</span>
       </button>
       <ul class="dropdown-menu dropdown-menu-end shadow p-0"
-          style="min-width:340px;max-height:460px;overflow-y:auto;">
+          style="min-width:300px;max-width:92vw;max-height:460px;overflow-y:auto;">
         <li class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center"
             style="position:sticky;top:0;background:#fff;z-index:1;">
           <span class="fw-semibold" style="font-size:13px;">การแจ้งเตือน</span>

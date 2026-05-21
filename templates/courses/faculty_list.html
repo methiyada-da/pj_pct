@@ -2,12 +2,6 @@
 {% block title %}คณะ{% endblock %}
 
 {% block content %}
-<!-- Breadcrumb -->
-<div class="page-breadcrumb">
-  <a href="#">การจัดการข้อมูลพื้นฐาน</a>
-  <span class="sep"><i class="bi bi-chevron-right" style="font-size:10px;"></i></span>
-  <span class="current">คณะ</span>
-</div>
 
 <!-- Header -->
 <div class="page-header">
@@ -47,6 +41,7 @@
     </form>
   </div>
 
+  <div class="table-responsive-wrap">
   <table class="data-table">
     <thead>
       <tr>
@@ -89,6 +84,8 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
+
 
   <!-- Pagination -->
   <div class="pagination-wrap">
