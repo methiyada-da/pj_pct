@@ -1,6 +1,4 @@
-<!-- ── Topbar ── -->
 <div class="topbar">
-  <!-- hamburger: แสดงเฉพาะ mobile -->
   <button class="sidebar-toggle-btn d-lg-none" id="sidebarToggleBtn" type="button" aria-label="เปิดเมนู">
     <i class="bi bi-list"></i>
   </button>
@@ -9,14 +7,16 @@
     <div class="brand-icon"><i class="bi bi-mortarboard-fill"></i></div>
     <span class="d-none d-sm-inline">Puean Chuay Tu</span>
   </a>
+
   <div class="topbar-title d-none d-md-block">{{ topbar_breadcrumb|safe }}</div>
+
   <div class="topbar-actions">
-    <!-- Bell Notification Dropdown -->
     <div class="dropdown">
       <button class="topbar-icon-btn position-relative"
               id="adminNotifBell"
               data-bs-toggle="dropdown"
-              aria-expanded="false">
+              aria-expanded="false"
+              aria-label="การแจ้งเตือน">
         <i class="bi bi-bell"></i>
         <span id="admin-notif-badge"
               class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
@@ -35,7 +35,8 @@
         </li>
       </ul>
     </div>
-    <a href="{% url 'messaging:inbox' %}" class="topbar-icon-btn">
+
+    <a href="{% url 'messaging:inbox' %}" class="topbar-icon-btn" aria-label="กล่องข้อความ">
       <i class="bi bi-chat-dots"></i>
     </a>
   </div>

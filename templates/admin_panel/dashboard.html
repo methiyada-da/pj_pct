@@ -1,546 +1,279 @@
 {% extends "admin_panel/base_admin.html" %}
 {% load static %}
 
-{% block title %}Admin Dashboard | เพื่อนช่วยติว{% endblock %}
-
-{% block extra_head %}
-<style>
-    /* Global Overrides */
-    :root {
-        --bs-primary: #2563EB;
-        --bs-primary-rgb: 37, 99, 235;
-        --card-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    }
-
-    /* Dashboard Stats Card */
-    .stat-card {
-        background: #fff;
-        border: 1px solid #E5E7EB;
-        border-radius: 12px;
-        padding: 1.5rem;
-        height: 100%;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-    }
-
-    .stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        margin-bottom: 1rem;
-    }
-
-    .stat-value {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: #111827;
-        line-height: 1.2;
-    }
-
-    .stat-label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #6B7280;
-        margin-top: 0.25rem;
-    }
-
-    .stat-trend {
-        font-size: 0.75rem;
-        margin-top: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    /* Urgent Action Center */
-    .action-card {
-        background: #fff;
-        border: 1px solid #E5E7EB;
-        border-radius: 12px;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        text-decoration: none;
-        color: inherit;
-        transition: all 0.2s;
-    }
-
-    .action-card:hover {
-        border-color: var(--bs-primary);
-        background-color: #F8FAFC;
-    }
-
-    .action-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-    }
-
-    .action-info {
-        flex: 1;
-    }
-
-    .action-title {
-        font-size: 0.9375rem;
-        font-weight: 600;
-        color: #1F2937;
-    }
-
-    .action-desc {
-        font-size: 0.8125rem;
-        color: #6B7280;
-    }
-
-    .action-badge {
-        background: #FEE2E2;
-        color: #DC2626;
-        padding: 2px 10px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-
-    /* Charts & Tables */
-    .section-card {
-        background: #fff;
-        border: 1px solid #E5E7EB;
-        border-radius: 12px;
-        padding: 1.5rem;
-        height: 100%;
-    }
-
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.25rem;
-    }
-
-    .section-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #111827;
-    }
-
-    /* Activity List */
-    .activity-list {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-    }
-
-    .activity-item {
-        display: flex;
-        align-items: center;
-        gap: 0.875rem;
-        padding: 0.875rem 0;
-        border-bottom: 1px solid #F3F4F6;
-    }
-
-    .activity-item:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .activity-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background-color: #F3F4F6;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        color: #4B5563;
-        font-size: 12px;
-    }
-
-    .activity-content {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .activity-user {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: #111827;
-        margin-bottom: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .activity-text {
-        font-size: 0.75rem;
-        color: #6B7280;
-    }
-
-    .activity-time {
-        font-size: 0.75rem;
-        color: #9CA3AF;
-        white-space: nowrap;
-    }
-
-    /* Progress Bar Chart */
-    .progress-list-item {
-        margin-bottom: 1rem;
-    }
-
-    .progress-label {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.8125rem;
-        font-weight: 500;
-        margin-bottom: 0.375rem;
-    }
-
-    .progress-bar-bg {
-        height: 6px;
-        background-color: #F1F5F9;
-        border-radius: 3px;
-    }
-
-    .progress-bar-fill {
-        height: 100%;
-        border-radius: 3px;
-        background-color: var(--bs-primary);
-    }
-</style>
-{% endblock %}
+{% block title %}Admin Dashboard | Puean Chuay Tu{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-0">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12 d-flex justify-content-between align-items-end">
-            <div>
-                <h1 class="h3 fw-bold mb-1">ระบบจัดการหลังบ้าน (Admin Dashboard)</h1>
-                <p class="text-muted small mb-0">ภาพรวมการทำงานและความเคลื่อนไหวของระบบในวันนี้</p>
-            </div>
-            <div class="d-none d-md-block">
-                <div class="text-end">
-                    <span class="badge bg-white text-dark border p-2 fw-normal">
-                        <i class="bi bi-calendar3 me-2 text-primary"></i>
-                        {{ today|date:"d F Y"|default:"พฤหัสบดีที่ 14 พฤษภาคม 2569" }}
-                    </span>
-                </div>
-            </div>
+<div class="admin-dashboard">
+  <section class="dashboard-hero">
+    <div>
+      <span class="eyebrow">Admin overview</span>
+      <h1>ภาพรวมระบบหลังบ้าน</h1>
+      <p>ติดตามสมาชิก ติวเตอร์ รายการเงิน เครดิต และเคสที่ต้องดำเนินการจากจุดเดียว</p>
+    </div>
+    <div class="hero-actions">
+      <a href="{% url 'admin_panel:tutor_mgmt_list' %}?status=pending" class="btn-admin btn-admin-light">
+        <i class="bi bi-person-check"></i>
+        ตรวจติวเตอร์
+      </a>
+      <a href="{% url 'admin_panel:refill_mgmt' %}?status=0" class="btn-admin btn-admin-accent">
+        <i class="bi bi-receipt"></i>
+        ตรวจสลิป
+      </a>
+    </div>
+  </section>
+
+  <section class="metric-grid">
+    <article class="metric-card metric-card-primary">
+      <div class="metric-icon"><i class="bi bi-people-fill"></i></div>
+      <div>
+        <span class="metric-label">สมาชิกทั้งหมด</span>
+        <strong class="metric-value">{{ total_members }}</strong>
+        <span class="metric-note">ใช้งานปกติ {{ active_members }} คน</span>
+      </div>
+    </article>
+
+    <article class="metric-card">
+      <div class="metric-icon"><i class="bi bi-mortarboard-fill"></i></div>
+      <div>
+        <span class="metric-label">ติวเตอร์ที่อนุมัติ</span>
+        <strong class="metric-value">{{ total_tutors }}</strong>
+        <span class="metric-note">รออนุมัติ {{ pending_tutors }} คน</span>
+      </div>
+    </article>
+
+    <article class="metric-card">
+      <div class="metric-icon"><i class="bi bi-cash-coin"></i></div>
+      <div>
+        <span class="metric-label">ยอดเติมเงินสำเร็จ</span>
+        <strong class="metric-value">฿{{ total_topup_money|floatformat:"0"|default:"0" }}</strong>
+        <span class="metric-note">รายการผ่านการตรวจสอบแล้ว</span>
+      </div>
+    </article>
+
+    <article class="metric-card metric-card-accent">
+      <div class="metric-icon"><i class="bi bi-bank2"></i></div>
+      <div>
+        <span class="metric-label">ค่าธรรมเนียมสะสม</span>
+        <strong class="metric-value">฿{{ total_fees|floatformat:"2"|default:"0.00" }}</strong>
+        <span class="metric-note">รายได้ระบบจากการถอน</span>
+      </div>
+    </article>
+  </section>
+
+  <section class="dashboard-layout">
+    <div class="panel-card panel-card-large">
+      <div class="panel-header">
+        <div>
+          <span class="panel-kicker">Growth</span>
+          <h2>สมาชิกใหม่ 7 เดือนล่าสุด</h2>
         </div>
+        <span class="status-pill status-pill-calm">รายเดือน</span>
+      </div>
+      <div class="chart-frame">
+        <canvas id="growthChart"></canvas>
+      </div>
     </div>
 
-    <!-- Quick Stats -->
-    <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
-                <div class="stat-icon bg-primary-subtle text-primary">
-                    <i class="bi bi-people-fill"></i>
-                </div>
-                <div class="stat-value">{{ total_members }}</div>
-                <div class="stat-label">สมาชิกทั้งหมด</div>
-                <div class="stat-trend text-success">
-                    <i class="bi bi-arrow-up-short"></i>
-                    <span>ใช้งานจริง {{ active_members }} คน</span>
-                </div>
-            </div>
+    <aside class="panel-card action-panel">
+      <div class="panel-header">
+        <div>
+          <span class="panel-kicker">Queue</span>
+          <h2>งานที่ต้องจัดการ</h2>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
-                <div class="stat-icon bg-success-subtle text-success">
-                    <i class="bi bi-person-check-fill"></i>
-                </div>
-                <div class="stat-value">{{ total_tutors }}</div>
-                <div class="stat-label">ติวเตอร์ที่อนุมัติแล้ว</div>
-                <div class="stat-trend {% if pending_tutors > 0 %}text-warning{% else %}text-muted{% endif %}">
-                    <i class="bi bi-clock-history"></i>
-                    <span>รอการอนุมัติ {{ pending_tutors }} คน</span>
-                </div>
-            </div>
+      </div>
+
+      <a class="queue-item" href="{% url 'admin_panel:tutor_mgmt_list' %}?status=pending">
+        <span class="queue-icon queue-icon-blue"><i class="bi bi-person-plus-fill"></i></span>
+        <span class="queue-copy">
+          <strong>อนุมัติติวเตอร์</strong>
+          <small>คำขอสมัครเป็นติวเตอร์ใหม่</small>
+        </span>
+        <span class="queue-count">{{ pending_tutors }}</span>
+      </a>
+
+      <a class="queue-item" href="{% url 'admin_panel:refill_mgmt' %}?status=0">
+        <span class="queue-icon queue-icon-amber"><i class="bi bi-receipt-cutoff"></i></span>
+        <span class="queue-copy">
+          <strong>ตรวจสลิปเติมเครดิต</strong>
+          <small>รายการรอยืนยันการโอนเงิน</small>
+        </span>
+        <span class="queue-count">{{ pending_refills }}</span>
+      </a>
+
+      <a class="queue-item" href="{% url 'admin_panel:payment_mgmt' %}?status=0">
+        <span class="queue-icon queue-icon-green"><i class="bi bi-wallet2"></i></span>
+        <span class="queue-copy">
+          <strong>จ่ายเงินถอน</strong>
+          <small>คำขอถอนเครดิตที่รอดำเนินการ</small>
+        </span>
+        <span class="queue-count">{{ pending_withdraw }}</span>
+      </a>
+
+      <a class="queue-item" href="{% url 'admin_panel:report_mgmt' %}?status=waiting">
+        <span class="queue-icon queue-icon-coral"><i class="bi bi-exclamation-octagon-fill"></i></span>
+        <span class="queue-copy">
+          <strong>รายงานปัญหา</strong>
+          <small>เคสเรียน/สอนที่รอการตัดสินใจ</small>
+        </span>
+        <span class="queue-count">{{ pending_reports }}</span>
+      </a>
+    </aside>
+  </section>
+
+  <section class="insight-grid">
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <span class="panel-kicker">Education data</span>
+          <h2>ฐานข้อมูลรายวิชา</h2>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
-                <div class="stat-icon bg-info-subtle text-info">
-                    <i class="bi bi-cash-coin"></i>
-                </div>
-                <div class="stat-value">฿{{ total_topup_money|floatformat:"0"|default:"0" }}</div>
-                <div class="stat-label">ยอดเติมเครดิตรวม</div>
-                <div class="stat-trend text-muted">
-                    <i class="bi bi-info-circle"></i>
-                    <span>เฉพาะรายการที่สำเร็จแล้ว</span>
-                </div>
-            </div>
+      </div>
+      <div class="mini-stat-row">
+        <div>
+          <span>{{ total_faculties }}</span>
+          <small>คณะ</small>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="stat-card">
-                <div class="stat-icon bg-purple-subtle text-primary" style="background-color: #F3E8FF; color: #7E22CE;">
-                    <i class="bi bi-bank2"></i>
-                </div>
-                <div class="stat-value">฿{{ total_fees|floatformat:"2"|default:"0.00" }}</div>
-                <div class="stat-label">รายได้รวมของระบบ (ค่าธรรมเนียม)</div>
-                <div class="stat-trend text-muted">
-                    <i class="bi bi-shield-check"></i>
-                    <span>ยอดสะสมจากรายการถอน</span>
-                </div>
-            </div>
+        <div>
+          <span>{{ total_majors }}</span>
+          <small>สาขา</small>
         </div>
+        <div>
+          <span>{{ total_courses }}</span>
+          <small>รายวิชา</small>
+        </div>
+      </div>
+      <div class="progress-list">
+        {% for g in top_groups %}
+        <div class="progress-item">
+          <div class="progress-label">
+            <span>{{ g.cg_name }}</span>
+            <strong>{{ g.crs_count }} วิชา</strong>
+          </div>
+          <div class="progress-track">
+            <span style="width:{% widthratio g.crs_count max_crs 100 %}%"></span>
+          </div>
+        </div>
+        {% empty %}
+        <p class="empty-state">ยังไม่มีข้อมูลกลุ่มรายวิชา</p>
+        {% endfor %}
+      </div>
     </div>
 
-    <!-- Urgent Actions & Main Charts -->
-    <div class="row g-4 mb-4">
-        <!-- Main Chart -->
-        <div class="col-xl-8">
-            <div class="section-card">
-                <div class="section-header">
-                    <h2 class="section-title">สถิติการเติบโตของสมาชิก</h2>
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            6 เดือนล่าสุด
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#">12 เดือนล่าสุด</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div style="height: 300px;">
-                    <canvas id="growthChart"></canvas>
-                </div>
-            </div>
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <span class="panel-kicker">Members</span>
+          <h2>สมาชิกใหม่ล่าสุด</h2>
         </div>
-
-        <!-- Action Center -->
-        <div class="col-xl-4">
-            <div class="section-card">
-                <div class="section-header">
-                    <h2 class="section-title">รายการที่ต้องดำเนินการ</h2>
-                    <span class="badge rounded-pill bg-danger-subtle text-danger px-3">เร่งด่วน</span>
-                </div>
-                
-                <a href="{% url 'admin_panel:tutor_mgmt_list' %}?status=pending" class="action-card">
-                    <div class="action-icon bg-primary-subtle text-primary">
-                        <i class="bi bi-person-plus-fill"></i>
-                    </div>
-                    <div class="action-info">
-                        <div class="action-title">อนุมัติติวเตอร์</div>
-                        <div class="action-desc">คำขอสมัครเป็นติวเตอร์ใหม่</div>
-                    </div>
-                    {% if pending_tutors %}
-                    <div class="action-badge">{{ pending_tutors }}</div>
-                    {% endif %}
-                </a>
-
-                <a href="{% url 'admin_panel:refill_mgmt' %}?status=0" class="action-card">
-                    <div class="action-icon bg-warning-subtle text-warning">
-                        <i class="bi bi-receipt-cutoff"></i>
-                    </div>
-                    <div class="action-info">
-                        <div class="action-title">ตรวจสอบสลิปเงินเติม</div>
-                        <div class="action-desc">รอยืนยันการโอนเงิน</div>
-                    </div>
-                    {% if pending_refills %}
-                    <div class="action-badge">{{ pending_refills }}</div>
-                    {% endif %}
-                </a>
-
-                <a href="{% url 'admin_panel:payment_mgmt' %}?status=0" class="action-card">
-                    <div class="action-icon bg-success-subtle text-success">
-                        <i class="bi bi-wallet2"></i>
-                    </div>
-                    <div class="action-info">
-                        <div class="action-title">ดำเนินการจ่ายเงินถอน</div>
-                        <div class="action-desc">คำขอถอนรายได้ของติวเตอร์</div>
-                    </div>
-                    {% if pending_withdraw %}
-                    <div class="action-badge">{{ pending_withdraw }}</div>
-                    {% endif %}
-                </a>
-
-                <a href="{% url 'admin_panel:report_mgmt' %}?status=waiting" class="action-card">
-                    <div class="action-icon bg-danger-subtle text-danger">
-                        <i class="bi bi-exclamation-octagon-fill"></i>
-                    </div>
-                    <div class="action-info">
-                        <div class="action-title">รายงานปัญหาเรียน/สอน</div>
-                        <div class="action-desc">ข้อพิพาทที่ต้องตัดสินใจ</div>
-                    </div>
-                    {% if pending_reports %}
-                    <div class="action-badge">{{ pending_reports }}</div>
-                    {% endif %}
-                </a>
-            </div>
+        <a href="{% url 'admin_panel:member_mgmt' %}" class="panel-link">ทั้งหมด</a>
+      </div>
+      <div class="activity-list">
+        {% for m in recent_members %}
+        <div class="activity-item">
+          <div class="activity-avatar">{{ m.mb_full_name|slice:":1" }}</div>
+          <div class="activity-copy">
+            <strong>{{ m.mb_full_name }}</strong>
+            <small>{{ m.mj_id.mj_name|default:"ยังไม่ระบุสาขา" }}</small>
+          </div>
+          <time>{{ m.user.date_joined|date:"d M" }}</time>
         </div>
+        {% empty %}
+        <p class="empty-state">ยังไม่มีสมาชิกใหม่</p>
+        {% endfor %}
+      </div>
     </div>
 
-    <!-- Second Row: Recent Activity & Top Categories -->
-    <div class="row g-4">
-        <!-- Recent Users -->
-        <div class="col-lg-4">
-            <div class="section-card">
-                <div class="section-header">
-                    <h2 class="section-title">สมาชิกลงทะเบียนล่าสุด</h2>
-                    <a href="{% url 'admin_panel:member_mgmt' %}" class="btn btn-sm btn-link p-0 text-decoration-none">ดูทั้งหมด</a>
-                </div>
-                <div class="activity-list">
-                    {% for m in recent_members %}
-                    <div class="activity-item">
-                        <div class="activity-avatar">
-                            {{ m.mb_full_name|slice:":1" }}
-                        </div>
-                        <div class="activity-content">
-                            <div class="activity-user">{{ m.mb_full_name }}</div>
-                            <div class="activity-text">{{ m.mj_id.mj_name|default:"ยังไม่ระบุสาขา" }}</div>
-                        </div>
-                        <div class="activity-time">{{ m.user.date_joined|date:"d M H:i" }}</div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center py-4">
-                        <p class="text-muted small">ไม่มีความเคลื่อนไหวล่าสุด</p>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <span class="panel-kicker">Credit</span>
+          <h2>เติมเครดิตล่าสุด</h2>
         </div>
-
-        <!-- Recent Refills -->
-        <div class="col-lg-4">
-            <div class="section-card">
-                <div class="section-header">
-                    <h2 class="section-title">การเติมเครดิตล่าสุด</h2>
-                    <a href="{% url 'admin_panel:refill_mgmt' %}" class="btn btn-sm btn-link p-0 text-decoration-none">ดูทั้งหมด</a>
-                </div>
-                <div class="activity-list">
-                    {% for r in recent_refills %}
-                    <div class="activity-item">
-                        <div class="activity-icon">
-                            {% if r.rf_status == 1 %}
-                                <i class="bi bi-check-circle-fill text-success"></i>
-                            {% elif r.rf_status == 2 %}
-                                <i class="bi bi-x-circle-fill text-danger"></i>
-                            {% else %}
-                                <i class="bi bi-hourglass-split text-warning"></i>
-                            {% endif %}
-                        </div>
-                        <div class="activity-content ms-2">
-                            <div class="activity-user">{{ r.member.mb_full_name }}</div>
-                            <div class="activity-text">฿{{ r.rf_money|floatformat:0 }} (+{{ r.rf_credit }} เครดิต)</div>
-                        </div>
-                        <div class="activity-time">
-                            {% if r.rf_status == 0 %}<span class="text-warning fw-bold">รอตรวจ</span>{% else %}{{ r.rf_date|date:"d M" }}{% endif %}
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center py-4">
-                        <p class="text-muted small">ยังไม่มีรายการเติมเงิน</p>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+        <a href="{% url 'admin_panel:refill_mgmt' %}" class="panel-link">ทั้งหมด</a>
+      </div>
+      <div class="activity-list">
+        {% for r in recent_refills %}
+        <div class="activity-item">
+          <div class="activity-status {% if r.rf_status == 1 %}is-success{% elif r.rf_status == 2 %}is-danger{% else %}is-warning{% endif %}">
+            {% if r.rf_status == 1 %}
+            <i class="bi bi-check-lg"></i>
+            {% elif r.rf_status == 2 %}
+            <i class="bi bi-x-lg"></i>
+            {% else %}
+            <i class="bi bi-hourglass-split"></i>
+            {% endif %}
+          </div>
+          <div class="activity-copy">
+            <strong>{{ r.member.mb_full_name }}</strong>
+            <small>฿{{ r.rf_money|floatformat:0 }} / {{ r.rf_credit }} เครดิต</small>
+          </div>
+          <time>{% if r.rf_status == 0 %}รอตรวจ{% else %}{{ r.rf_date|date:"d M" }}{% endif %}</time>
         </div>
-
-        <!-- Top Course Groups -->
-        <div class="col-lg-4">
-            <div class="section-card">
-                <div class="section-header">
-                    <h2 class="section-title">กลุ่มวิชายอดนิยม</h2>
-                    <a href="{% url 'courses:course_group_list' %}" class="btn btn-sm btn-link p-0 text-decoration-none">ดูทั้งหมด</a>
-                </div>
-                <div class="progress-list pt-2">
-                    {% for g in top_groups %}
-                    <div class="progress-list-item">
-                        <div class="progress-label">
-                            <span>{{ g.cg_name }}</span>
-                            <span class="text-muted">{{ g.crs_count }} วิชา</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" style="width: {% widthratio g.crs_count max_crs 100 %}%"></div>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center py-4">
-                        <p class="text-muted small">ยังไม่มีข้อมูลวิชาในระบบ</p>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
+        {% empty %}
+        <p class="empty-state">ยังไม่มีรายการเติมเครดิต</p>
+        {% endfor %}
+      </div>
     </div>
+  </section>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('growthChart');
-        if (ctx) {
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: {{ chart_labels|safe }},
-                    datasets: [{
-                        label: 'สมาชิกใหม่',
-                        data: {{ chart_data|safe }},
-                        fill: true,
-                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                        borderColor: '#2563EB',
-                        borderWidth: 3,
-                        tension: 0.4,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#2563EB',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: '#111827',
-                            padding: 12,
-                            titleFont: { size: 14, weight: 'bold' },
-                            bodyFont: { size: 13 },
-                            displayColors: false,
-                            callbacks: {
-                                label: (context) => ` สมาชิกใหม่: ${context.parsed.y} คน`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: { font: { size: 12 } }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: '#F1F5F9' },
-                            ticks: { 
-                                stepSize: 1,
-                                font: { size: 12 }
-                            }
-                        }
-                    }
-                }
-            });
+  document.addEventListener('DOMContentLoaded', function () {
+    const canvas = document.getElementById('growthChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: {{ chart_labels|safe }},
+        datasets: [{
+          label: 'สมาชิกใหม่',
+          data: {{ chart_data|safe }},
+          fill: true,
+          backgroundColor: 'rgba(37, 99, 235, 0.12)',
+          borderColor: '#2563EB',
+          borderWidth: 3,
+          tension: 0.38,
+          pointBackgroundColor: '#FFFFFF',
+          pointBorderColor: '#2563EB',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0F172A',
+            padding: 12,
+            displayColors: false,
+            callbacks: {
+              label: function (context) {
+                return ' สมาชิกใหม่: ' + context.parsed.y + ' คน';
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: '#64748B', font: { size: 12 } }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: '#E2E8F0' },
+            ticks: { color: '#64748B', precision: 0, font: { size: 12 } }
+          }
         }
+      }
     });
+  });
 </script>
 {% endblock %}

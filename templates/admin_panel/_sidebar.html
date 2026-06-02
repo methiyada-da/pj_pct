@@ -1,60 +1,69 @@
-<!-- ── Sidebar Overlay backdrop (mobile) ── -->
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-<!-- ── Sidebar ── -->
-<nav class="sidebar" id="adminSidebar">
-  <div class="sidebar-section-label">เมนูหลัก</div>
+<nav class="sidebar" id="adminSidebar" aria-label="Admin navigation">
+  <div class="sidebar-section-label">ภาพรวม</div>
   <a href="{% url 'admin_panel:dashboard' %}"
      class="sidebar-link {% if active_menu == 'dashboard' %}active{% endif %}">
-    <i class="bi bi-grid-1x2"></i> ภาพรวมแดชบอร์ด
+    <i class="bi bi-grid-1x2"></i>
+    <span>แดชบอร์ด</span>
   </a>
 
-  <div class="sidebar-section-label" style="margin-top:8px;">การจัดการข้อมูลพื้นฐาน</div>
+  <div class="sidebar-section-label">ข้อมูลการเรียน</div>
   <div class="sidebar-sub">
     <a href="{% url 'courses:faculty_list' %}"
        class="sidebar-link {% if active_menu == 'faculty' %}active{% endif %}">
-      <i class="bi bi-building"></i> คณะ
+      <i class="bi bi-building"></i>
+      <span>คณะ</span>
     </a>
     <a href="{% url 'courses:major_list' %}"
        class="sidebar-link {% if active_menu == 'major' %}active{% endif %}">
-      <i class="bi bi-diagram-3"></i> สาขา
+      <i class="bi bi-diagram-3"></i>
+      <span>สาขา</span>
     </a>
     <a href="{% url 'courses:course_group_list' %}"
        class="sidebar-link {% if active_menu == 'course_group' %}active{% endif %}">
-      <i class="bi bi-collection"></i> กลุ่มรายวิชา
+      <i class="bi bi-collection"></i>
+      <span>กลุ่มรายวิชา</span>
     </a>
     <a href="{% url 'courses:course_list' %}"
        class="sidebar-link {% if active_menu == 'course' %}active{% endif %}">
-      <i class="bi bi-journal-bookmark"></i> รายวิชา
+      <i class="bi bi-journal-bookmark"></i>
+      <span>รายวิชา</span>
     </a>
   </div>
 
-  <div class="sidebar-section-label" style="margin-top:8px;">การดำเนินงาน</div>
+  <div class="sidebar-section-label">การดำเนินงาน</div>
   <a href="{% url 'admin_panel:member_mgmt' %}"
      class="sidebar-link {% if active_menu == 'member_mgmt' %}active{% endif %}">
-    <i class="bi bi-people"></i> จัดการสมาชิก
+    <i class="bi bi-people"></i>
+    <span>สมาชิก</span>
   </a>
   <a href="{% url 'admin_panel:tutor_mgmt_list' %}"
      class="sidebar-link {% if active_menu == 'tutor_mgmt' %}active{% endif %}">
-    <i class="bi bi-person-check"></i> การอนุมัติติวเตอร์
+    <i class="bi bi-person-check"></i>
+    <span>อนุมัติติวเตอร์</span>
   </a>
   <a href="{% url 'admin_panel:refill_mgmt' %}"
      class="sidebar-link {% if active_menu == 'refill_mgmt' %}active{% endif %}">
-    <i class="bi bi-coin"></i> การเติมเครดิต
+    <i class="bi bi-coin"></i>
+    <span>เติมเครดิต</span>
   </a>
   <a href="{% url 'admin_panel:payment_mgmt' %}"
      class="sidebar-link {% if active_menu == 'payment' %}active{% endif %}">
-    <i class="bi bi-cash-stack"></i> การชำระเงิน
+    <i class="bi bi-cash-stack"></i>
+    <span>ชำระเงินถอน</span>
   </a>
   <a href="{% url 'admin_panel:report_mgmt' %}"
      class="sidebar-link {% if active_menu == 'report_mgmt' %}active{% endif %}">
-    <i class="bi bi-exclamation-triangle"></i> รายงานปัญหา
+    <i class="bi bi-exclamation-triangle"></i>
+    <span>รายงานปัญหา</span>
   </a>
 
-  <div class="sidebar-section-label" style="margin-top:8px;">ระบบ</div>
+  <div class="sidebar-section-label">ระบบ</div>
   <a href="{% url 'admin_panel:system_settings' %}"
      class="sidebar-link {% if active_menu == 'system' %}active{% endif %}">
-    <i class="bi bi-gear"></i> ตั้งค่าระบบ
+    <i class="bi bi-gear"></i>
+    <span>ตั้งค่าระบบ</span>
   </a>
 
   <div class="sidebar-bottom">
@@ -64,11 +73,11 @@
       </div>
       <div>
         <div class="name">{{ request.user.get_full_name|default:request.user.username }}</div>
-        <div class="email">{{ request.user.email }}</div>
+        <div class="email">{{ request.user.email|default:"Admin" }}</div>
       </div>
       <form method="post" action="{% url 'accounts:logout' %}" style="margin-left:auto;">
         {% csrf_token %}
-        <button type="submit" class="logout-btn" title="ออกจากระบบ">
+        <button type="submit" class="logout-btn" title="ออกจากระบบ" aria-label="ออกจากระบบ">
           <i class="bi bi-box-arrow-right"></i>
         </button>
       </form>
