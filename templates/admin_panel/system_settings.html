@@ -32,6 +32,13 @@
             {{ sys_form.uni_name }}
           </div>
           <div class="mb-3">
+            <label class="form-label">โดเมนอีเมลมหาวิทยาลัย</label>
+            {{ sys_form.email_domain }}
+            {% if sys_form.email_domain.errors %}
+              <div class="text-danger small mt-1">{{ sys_form.email_domain.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
             <label class="form-label">ชื่อธนาคาร</label>
             {{ sys_form.bank_name }}
           </div>

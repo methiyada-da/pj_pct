@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import MemberRegisterForm
 from apps.courses.models import Major
+from apps.admin_panel.utils import get_system_email_suffix
 import os
 
 
@@ -94,8 +95,9 @@ def register_view(request):
         # แปลง email prefix → full email ก่อนส่งเข้า form
         post_data = request.POST.copy()
         mb_email  = request.POST.get('mb_email', '').strip()
-        if mb_email and not mb_email.endswith('@rmuti.ac.th'):
-            mb_email = mb_email + '@rmuti.ac.th'
+        email_suffix = get_system_email_suffix()
+        if mb_email and not mb_email.lower().endswith(email_suffix):
+            mb_email = mb_email + email_suffix
             post_data['mb_email'] = mb_email
 
         form = MemberRegisterForm(post_data, request.FILES)
