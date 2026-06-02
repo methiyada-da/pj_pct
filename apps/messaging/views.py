@@ -4,10 +4,52 @@ from django.contrib.auth.decorators import login_required
 from datetime import datetime, timezone as dt_timezone
 from django.utils import timezone
 from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
+from django.contrib import messages
 
 from apps.accounts.models import Member
 from .models import Inbox, Message
 from .forms import MessageForm
+
+
+def _display_name_for_user(user):
+    full_name = user.get_full_name().strip()
+    if full_name:
+        return full_name
+    if user.email:
+        return user.email.split('@')[0]
+    return user.username
+
+
+def _email_for_user(user):
+    email = (user.email or '').strip()
+    if email:
+        return email[:50]
+    return f'{user.username}@admin.local'[:50]
+
+
+def _get_current_member(request):
+    """
+    Messaging is stored between Member records. Admin users created outside the
+    member registration flow may not have one, so create a lightweight member
+    profile for staff accounts when they first open chat.
+    """
+    try:
+        return request.user.member
+    except (Member.DoesNotExist, ObjectDoesNotExist):
+        if request.user.is_staff or request.user.is_superuser:
+            member, _ = Member.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    'mb_full_name': _display_name_for_user(request.user),
+                    'mb_email': _email_for_user(request.user),
+                    'mb_status': 1,
+                    'mj_id': None,
+                }
+            )
+            return member
+        messages.error(request, 'ไม่พบข้อมูลสมาชิกของบัญชีนี้ กรุณาติดต่อผู้ดูแลระบบ')
+        return None
 
 
 def _build_inbox_data(me):
@@ -44,7 +86,9 @@ def inbox_list(request):
     หน้ารายการแชททั้งหมด
     URL: /messaging/
     """
-    me = request.user.member
+    me = _get_current_member(request)
+    if not me:
+        return redirect('home')
     return render(request, 'messaging/inbox.html', {
         'inbox_data': _build_inbox_data(me),
         'is_admin':   request.user.is_staff,
@@ -57,7 +101,9 @@ def chat_with(request, mb_id):
     หน้าแชทกับ member คนใดคนหนึ่ง (get_or_create inbox)
     URL: /messaging/with/<mb_id>/
     """
-    me    = request.user.member
+    me = _get_current_member(request)
+    if not me:
+        return redirect('home')
     other = get_object_or_404(Member, pk=mb_id)
 
     # ป้องกันแชทกับตัวเอง
@@ -116,7 +162,9 @@ def poll_messages(request, ib_id):
     """
     from django.http import JsonResponse
 
-    me    = request.user.member
+    me = _get_current_member(request)
+    if not me:
+        return JsonResponse({'error': 'member_not_found'}, status=403)
     inbox = get_object_or_404(Inbox, pk=ib_id)
 
     # ตรวจสิทธิ์
@@ -152,7 +200,9 @@ def unread_count(request):
     URL: /messaging/unread-count/
     """
     from django.http import JsonResponse
-    me = request.user.member
+    me = _get_current_member(request)
+    if not me:
+        return JsonResponse({'total_unread': 0})
     inboxes = Inbox.objects.filter(Q(member1=me) | Q(member2=me))
     total = sum(ib.unread_count_for(me) for ib in inboxes)
     return JsonResponse({'total_unread': total})

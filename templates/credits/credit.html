@@ -1,286 +1,394 @@
 {% extends 'main/base.html' %}
 {% load static %}
 
-{% block title %}เครดิต — Puean Chuay Tu{% endblock %}
+{% block title %}เครดิต - Puean Chuay Tu{% endblock %}
 
 {% block content %}
+<style>
+  .credit-page {
+    background: #f6f8fb;
+    min-height: 100vh;
+    padding: 28px 12px 44px;
+  }
+  .credit-shell {
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+  .credit-hero {
+    background: #ffffff;
+    border: 1px solid #e6eaf0;
+    border-radius: 8px;
+    padding: 22px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+  }
+  .credit-balance {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    line-height: 1;
+  }
+  .credit-balance strong {
+    font-size: 44px;
+    letter-spacing: 0;
+  }
+  .credit-action {
+    min-width: 118px;
+  }
+  .credit-stat {
+    background: #ffffff;
+    border: 1px solid #e6eaf0;
+    border-radius: 8px;
+    padding: 16px;
+    height: 100%;
+  }
+  .credit-stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .credit-list-card {
+    background: #ffffff;
+    border: 1px solid #e6eaf0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+  }
+  .credit-row {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 16px 20px;
+    border-top: 1px solid #eef2f7;
+    cursor: pointer;
+  }
+  .credit-row:first-child {
+    border-top: 0;
+  }
+  .credit-row:hover {
+    background: #f8fafc;
+  }
+  .tx-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+  }
+  .tx-meta {
+    min-width: 0;
+  }
+  .tx-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+  .tx-subtitle {
+    font-size: 12px;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tx-side {
+    min-width: 210px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 18px;
+    text-align: right;
+  }
+  .tx-amount {
+    font-size: 15px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .tx-date {
+    font-size: 12px;
+    color: #6b7280;
+    white-space: nowrap;
+  }
+  .status-pill {
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .status-waiting { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+  .status-success { background: #ecfdf5; color: #166534; border-color: #bbf7d0; }
+  .status-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+  .status-muted { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+  .status-locked { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+  .credit-modal .modal-content {
+    border: 0;
+    border-radius: 8px;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, .22);
+    overflow: hidden;
+  }
+  .credit-modal-head {
+    padding: 20px 22px 10px;
+  }
+  .credit-modal-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .credit-modal-body {
+    padding: 10px 22px 20px;
+  }
+  .credit-info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eef2f7;
+    font-size: 13px;
+  }
+  .credit-info-row:last-child {
+    border-bottom: 0;
+  }
+  .credit-confirm-box {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+  .credit-modal-actions {
+    padding: 0 22px 22px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  @media (max-width: 768px) {
+    .credit-hero {
+      padding: 18px;
+    }
+    .credit-balance strong {
+      font-size: 36px;
+    }
+    .credit-row {
+      grid-template-columns: 42px minmax(0, 1fr);
+      align-items: flex-start;
+      padding: 15px;
+    }
+    .tx-side {
+      grid-column: 2;
+      min-width: 0;
+      width: 100%;
+      justify-content: space-between;
+      gap: 10px;
+      text-align: left;
+      flex-wrap: wrap;
+    }
+  }
+</style>
 
-<div class="bg-light min-vh-100 py-4 px-2 px-md-3">
-  <div class="container" style="max-width:1060px;">
-
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
-      <h4 class="fw-bold mb-0">เครดิต</h4>
-      <div class="d-flex gap-2">
-        <a href="{% url 'credits:withdraw' %}" class="btn btn-outline-secondary btn-sm px-3">
-          <i class="fas fa-arrow-up-from-bracket me-1"></i> ถอนเครดิต
-        </a>
-        <a href="{% url 'credits:topup' %}" class="btn btn-primary btn-sm px-3">
-          <i class="fas fa-plus me-1"></i> เติมเครดิต
-        </a>
+<div class="credit-page">
+  <div class="credit-shell">
+    <div class="credit-hero mb-3">
+      <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+        <div>
+          <div class="text-muted small fw-semibold mb-2">เครดิตที่ใช้ได้</div>
+          <div class="credit-balance">
+            <strong>{{ available }}</strong>
+            <span class="text-muted fw-semibold mb-1">เครดิต</span>
+          </div>
+          <div class="text-muted small mt-2">ยอดนี้หักเครดิตที่ถูกล็อกไว้แล้ว</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'credits:withdraw' %}" class="btn btn-outline-secondary btn-sm credit-action">
+            <i class="fas fa-arrow-up-from-bracket me-1"></i> ถอนเครดิต
+          </a>
+          <a href="{% url 'credits:topup' %}" class="btn btn-primary btn-sm credit-action">
+            <i class="fas fa-plus me-1"></i> เติมเครดิต
+          </a>
+        </div>
       </div>
     </div>
 
     <div class="row g-3 mb-4">
       <div class="col-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body p-3">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <span class="text-muted small fw-semibold">เครดิตจากรายได้</span>
-              <div class="rounded-3 d-flex align-items-center justify-content-center"
-                   style="width:36px;height:36px;background:#DCFCE7;">
-                <i class="fas fa-arrow-trend-up" style="color:#16A34A;font-size:14px;"></i>
-              </div>
-            </div>
-            <div class="fw-bold" style="font-size:28px;line-height:1;">
-              {{ member.mb_income_crd }}<span class="fs-6 text-muted fw-semibold ms-1">เครดิต</span>
+        <div class="credit-stat">
+          <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+            <div class="text-muted small fw-semibold">รายได้</div>
+            <div class="credit-stat-icon" style="background:#dcfce7;color:#16a34a;">
+              <i class="fas fa-arrow-trend-up"></i>
             </div>
           </div>
+          <div class="h4 fw-bold mb-0">{{ member.mb_income_crd }}</div>
+          <div class="text-muted small">เครดิต</div>
         </div>
       </div>
       <div class="col-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body p-3">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <span class="text-muted small fw-semibold">เครดิตนำฝาก</span>
-              <div class="rounded-3 d-flex align-items-center justify-content-center"
-                   style="width:36px;height:36px;background:#DBEAFE;">
-                <i class="fas fa-vault" style="color:#2563EB;font-size:14px;"></i>
-              </div>
-            </div>
-            <div class="fw-bold" style="font-size:28px;line-height:1;">
-              {{ member.mb_deposit_crd }}<span class="fs-6 text-muted fw-semibold ms-1">เครดิต</span>
+        <div class="credit-stat">
+          <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+            <div class="text-muted small fw-semibold">นำฝาก</div>
+            <div class="credit-stat-icon" style="background:#dbeafe;color:#2563eb;">
+              <i class="fas fa-vault"></i>
             </div>
           </div>
+          <div class="h4 fw-bold mb-0">{{ member.mb_deposit_crd }}</div>
+          <div class="text-muted small">เครดิต</div>
         </div>
       </div>
       <div class="col-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body p-3">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <span class="text-muted small fw-semibold">เครดิตที่ล็อคไว้</span>
-              <div class="rounded-3 d-flex align-items-center justify-content-center"
-                   style="width:36px;height:36px;background:#FEF3C7;">
-                <i class="fas fa-lock" style="color:#D97706;font-size:14px;"></i>
-              </div>
-            </div>
-            <div class="fw-bold" style="font-size:28px;line-height:1;">
-              {{ member.mb_locked_crd }}<span class="fs-6 text-muted fw-semibold ms-1">เครดิต</span>
+        <div class="credit-stat">
+          <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+            <div class="text-muted small fw-semibold">ถูกล็อก</div>
+            <div class="credit-stat-icon" style="background:#fef3c7;color:#d97706;">
+              <i class="fas fa-lock"></i>
             </div>
           </div>
+          <div class="h4 fw-bold mb-0">{{ member.mb_locked_crd }}</div>
+          <div class="text-muted small">เครดิต</div>
         </div>
       </div>
       <div class="col-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100" style="background:#2563EB;">
-          <div class="card-body p-3">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <span class="small fw-semibold" style="color:rgba(255,255,255,.8);">เครดิตที่ใช้ได้</span>
-              <div class="rounded-3 d-flex align-items-center justify-content-center"
-                   style="width:36px;height:36px;background:rgba(255,255,255,.2);">
-                <i class="fas fa-coins" style="color:#fff;font-size:14px;"></i>
-              </div>
-            </div>
-            <div class="fw-bold text-white" style="font-size:28px;line-height:1;">
-              {{ available }}<span class="fs-6 fw-semibold ms-1" style="color:rgba(255,255,255,.7);">เครดิต</span>
+        <div class="credit-stat" style="background:#111827;color:#fff;border-color:#111827;">
+          <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+            <div class="small fw-semibold" style="color:#cbd5e1;">คงเหลือ</div>
+            <div class="credit-stat-icon" style="background:rgba(255,255,255,.14);color:#fff;">
+              <i class="fas fa-coins"></i>
             </div>
           </div>
+          <div class="h4 fw-bold mb-0">{{ available }}</div>
+          <div class="small" style="color:#cbd5e1;">เครดิต</div>
         </div>
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3 px-4 flex-wrap gap-2">
-        <span class="fw-bold"><i class="fas fa-list me-2 text-primary"></i>รายการความเคลื่อนไหว</span>
-        <select class="form-select form-select-sm" style="width:auto;"
-                onchange="location.href='?kind='+this.value">
-          <option value=""               {% if not kind_filter %}selected{% endif %}>ทุกประเภท</option>
-          <option value="topup"          {% if kind_filter == 'topup'          %}selected{% endif %}>เติมเครดิต</option>
-          <option value="withdraw"       {% if kind_filter == 'withdraw'       %}selected{% endif %}>ถอนเครดิต</option>
-          <option value="booking_pay"    {% if kind_filter == 'booking_pay'    %}selected{% endif %}>จ่ายค่าเรียน</option>
+    <div class="credit-list-card">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-4 py-3 border-bottom">
+        <div class="fw-bold">
+          <i class="fas fa-list me-2 text-primary"></i>รายการความเคลื่อนไหว
+        </div>
+        <select class="form-select form-select-sm" style="width:auto;" onchange="location.href='?kind='+this.value">
+          <option value="" {% if not kind_filter %}selected{% endif %}>ทุกประเภท</option>
+          <option value="topup" {% if kind_filter == 'topup' %}selected{% endif %}>เติมเครดิต</option>
+          <option value="withdraw" {% if kind_filter == 'withdraw' %}selected{% endif %}>ถอนเครดิต</option>
+          <option value="booking_pay" {% if kind_filter == 'booking_pay' %}selected{% endif %}>จ่ายค่าเรียน</option>
           <option value="booking_income" {% if kind_filter == 'booking_income' %}selected{% endif %}>รายได้จากการสอน</option>
         </select>
       </div>
 
-      {% if page_obj %}
-        <ul class="list-group list-group-flush">
-          {% for tx in page_obj %}
-
+      {% if page_obj.object_list %}
+        {% for tx in page_obj %}
           {% if tx.kind == 'topup' %}
-          <li class="list-group-item px-4 py-3" style="cursor:pointer;"
-              onclick="openRefillDetail(
-                '{{ tx.rf_id|stringformat:"05d" }}',
-                '{{ tx.money|floatformat:"2" }}',
-                '{{ tx.amount }}',
-                '{{ tx.date|date:"j M Y - H:i" }}',
-                {{ tx.status }},
-                '{{ tx.display_cmt|escapejs }}',
-                '{{ tx.slip_url }}',
-                '{{ tx.extracted_bank|escapejs }}'
-              )">
-            <div class="d-flex align-items-center gap-3">
-              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                   style="width:42px;height:42px;background:#DCFCE7;color:#16A34A;font-size:18px;">
-                <i class="fas fa-plus-circle"></i>
+            <div class="credit-row" onclick="openRefillDetail('{{ tx.rf_id|stringformat:"05d" }}', '{{ tx.money|floatformat:"2" }}', '{{ tx.amount }}', '{{ tx.date|date:"j M Y - H:i" }}', {{ tx.status }}, '{{ tx.display_cmt|escapejs }}', '{{ tx.slip_url }}', '{{ tx.extracted_bank|escapejs }}')">
+              <div class="tx-icon" style="background:#dcfce7;color:#16a34a;"><i class="fas fa-plus"></i></div>
+              <div class="tx-meta">
+                <div class="tx-title">เติมเครดิต</div>
+                <div class="tx-subtitle">ผ่านบัญชี {{ tx.extracted_bank|default:"-" }}</div>
               </div>
-              <div class="flex-grow-1">
-                <div class="fw-semibold" style="font-size:14px;">เติมเครดิต</div>
-                <div class="text-muted" style="font-size:12px;">ผ่านบัญชี {{ tx.extracted_bank|default:"—" }}</div>
-              </div>
-              <div class="text-end flex-shrink-0 d-flex align-items-center gap-4">
+              <div class="tx-side">
+                {% if tx.status == 0 %}
+                  <span class="status-pill status-waiting"><i class="fas fa-clock"></i>รอดำเนินการ</span>
+                {% elif tx.status == 1 %}
+                  <span class="status-pill status-success"><i class="fas fa-check-circle"></i>อนุมัติแล้ว</span>
+                {% else %}
+                  <span class="status-pill status-danger"><i class="fas fa-times-circle"></i>ปฏิเสธ</span>
+                {% endif %}
                 <div>
-                  {% if tx.status == 0 %}
-                    <span class="badge rounded-pill fw-normal px-2 py-1"
-                          style="background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;font-size:11px;">
-                      <i class="fas fa-clock me-1"></i>รอดำเนินการ
-                    </span>
-                  {% elif tx.status == 1 %}
-                    <span class="badge rounded-pill fw-normal px-2 py-1"
-                          style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;font-size:11px;">
-                      <i class="fas fa-check-circle me-1"></i>อนุมัติแล้ว
-                    </span>
-                  {% else %}
-                    <span class="badge rounded-pill fw-normal px-2 py-1"
-                          style="background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;font-size:11px;">
-                      <i class="fas fa-times-circle me-1"></i>ปฏิเสธ
-                    </span>
-                  {% endif %}
-                </div>
-                <div>
-                  <div class="fw-bold {% if tx.status == 2 %}text-danger{% else %}text-success{% endif %}" style="font-size:15px;">
-                    +{{ tx.amount }} เครดิต
-                  </div>
-                  <div class="text-muted" style="font-size:12px;">{{ tx.date|date:"j M Y - H:i" }}</div>
+                  <div class="tx-amount {% if tx.status == 2 %}text-danger{% else %}text-success{% endif %}">+{{ tx.amount }} เครดิต</div>
+                  <div class="tx-date">{{ tx.date|date:"j M Y - H:i" }}</div>
                 </div>
               </div>
             </div>
-          </li>
-
           {% elif tx.kind == 'withdraw' %}
-          <li class="list-group-item px-4 py-3" style="cursor:pointer;"
-              onclick="openWithdrawDetail(
-                '{{ tx.wd_id|stringformat:"05d" }}',
-                '{{ tx.amount }}',
-                '{{ tx.net_cash|floatformat:"2" }}',
-                '{{ tx.bank_name|escapejs }}',
-                '{{ tx.date|date:"j M Y - H:i" }}',
-                {{ tx.status }},
-                '{{ tx.wd_cmt|escapejs }}'
-              )">
-            <div class="d-flex align-items-center gap-3">
-              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                   style="width:42px;height:42px;background:#FEE2E2;color:#EF4444;font-size:18px;">
-                <i class="fas fa-minus-circle"></i>
+            <div class="credit-row" onclick="openWithdrawDetail('{{ tx.wd_id|stringformat:"05d" }}', '{{ tx.amount }}', '{{ tx.net_cash|floatformat:"2" }}', '{{ tx.bank_name|escapejs }}', '{{ tx.date|date:"j M Y - H:i" }}', {{ tx.status }}, '{{ tx.wd_cmt|escapejs }}', '{% url 'credits:cancel_withdraw' tx.wd_id %}', {{ tx.can_cancel|yesno:'true,false' }})">
+              <div class="tx-icon" style="background:#fee2e2;color:#ef4444;"><i class="fas fa-minus"></i></div>
+              <div class="tx-meta">
+                <div class="tx-title">ถอนเครดิต</div>
+                <div class="tx-subtitle">เข้าบัญชี {{ tx.bank_name }}</div>
               </div>
-              <div class="flex-grow-1">
-                <div class="fw-semibold" style="font-size:14px;">ถอนเครดิต</div>
-                <div class="text-muted" style="font-size:12px;">เข้าบัญชี {{ tx.bank_name }}</div>
-              </div>
-              <div class="text-end flex-shrink-0 d-flex align-items-center gap-4">
+              <div class="tx-side">
+                {% if tx.status == 0 %}
+                  <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end" onclick="event.stopPropagation();">
+                    <span class="status-pill status-locked"><i class="fas fa-lock"></i>ล็อกเครดิต</span>
+                  </div>
+                {% elif tx.status == 1 %}
+                  <span class="status-pill status-success"><i class="fas fa-check-circle"></i>หักเครดิตสำเร็จ</span>
+                {% elif tx.status == 3 %}
+                  <span class="status-pill status-muted"><i class="fas fa-rotate-left"></i>ยกเลิกแล้ว</span>
+                {% else %}
+                  <span class="status-pill status-danger"><i class="fas fa-unlock"></i>ปลดล็อกแล้ว</span>
+                {% endif %}
                 <div>
-                  {% if tx.status == 0 %}
-                    <span class="badge rounded-pill fw-normal px-2 py-1"
-                          style="background:#FEF3C7;color:#D97706;border:1px solid #FDE68A;font-size:11px;">
-                      <i class="fas fa-lock me-1"></i>ล็อกเครดิต
-                    </span>
-                  {% elif tx.status == 1 %}
-                    <span class="badge rounded-pill fw-normal px-2 py-1"
-                          style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;font-size:11px;">
-                      <i class="fas fa-check-circle me-1"></i>หักเครดิตสำเร็จ
-                    </span>
-                  {% else %}
-                    <span class="badge rounded-pill fw-normal px-2 py-1"
-                          style="background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;font-size:11px;">
-                      <i class="fas fa-unlock me-1"></i>ปลดล็อกแล้ว
-                    </span>
-                  {% endif %}
-                </div>
-                <div>
-                  <div class="fw-bold text-danger" style="font-size:15px;">-{{ tx.amount }} เครดิต</div>
-                  <div class="text-muted" style="font-size:12px;">{{ tx.date|date:"j M Y - H:i" }}</div>
+                  <div class="tx-amount {% if tx.status == 3 %}text-muted{% else %}text-danger{% endif %}">-{{ tx.amount }} เครดิต</div>
+                  <div class="tx-date">{{ tx.date|date:"j M Y - H:i" }}</div>
                 </div>
               </div>
             </div>
-          </li>
-
           {% elif tx.kind == 'booking_pay' %}
-          <li class="list-group-item px-4 py-3" style="cursor:pointer;"
-              onclick="openBookingDetail(
-                'BK{{ tx.bk_id|stringformat:"05d" }}',
-                '{{ tx.crs_name|escapejs }}',
-                '{{ tx.tutor_name|escapejs }}',
-                '',
-                {{ tx.rate }}, {{ tx.stu_count }}, {{ tx.amount }},
-                '{{ tx.date|date:"j M Y - H:i" }}',
-                'pay'
-              )">
-            <div class="d-flex align-items-center gap-3">
-              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                   style="width:42px;height:42px;background:#FEE2E2;color:#EF4444;font-size:18px;">
-                <i class="fas fa-minus-circle"></i>
+            <div class="credit-row" onclick="openBookingDetail('BK{{ tx.bk_id|stringformat:"05d" }}', '{{ tx.crs_name|escapejs }}', '{{ tx.tutor_name|escapejs }}', '', {{ tx.rate }}, {{ tx.stu_count }}, {{ tx.amount }}, '{{ tx.date|date:"j M Y - H:i" }}', 'pay')">
+              <div class="tx-icon" style="background:#fee2e2;color:#ef4444;"><i class="fas fa-receipt"></i></div>
+              <div class="tx-meta">
+                <div class="tx-title">หักเครดิต</div>
+                <div class="tx-subtitle">{{ tx.crs_name }} · BK{{ tx.bk_id|stringformat:"05d" }}</div>
               </div>
-              <div class="flex-grow-1">
-                <div class="fw-semibold" style="font-size:14px;">หักเครดิต</div>
-                <div class="text-muted" style="font-size:12px;">{{ tx.crs_name }} · BK{{ tx.bk_id|stringformat:"05d" }}</div>
-              </div>
-              <div class="text-end flex-shrink-0">
-                <div class="fw-bold text-danger" style="font-size:15px;">-{{ tx.amount }} เครดิต</div>
-                <div class="text-muted" style="font-size:12px;">{{ tx.date|date:"j M Y - H:i" }}</div>
+              <div class="tx-side">
+                <span class="status-pill status-success"><i class="fas fa-check-circle"></i>สำเร็จ</span>
+                <div>
+                  <div class="tx-amount text-danger">-{{ tx.amount }} เครดิต</div>
+                  <div class="tx-date">{{ tx.date|date:"j M Y - H:i" }}</div>
+                </div>
               </div>
             </div>
-          </li>
-
           {% elif tx.kind == 'booking_income' %}
-          <li class="list-group-item px-4 py-3" style="cursor:pointer;"
-              onclick="openBookingDetail(
-                'BK{{ tx.bk_id|stringformat:"05d" }}',
-                '{{ tx.crs_name|escapejs }}',
-                '',
-                '{{ tx.student_name|escapejs }}',
-                {{ tx.rate }}, {{ tx.stu_count }}, {{ tx.amount }},
-                '{{ tx.date|date:"j M Y - H:i" }}',
-                'income'
-              )">
-            <div class="d-flex align-items-center gap-3">
-              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                   style="width:42px;height:42px;background:#DCFCE7;color:#16A34A;font-size:18px;">
-                <i class="fas fa-plus-circle"></i>
+            <div class="credit-row" onclick="openBookingDetail('BK{{ tx.bk_id|stringformat:"05d" }}', '{{ tx.crs_name|escapejs }}', '', '{{ tx.student_name|escapejs }}', {{ tx.rate }}, {{ tx.stu_count }}, {{ tx.amount }}, '{{ tx.date|date:"j M Y - H:i" }}', 'income')">
+              <div class="tx-icon" style="background:#dcfce7;color:#16a34a;"><i class="fas fa-chalkboard-user"></i></div>
+              <div class="tx-meta">
+                <div class="tx-title">เครดิตรายได้</div>
+                <div class="tx-subtitle">{{ tx.crs_name }} · BK{{ tx.bk_id|stringformat:"05d" }}</div>
               </div>
-              <div class="flex-grow-1">
-                <div class="fw-semibold" style="font-size:14px;">เครดิตรายได้</div>
-                <div class="text-muted" style="font-size:12px;">{{ tx.crs_name }} · BK{{ tx.bk_id|stringformat:"05d" }}</div>
-              </div>
-              <div class="text-end flex-shrink-0">
-                <div class="fw-bold text-success" style="font-size:15px;">+{{ tx.amount }} เครดิต</div>
-                <div class="text-muted" style="font-size:12px;">{{ tx.date|date:"j M Y - H:i" }}</div>
+              <div class="tx-side">
+                <span class="status-pill status-success"><i class="fas fa-check-circle"></i>สำเร็จ</span>
+                <div>
+                  <div class="tx-amount text-success">+{{ tx.amount }} เครดิต</div>
+                  <div class="tx-date">{{ tx.date|date:"j M Y - H:i" }}</div>
+                </div>
               </div>
             </div>
-          </li>
-
           {% endif %}
-
-          {% endfor %}
-        </ul>
+        {% endfor %}
 
         {% if page_obj.has_other_pages %}
-        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3 px-4">
-          <span class="text-muted small">แสดง {{ page_obj.start_index }}–{{ page_obj.end_index }} จาก {{ page_obj.paginator.count }} รายการ</span>
-          <div class="d-flex gap-1">
-            {% if page_obj.has_previous %}
-              <a href="?kind={{ kind_filter }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></a>
-            {% endif %}
-            {% for num in page_obj.paginator.page_range %}
-              {% if page_obj.number == num %}
-                <button class="btn btn-sm btn-primary">{{ num }}</button>
-              {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
-                <a href="?kind={{ kind_filter }}&page={{ num }}" class="btn btn-sm btn-outline-secondary">{{ num }}</a>
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-4 py-3 border-top">
+            <span class="text-muted small">แสดง {{ page_obj.start_index }}-{{ page_obj.end_index }} จาก {{ page_obj.paginator.count }} รายการ</span>
+            <div class="d-flex gap-1">
+              {% if page_obj.has_previous %}
+                <a href="?kind={{ kind_filter }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></a>
               {% endif %}
-            {% endfor %}
-            {% if page_obj.has_next %}
-              <a href="?kind={{ kind_filter }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-right"></i></a>
-            {% endif %}
+              {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                  <button class="btn btn-sm btn-primary">{{ num }}</button>
+                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                  <a href="?kind={{ kind_filter }}&page={{ num }}" class="btn btn-sm btn-outline-secondary">{{ num }}</a>
+                {% endif %}
+              {% endfor %}
+              {% if page_obj.has_next %}
+                <a href="?kind={{ kind_filter }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-right"></i></a>
+              {% endif %}
+            </div>
           </div>
-        </div>
         {% endif %}
-
       {% else %}
         <div class="text-center text-muted py-5">
           <i class="fas fa-receipt mb-3 d-block" style="font-size:40px;opacity:.3;"></i>
@@ -288,12 +396,10 @@
         </div>
       {% endif %}
     </div>
-
   </div>
 </div>
 
-<!-- ── Refill Detail Modal ── -->
-<div class="modal fade" id="refillDetailModal" tabindex="-1">
+<div class="modal fade credit-modal" id="refillDetailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
     <div class="modal-content border-0 shadow">
       <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -305,39 +411,35 @@
       </div>
       <div class="modal-body px-4 py-3">
         <div id="rdStatusBanner" class="rounded-3 p-3 mb-3 text-center fw-semibold"></div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
           <span class="text-muted small">จำนวนเงิน</span>
           <span class="fw-bold text-primary small" id="rdMoney"></span>
         </div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
           <span class="text-muted small">จำนวนเครดิต</span>
           <span class="fw-semibold small" id="rdCredit"></span>
         </div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
           <span class="text-muted small">วันที่แจ้งเติม</span>
           <span class="fw-semibold small" id="rdDate"></span>
         </div>
-        <div class="mb-3 d-flex justify-content-between border-bottom pb-2 d-none" id="rdBankRow">
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-3 d-none" id="rdBankRow">
           <span class="text-muted small">ธนาคารที่โอน</span>
           <span class="fw-semibold small text-end" id="rdBank"></span>
         </div>
         <div id="rdRejectSection" class="d-none mb-3">
-          <div class="rounded-3 p-3" style="background:#FEE2E2;border:1px solid #FECACA;">
-            <div class="fw-semibold small mb-1" style="color:#991B1B;">
+          <div class="rounded-3 p-3" style="background:#fef2f2;border:1px solid #fecaca;">
+            <div class="fw-semibold small mb-1" style="color:#991b1b;">
               <i class="fas fa-exclamation-circle me-1"></i>เหตุผลที่ปฏิเสธ
             </div>
-            <div class="small" style="color:#7F1D1D;" id="rdRejectReason"></div>
+            <div class="small" style="color:#7f1d1d;" id="rdRejectReason"></div>
           </div>
         </div>
-        <div class="mt-2">
-          <div class="text-muted small fw-semibold mb-2">สลิปการโอนเงิน</div>
-          <div class="rounded-3 border overflow-hidden text-center"
-               style="background:#F8FAFC;min-height:120px;display:flex;align-items:center;justify-content:center;">
-            <img id="rdSlipImg" src="" alt="slip"
-                 style="max-width:100%;max-height:280px;object-fit:contain;display:none;">
-            <div id="rdSlipNone" class="text-muted small p-4">
-              <i class="fas fa-image d-block mb-1" style="font-size:28px;opacity:.3;"></i>ไม่มีสลิป
-            </div>
+        <div class="text-muted small fw-semibold mb-2">สลิปการโอนเงิน</div>
+        <div class="rounded-3 border overflow-hidden text-center" style="background:#f8fafc;min-height:120px;display:flex;align-items:center;justify-content:center;">
+          <img id="rdSlipImg" src="" alt="slip" style="max-width:100%;max-height:280px;object-fit:contain;display:none;">
+          <div id="rdSlipNone" class="text-muted small p-4">
+            <i class="fas fa-image d-block mb-1" style="font-size:28px;opacity:.3;"></i>ไม่มีสลิป
           </div>
         </div>
       </div>
@@ -348,57 +450,7 @@
   </div>
 </div>
 
-<!-- ── Booking Detail Modal ── -->
-<div class="modal fade" id="bookingDetailModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header border-0 pb-0 px-4 pt-4">
-        <div>
-          <h6 class="fw-bold mb-0" id="bkModalTitle"></h6>
-          <div class="text-muted small" id="bkId"></div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body px-4 py-3">
-        <div id="bkBanner" class="rounded-3 p-3 mb-3 text-center fw-semibold"></div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-          <span class="text-muted small">รายวิชา</span>
-          <span class="fw-semibold small text-end" id="bkCrsName"></span>
-        </div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2 d-none" id="bkTutorRow">
-          <span class="text-muted small">ติวเตอร์</span>
-          <span class="fw-semibold small" id="bkTutorName"></span>
-        </div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2 d-none" id="bkStudentRow">
-          <span class="text-muted small">ผู้เรียน</span>
-          <span class="fw-semibold small" id="bkStudentName"></span>
-        </div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-          <span class="text-muted small">อัตราค่าเรียน</span>
-          <span class="fw-semibold small" id="bkRate"></span>
-        </div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-          <span class="text-muted small">จำนวนผู้เรียน</span>
-          <span class="fw-semibold small" id="bkStuCount"></span>
-        </div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-          <span class="text-muted small">รวมเครดิต</span>
-          <span class="fw-bold small" id="bkTotal"></span>
-        </div>
-        <div class="mb-2 d-flex justify-content-between">
-          <span class="text-muted small">วันที่ยืนยันจบงาน</span>
-          <span class="fw-semibold small" id="bkDate"></span>
-        </div>
-      </div>
-      <div class="modal-footer border-0 pt-0">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Withdrawal Detail Modal ── -->
-<div class="modal fade" id="withdrawDetailModal" tabindex="-1">
+<div class="modal fade credit-modal" id="withdrawDetailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
     <div class="modal-content border-0 shadow">
       <div class="modal-header border-0 pb-0 px-4 pt-4">
@@ -410,29 +462,35 @@
       </div>
       <div class="modal-body px-4 py-3">
         <div id="wdStatusBanner" class="rounded-3 p-3 mb-3 text-center fw-semibold"></div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
           <span class="text-muted small">จำนวนเครดิต</span>
           <span class="fw-bold text-danger small" id="wdCredit"></span>
         </div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-          <span class="text-muted small">จำนวนเงินสุทธิ (หลังหักค่าธรรมเนียม)</span>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span class="text-muted small">จำนวนเงินสุทธิ</span>
           <span class="fw-bold text-primary small" id="wdNetCash"></span>
         </div>
-        <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
           <span class="text-muted small">ธนาคารปลายทาง</span>
-          <span class="fw-semibold small" id="wdBank"></span>
+          <span class="fw-semibold small text-end" id="wdBank"></span>
         </div>
-        <div class="mb-3 d-flex justify-content-between border-bottom pb-2">
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-3">
           <span class="text-muted small">วันที่ขอถอน</span>
           <span class="fw-semibold small" id="wdDate"></span>
         </div>
-        <div id="wdCmtSection" class="d-none">
-          <div class="rounded-3 p-3" style="background:#FEF9C3;border:1px solid #FDE68A;">
-            <div class="fw-semibold small mb-1" style="color:#92400E;">
+        <div id="wdCmtSection" class="d-none mb-3">
+          <div class="rounded-3 p-3" style="background:#f8fafc;border:1px solid #e2e8f0;">
+            <div class="fw-semibold small mb-1" style="color:#475569;">
               <i class="fas fa-comment-alt me-1"></i>หมายเหตุ
             </div>
             <div class="small" id="wdCmt"></div>
           </div>
+        </div>
+        <div id="wdCancelForm" class="d-none" data-action="" data-wd-id="" data-credit="">
+          <button type="button" class="btn btn-outline-danger btn-sm w-100"
+                  onclick="openCancelWithdrawConfirmFromDetail()">
+            <i class="fas fa-xmark me-1"></i>ยกเลิกคำขอถอนเครดิต
+          </button>
         </div>
       </div>
       <div class="modal-footer border-0 pt-0">
@@ -442,90 +500,234 @@
   </div>
 </div>
 
+<div class="modal fade credit-modal" id="cancelWithdrawConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:430px;">
+    <div class="modal-content">
+      <div class="credit-modal-head">
+        <div class="d-flex align-items-start gap-3">
+          <div class="credit-modal-icon" style="background:#fee2e2;color:#dc2626;">
+            <i class="fas fa-triangle-exclamation"></i>
+          </div>
+          <div class="flex-grow-1">
+            <h6 class="fw-bold mb-1">ยืนยันยกเลิกคำขอถอนเครดิต</h6>
+            <div class="text-muted small">ระบบจะปลดล็อกเครดิตคืนให้ทันทีหลังยืนยัน</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+      <div class="credit-modal-body">
+        <div class="rounded-3 border px-3 mb-3" style="background:#f8fafc;">
+          <div class="credit-info-row">
+            <span class="text-muted">รหัสการถอน</span>
+            <span class="fw-semibold" id="cancelWdId">-</span>
+          </div>
+          <div class="credit-info-row">
+            <span class="text-muted">เครดิตที่จะคืน</span>
+            <span class="fw-bold text-success" id="cancelCredit">-</span>
+          </div>
+        </div>
+        <div class="credit-confirm-box">
+          <i class="fas fa-circle-info me-1"></i>
+          เมื่อยืนยันแล้ว คำขอถอนนี้จะถูกเปลี่ยนเป็นสถานะยกเลิก และแอดมินจะไม่สามารถจ่ายรายการนี้ต่อได้
+        </div>
+      </div>
+      <div class="credit-modal-actions">
+        <button type="button" class="btn btn-light border btn-sm px-3" data-bs-dismiss="modal">
+          ย้อนกลับ
+        </button>
+        <form method="post" id="cancelWithdrawConfirmForm" action="">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-sm px-3 fw-semibold">
+            <i class="fas fa-xmark me-1"></i>ยืนยันยกเลิก
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade credit-modal" id="bookingDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0 px-4 pt-4">
+        <div>
+          <h6 class="fw-bold mb-0" id="bkModalTitle"></h6>
+          <div class="text-muted small" id="bkId"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <div id="bkBanner" class="rounded-3 p-3 mb-3 text-center fw-semibold"></div>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span class="text-muted small">รายวิชา</span>
+          <span class="fw-semibold small text-end" id="bkCrsName"></span>
+        </div>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2 d-none" id="bkTutorRow">
+          <span class="text-muted small">ติวเตอร์</span>
+          <span class="fw-semibold small text-end" id="bkTutorName"></span>
+        </div>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2 d-none" id="bkStudentRow">
+          <span class="text-muted small">ผู้เรียน</span>
+          <span class="fw-semibold small text-end" id="bkStudentName"></span>
+        </div>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span class="text-muted small">อัตราค่าเรียน</span>
+          <span class="fw-semibold small" id="bkRate"></span>
+        </div>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span class="text-muted small">จำนวนผู้เรียน</span>
+          <span class="fw-semibold small" id="bkStuCount"></span>
+        </div>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span class="text-muted small">รวมเครดิต</span>
+          <span class="fw-bold small" id="bkTotal"></span>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span class="text-muted small">วันที่ยืนยันจบงาน</span>
+          <span class="fw-semibold small" id="bkDate"></span>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+function setBanner(el, tone, html) {
+  const styles = {
+    wait: 'background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;',
+    success: 'background:#ecfdf5;color:#166534;border:1px solid #bbf7d0;',
+    danger: 'background:#fef2f2;color:#991b1b;border:1px solid #fecaca;',
+    locked: 'background:#fffbeb;color:#92400e;border:1px solid #fde68a;',
+    muted: 'background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;'
+  };
+  el.style.cssText = styles[tone] + 'border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
+  el.innerHTML = html;
+}
+
 function openRefillDetail(rfId, money, credit, date, status, cmt, slipUrl, bank) {
-  document.getElementById('rdRfId').textContent  = 'RF' + rfId;
+  document.getElementById('rdRfId').textContent = 'RF' + rfId;
   document.getElementById('rdMoney').textContent = '฿' + money;
-  document.getElementById('rdDate').textContent  = date;
+  document.getElementById('rdDate').textContent = date;
   const rdCredit = document.getElementById('rdCredit');
-  rdCredit.textContent = '+' + credit + ' P';
-  rdCredit.style.color = status === 2 ? '#EF4444' : '#16A34A';
+  rdCredit.textContent = '+' + credit + ' เครดิต';
+  rdCredit.style.color = status === 2 ? '#ef4444' : '#16a34a';
+
   const banner = document.getElementById('rdStatusBanner');
-  if (status === 0) {
-    banner.style.cssText = 'background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-clock me-2"></i>รอดำเนินการ';
-  } else if (status === 1) {
-    banner.style.cssText = 'background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-check-circle me-2"></i>อนุมัติแล้ว';
-  } else {
-    banner.style.cssText = 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-times-circle me-2"></i>ปฏิเสธ';
-  }
-  const rdBank = document.getElementById('rdBank');
+  if (status === 0) setBanner(banner, 'wait', '<i class="fas fa-clock me-2"></i>รอดำเนินการ');
+  else if (status === 1) setBanner(banner, 'success', '<i class="fas fa-check-circle me-2"></i>อนุมัติแล้ว');
+  else setBanner(banner, 'danger', '<i class="fas fa-times-circle me-2"></i>ปฏิเสธ');
+
   const rdBankRow = document.getElementById('rdBankRow');
-  if (bank) { rdBank.textContent = bank; rdBankRow.classList.remove('d-none'); }
-  else { rdBankRow.classList.add('d-none'); }
+  if (bank) {
+    document.getElementById('rdBank').textContent = bank;
+    rdBankRow.classList.remove('d-none');
+  } else {
+    rdBankRow.classList.add('d-none');
+  }
+
   const rejectSec = document.getElementById('rdRejectSection');
   if (status === 2 && cmt) {
-    rejectSec.classList.remove('d-none');
     document.getElementById('rdRejectReason').textContent = cmt;
-  } else { rejectSec.classList.add('d-none'); }
+    rejectSec.classList.remove('d-none');
+  } else {
+    rejectSec.classList.add('d-none');
+  }
+
   const img = document.getElementById('rdSlipImg');
   const none = document.getElementById('rdSlipNone');
-  if (slipUrl) { img.src = slipUrl; img.style.display = 'block'; none.style.display = 'none'; }
-  else { img.style.display = 'none'; none.style.display = 'block'; }
+  if (slipUrl) {
+    img.src = slipUrl;
+    img.style.display = 'block';
+    none.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    none.style.display = 'block';
+  }
   new bootstrap.Modal(document.getElementById('refillDetailModal')).show();
 }
 
-function openWithdrawDetail(wdId, credit, netCash, bank, date, status, cmt) {
-  document.getElementById('wdRfId').textContent    = 'WD' + wdId;
-  document.getElementById('wdCredit').textContent  = '-' + credit + ' P';
+function openWithdrawDetail(wdId, credit, netCash, bank, date, status, cmt, cancelUrl, canCancel) {
+  document.getElementById('wdRfId').textContent = 'WD' + wdId;
+  document.getElementById('wdCredit').textContent = '-' + credit + ' เครดิต';
   document.getElementById('wdNetCash').textContent = '฿' + netCash;
-  document.getElementById('wdBank').textContent    = bank;
-  document.getElementById('wdDate').textContent    = date;
+  document.getElementById('wdBank').textContent = bank;
+  document.getElementById('wdDate').textContent = date;
+
   const banner = document.getElementById('wdStatusBanner');
-  if (status === 0) {
-    banner.style.cssText = 'background:#FEF3C7;color:#D97706;border:1px solid #FDE68A;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-lock me-2"></i>เครดิตถูกล็อกไว้ (รอแอดมินตรวจสอบ)';
-  } else if (status === 1) {
-    banner.style.cssText = 'background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-check-circle me-2"></i>หักเครดิตสำเร็จ (จ่ายเงินเรียบร้อย)';
-  } else {
-    banner.style.cssText = 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-unlock me-2"></i>คำขอถูกปฏิเสธ (ปลดล็อกเครดิตคืนแล้ว)';
-  }
+  if (status === 0) setBanner(banner, 'locked', '<i class="fas fa-lock me-2"></i>เครดิตถูกล็อกไว้ระหว่างรอแอดมินตรวจสอบ');
+  else if (status === 1) setBanner(banner, 'success', '<i class="fas fa-check-circle me-2"></i>หักเครดิตสำเร็จและจ่ายเงินแล้ว');
+  else if (status === 3) setBanner(banner, 'muted', '<i class="fas fa-rotate-left me-2"></i>ยกเลิกคำขอแล้ว และปลดล็อกเครดิตคืนแล้ว');
+  else setBanner(banner, 'danger', '<i class="fas fa-unlock me-2"></i>คำขอถูกปฏิเสธ และปลดล็อกเครดิตคืนแล้ว');
+
   const cmtSec = document.getElementById('wdCmtSection');
-  if (cmt) { document.getElementById('wdCmt').textContent = cmt; cmtSec.classList.remove('d-none'); }
-  else { cmtSec.classList.add('d-none'); }
+  if (cmt) {
+    document.getElementById('wdCmt').textContent = cmt;
+    cmtSec.classList.remove('d-none');
+  } else {
+    cmtSec.classList.add('d-none');
+  }
+
+  const cancelForm = document.getElementById('wdCancelForm');
+  if (canCancel) {
+    cancelForm.dataset.action = cancelUrl;
+    cancelForm.dataset.wdId = 'WD' + wdId;
+    cancelForm.dataset.credit = credit;
+    cancelForm.classList.remove('d-none');
+  } else {
+    cancelForm.dataset.action = '';
+    cancelForm.dataset.wdId = '';
+    cancelForm.dataset.credit = '';
+    cancelForm.classList.add('d-none');
+  }
+
   new bootstrap.Modal(document.getElementById('withdrawDetailModal')).show();
+}
+
+function openCancelWithdrawConfirm(cancelUrl, wdId, credit) {
+  document.getElementById('cancelWithdrawConfirmForm').action = cancelUrl;
+  document.getElementById('cancelWdId').textContent = wdId;
+  document.getElementById('cancelCredit').textContent = credit + ' เครดิต';
+
+  const detailModalEl = document.getElementById('withdrawDetailModal');
+  const detailModal = bootstrap.Modal.getInstance(detailModalEl);
+  if (detailModal) {
+    detailModal.hide();
+  }
+
+  setTimeout(() => {
+    new bootstrap.Modal(document.getElementById('cancelWithdrawConfirmModal')).show();
+  }, detailModal ? 220 : 0);
+}
+
+function openCancelWithdrawConfirmFromDetail() {
+  const data = document.getElementById('wdCancelForm').dataset;
+  if (!data.action) return;
+  openCancelWithdrawConfirm(data.action, data.wdId, data.credit);
 }
 
 function openBookingDetail(bkId, crsName, tutorName, studentName, rate, stuCount, total, date, type) {
   const isPay = type === 'pay';
   document.getElementById('bkModalTitle').textContent = isPay ? 'รายละเอียดการจ่ายค่าเรียน' : 'รายละเอียดรายได้จากการสอน';
-  document.getElementById('bkId').textContent         = bkId;
-  document.getElementById('bkCrsName').textContent    = crsName;
-  document.getElementById('bkRate').textContent       = rate + ' P / คน';
-  document.getElementById('bkStuCount').textContent   = stuCount + ' คน';
-  document.getElementById('bkDate').textContent       = date;
+  document.getElementById('bkId').textContent = bkId;
+  document.getElementById('bkCrsName').textContent = crsName;
+  document.getElementById('bkRate').textContent = rate + ' เครดิต / คน';
+  document.getElementById('bkStuCount').textContent = stuCount + ' คน';
+  document.getElementById('bkDate').textContent = date;
 
   const totalEl = document.getElementById('bkTotal');
-  totalEl.textContent = (isPay ? '-' : '+') + total + ' P';
-  totalEl.style.color = isPay ? '#EF4444' : '#16A34A';
+  totalEl.textContent = (isPay ? '-' : '+') + total + ' เครดิต';
+  totalEl.style.color = isPay ? '#ef4444' : '#16a34a';
 
   const banner = document.getElementById('bkBanner');
-  if (isPay) {
-    banner.style.cssText = 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-minus-circle me-2"></i>จ่ายค่าเรียนแล้ว';
-  } else {
-    banner.style.cssText = 'background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;border-radius:.5rem;padding:.75rem;margin-bottom:.75rem;text-align:center;font-weight:600;';
-    banner.innerHTML = '<i class="fas fa-plus-circle me-2"></i>ได้รับเครดิตรายได้';
-  }
+  if (isPay) setBanner(banner, 'danger', '<i class="fas fa-minus-circle me-2"></i>จ่ายค่าเรียนแล้ว');
+  else setBanner(banner, 'success', '<i class="fas fa-plus-circle me-2"></i>ได้รับเครดิตรายได้แล้ว');
 
-  const tutorRow   = document.getElementById('bkTutorRow');
+  const tutorRow = document.getElementById('bkTutorRow');
   const studentRow = document.getElementById('bkStudentRow');
   if (tutorName) {
     document.getElementById('bkTutorName').textContent = tutorName;

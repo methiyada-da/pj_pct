@@ -1,10 +1,12 @@
 # credits/views.py - views จัดการเครดิต เติม และถอนเงิน
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse
+from django.db import transaction
+from django.views.decorators.http import require_POST
 import base64, io
 
 from .models import Refill, Withdrawals
@@ -126,6 +128,7 @@ def credit_view(request):
             'date'      : w.wd_req_date,
             'status'    : w.wd_status,
             'wd_cmt'    : w.wd_cmt or '',
+            'can_cancel': w.wd_status == 0,
         })
 
     # การจองที่เสร็จสิ้นแล้ว — ฝั่งผู้เรียน (จ่ายค่าเรียน)
@@ -194,6 +197,33 @@ def credit_view(request):
         'system'      : system,
         'kind_filter' : kind_filter,
     })
+
+
+@login_required
+@require_POST
+def cancel_withdraw_view(request, wd_id):
+    member = request.user.member
+
+    with transaction.atomic():
+        wd = get_object_or_404(
+            Withdrawals.objects.select_for_update().select_related('member'),
+            pk=wd_id,
+            member=member,
+        )
+
+        if wd.wd_status != 0:
+            messages.warning(request, 'คำขอถอนเครดิตนี้ไม่สามารถยกเลิกได้แล้ว')
+            return redirect('credits:credit')
+
+        wd.wd_status = 3
+        wd.wd_cmt = 'ผู้ใช้ยกเลิกคำขอถอนเครดิต'
+        wd.save(update_fields=['wd_status', 'wd_cmt'])
+
+        member.mb_locked_crd = max(0, member.mb_locked_crd - wd.wd_credit)
+        member.save(update_fields=['mb_locked_crd'])
+
+    messages.success(request, f'ยกเลิกคำขอถอน WD{wd.wd_id:05d} แล้ว ระบบคืนเครดิต {wd.wd_credit} เครดิตให้เรียบร้อย')
+    return redirect('credits:credit')
 
 
 BANK_CHOICES = [
