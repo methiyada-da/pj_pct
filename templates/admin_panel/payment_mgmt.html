@@ -4,108 +4,270 @@
 {% block title %}การชำระเงิน{% endblock %}
 
 {% block content %}
+<style>
+  .payment-hero {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .payment-hero h1 {
+    margin: 0;
+    color: var(--navy);
+    font-size: 28px;
+    font-weight: 850;
+  }
+  .payment-hero p {
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .pay-stat {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    height: 100%;
+    box-shadow: var(--shadow-sm);
+  }
+  .pay-stat-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 19px;
+  }
+  .pay-table-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .pay-table-card .table {
+    margin-bottom: 0;
+  }
+  .pay-table-card thead {
+    background: #f8fafc;
+  }
+  .pay-table-card th {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+    padding: 14px 16px;
+    white-space: nowrap;
+  }
+  .pay-table-card td {
+    padding: 14px 16px;
+    vertical-align: middle;
+  }
+  .pay-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 6px 11px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .pay-status-warning { color: #92400e; background: #fef9c3; border-color: #fde68a; }
+  .pay-status-success { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+  .pay-status-danger { color: #991b1b; background: #fee2e2; border-color: #fecaca; }
+  .pay-status-muted { color: #475569; background: #f1f5f9; border-color: #e2e8f0; }
+  .pay-type {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid transparent;
+  }
+  .pay-type-deposit { color: #1d4ed8; background: #dbeafe; border-color: #bfdbfe; }
+  .pay-type-income { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+  .pay-detail-modal .modal-content,
+  .pay-confirm-modal .modal-content {
+    border: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, .24);
+  }
+  .pay-detail-head {
+    background: #2563eb;
+    color: #fff;
+    padding: 18px 22px;
+  }
+  .pay-detail-grid {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    min-height: 460px;
+  }
+  .pay-qr-panel {
+    background: #eff6ff;
+    border-right: 1px solid #dbeafe;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .pay-qr-frame {
+    width: 172px;
+    height: 172px;
+    border-radius: 8px;
+    border: 1px dashed #93c5fd;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 14px 0;
+  }
+  .pay-qr-frame img {
+    width: 152px;
+    height: 152px;
+    object-fit: contain;
+  }
+  .pay-detail-main {
+    padding: 22px 24px;
+  }
+  .pay-info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 9px 0;
+    border-bottom: 1px solid #eef2f7;
+    font-size: 13px;
+  }
+  .pay-info-row:last-child {
+    border-bottom: 0;
+  }
+  .pay-info-row span:last-child {
+    font-weight: 800;
+    text-align: right;
+    word-break: break-word;
+  }
+  .pay-breakdown {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 14px;
+  }
+  .pay-note-box {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+  .pay-confirm-head {
+    padding: 20px 22px 10px;
+  }
+  .pay-confirm-body {
+    padding: 10px 22px 20px;
+  }
+  .pay-confirm-actions {
+    padding: 0 22px 22px;
+    display: flex;
+    gap: 10px;
+  }
+  .confirm-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  @media (max-width: 900px) {
+    .pay-detail-grid {
+      grid-template-columns: 1fr;
+    }
+    .pay-qr-panel {
+      border-right: 0;
+      border-bottom: 1px solid #dbeafe;
+    }
+  }
+</style>
 
-<div class="page-header">
-  <div>
-    <h1>การชำระเงิน</h1>
-    <p>ระบบจัดการการถอนเครดิต</p>
-  </div>
+<div class="payment-hero">
+  <h1>การชำระเงิน</h1>
+  <p>ตรวจสอบและดำเนินการคำขอถอนเครดิตของสมาชิก</p>
 </div>
 
-<!-- ── Summary cards ── -->
 <div class="row g-3 mb-4">
-  <!-- Card 1: รอดำเนินการ (รายการ) -->
   <div class="col-md-2 col-sm-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div class="text-muted small">รอดำเนินการ</div>
-          <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:#FEF9C3;">
-            <i class="fas fa-hourglass-half text-warning small"></i>
-          </div>
-        </div>
-        <div class="fw-bold" style="font-size:1.5rem;">{{ pending_count }}</div>
-        <div class="text-warning small mt-1">รายการ</div>
+    <div class="pay-stat">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="text-muted small fw-semibold">รอดำเนินการ</div>
+        <div class="pay-stat-icon" style="background:#fef3c7;color:#d97706;"><i class="bi bi-hourglass-split"></i></div>
       </div>
+      <div class="fw-bold fs-3">{{ pending_count }}</div>
+      <div class="text-warning small">รายการ</div>
     </div>
   </div>
-  
-  <!-- Card 2: จ่ายแล้ว (รายการ) -->
   <div class="col-md-2 col-sm-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div class="text-muted small">จ่ายแล้ว</div>
-          <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:#DCFCE7;">
-            <i class="fas fa-check-circle text-success small"></i>
-          </div>
-        </div>
-        <div class="fw-bold" style="font-size:1.5rem;">{{ paid_count }}</div>
-        <div class="text-success small mt-1">รายการ</div>
+    <div class="pay-stat">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="text-muted small fw-semibold">จ่ายแล้ว</div>
+        <div class="pay-stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-check2-circle"></i></div>
       </div>
+      <div class="fw-bold fs-3">{{ paid_count }}</div>
+      <div class="text-success small">รายการ</div>
     </div>
   </div>
-  
-  <!-- Card 3: ปฏิเสธ (รายการ) -->
   <div class="col-md-2 col-sm-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div class="text-muted small">ปฏิเสธ</div>
-          <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:#FEE2E2;">
-            <i class="fas fa-times-circle text-danger small"></i>
-          </div>
-        </div>
-        <div class="fw-bold" style="font-size:1.5rem;">{{ rejected_count }}</div>
-        <div class="text-danger small mt-1">รายการ</div>
+    <div class="pay-stat">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="text-muted small fw-semibold">ปฏิเสธ</div>
+        <div class="pay-stat-icon" style="background:#fee2e2;color:#dc2626;"><i class="bi bi-x-circle"></i></div>
       </div>
+      <div class="fw-bold fs-3">{{ rejected_count }}</div>
+      <div class="text-danger small">รายการ</div>
     </div>
   </div>
-  
-  <!-- Card 4: ยอดจ่ายรวม -->
   <div class="col-md-3 col-sm-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div class="text-muted small">ยอดจ่ายแล้วรวม</div>
-          <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:#DBEAFE;">
-            <i class="fas fa-wallet text-primary small"></i>
-          </div>
-        </div>
-        <div class="fw-bold" style="font-size:1.5rem;">฿{{ paid_cash|floatformat:"2" }}</div>
-        <div class="text-primary small mt-1">ทั้งหมด</div>
+    <div class="pay-stat">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="text-muted small fw-semibold">ยอดจ่ายแล้วรวม</div>
+        <div class="pay-stat-icon" style="background:#dbeafe;color:#2563eb;"><i class="bi bi-wallet2"></i></div>
       </div>
+      <div class="fw-bold fs-3">฿{{ paid_cash|floatformat:"2" }}</div>
+      <div class="text-primary small">ทั้งหมด</div>
     </div>
   </div>
-  
-  <!-- Card 5: ค่าธรรมเนียมสะสม -->
   <div class="col-md-3 col-sm-12">
-    <div class="card border-0 shadow-sm h-100" style="background:#F3F4F6;">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <div class="text-muted small fw-semibold">ค่าธรรมเนียมสะสม</div>
-          <div class="rounded-3 d-flex align-items-center justify-content-center bg-white shadow-sm" style="width:36px;height:36px;">
-            <i class="fas fa-coins" style="color:#D97706;"></i>
-          </div>
-        </div>
-        <div class="fw-bold text-dark" style="font-size:1.5rem;">฿{{ accumulated_fee|floatformat:"2" }}</div>
-        <div class="text-muted small mt-1">จากการหัก % ถอนเงิน</div>
+    <div class="pay-stat" style="background:#111827;color:#fff;border-color:#111827;">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div class="small fw-semibold" style="color:#cbd5e1;">ค่าธรรมเนียมสะสม</div>
+        <div class="pay-stat-icon" style="background:rgba(255,255,255,.14);color:#fff;"><i class="bi bi-cash-coin"></i></div>
       </div>
+      <div class="fw-bold fs-3">฿{{ accumulated_fee|floatformat:"2" }}</div>
+      <div class="small" style="color:#cbd5e1;">จากการหัก % ถอนเงิน</div>
     </div>
   </div>
 </div>
 
-<!-- ── Table card ── -->
-<div class="card border-0 shadow-sm">
-  <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3 px-4">
-    <span class="fw-bold">คำขอถอนเงิน</span>
+<div class="pay-table-card">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-4 py-3 border-bottom">
+    <div class="fw-bold">คำขอถอนเงิน</div>
     <form method="get" class="d-flex gap-2 align-items-center">
-      <select name="status" class="form-select form-select-sm" style="width:auto;"
-              onchange="this.form.submit()">
+      <select name="status" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
         <option value="">สถานะทั้งหมด</option>
         <option value="0" {% if status_filter == '0' %}selected{% endif %}>รอดำเนินการ</option>
         <option value="1" {% if status_filter == '1' %}selected{% endif %}>จ่ายแล้ว</option>
         <option value="2" {% if status_filter == '2' %}selected{% endif %}>ปฏิเสธ</option>
+        <option value="3" {% if status_filter == '3' %}selected{% endif %}>ยกเลิกโดยผู้ใช้</option>
       </select>
       {% if status_filter %}
         <a href="{% url 'admin_panel:payment_mgmt' %}" class="btn btn-sm btn-outline-secondary">
@@ -116,55 +278,46 @@
   </div>
 
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead style="background:#F8FAFC;">
+    <table class="table table-hover align-middle">
+      <thead>
         <tr>
-          <th class="px-4 py-3 text-muted small fw-semibold">รหัสการถอน</th>
-          <th class="py-3 text-muted small fw-semibold">ชื่อสมาชิก</th>
-          <th class="py-3 text-muted small fw-semibold">ประเภท</th>
-          <th class="py-3 text-muted small fw-semibold">จำนวนเงินสุทธิ</th>
-          <th class="py-3 text-muted small fw-semibold">ธนาคาร / เลขบัญชี</th>
-          <th class="py-3 text-muted small fw-semibold">สถานะการจ่าย</th>
-          <th class="py-3 text-muted small fw-semibold">หมายเหตุ</th>
-          <th class="py-3 text-muted small fw-semibold">การจัดการ</th>
+          <th class="ps-4">รหัสการถอน</th>
+          <th>ชื่อสมาชิก</th>
+          <th>ประเภท</th>
+          <th>จำนวนเงินสุทธิ</th>
+          <th>ธนาคาร / เลขบัญชี</th>
+          <th>สถานะการจ่าย</th>
+          <th>หมายเหตุ</th>
+          <th class="text-center">การจัดการ</th>
         </tr>
       </thead>
       <tbody>
         {% for wd in page %}
         <tr>
-          <td class="px-4 fw-semibold">WD{{ wd.wd_id|stringformat:"05d" }}</td>
+          <td class="ps-4 fw-bold">WD{{ wd.wd_id|stringformat:"05d" }}</td>
           <td>{{ wd.member.mb_full_name }}</td>
           <td>
             {% if wd.wd_type == 1 %}
-              <span class="badge rounded-pill fw-normal px-2"
-                    style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;">รายได้</span>
+              <span class="pay-type pay-type-income">รายได้</span>
             {% else %}
-              <span class="badge rounded-pill fw-normal px-2"
-                    style="background:#DBEAFE;color:#1E40AF;border:1px solid #BFDBFE;">นำฝาก</span>
+              <span class="pay-type pay-type-deposit">นำฝาก</span>
             {% endif %}
           </td>
           <td class="fw-bold text-primary">฿{{ wd.wd_net_cash|floatformat:"2" }}</td>
           <td class="text-muted small">{{ wd.wd_bank_name }}<br>{{ wd.wd_acc_no }}</td>
           <td>
             {% if wd.wd_status == 0 %}
-              <span class="badge rounded-pill fw-normal px-3 py-2"
-                    style="background:#FEF9C3;color:#92400E;border:1px solid #FDE68A;">
-                <i class="fas fa-circle me-1" style="font-size:7px;vertical-align:middle;"></i>รอดำเนินการ
-              </span>
+              <span class="pay-status pay-status-warning"><i class="fas fa-circle" style="font-size:7px;"></i>รอดำเนินการ</span>
             {% elif wd.wd_status == 1 %}
-              <span class="badge rounded-pill fw-normal px-3 py-2"
-                    style="background:#DCFCE7;color:#166534;border:1px solid #BBF7D0;">
-                <i class="fas fa-circle me-1" style="font-size:7px;vertical-align:middle;"></i>จ่ายแล้ว
-              </span>
+              <span class="pay-status pay-status-success"><i class="fas fa-circle" style="font-size:7px;"></i>จ่ายแล้ว</span>
+            {% elif wd.wd_status == 3 %}
+              <span class="pay-status pay-status-muted"><i class="fas fa-circle" style="font-size:7px;"></i>ยกเลิกโดยผู้ใช้</span>
             {% else %}
-              <span class="badge rounded-pill fw-normal px-3 py-2"
-                    style="background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;">
-                <i class="fas fa-circle me-1" style="font-size:7px;vertical-align:middle;"></i>ปฏิเสธการถอน
-              </span>
+              <span class="pay-status pay-status-danger"><i class="fas fa-circle" style="font-size:7px;"></i>ปฏิเสธการถอน</span>
             {% endif %}
           </td>
-          <td class="text-muted small">{{ wd.wd_cmt|default:"—" }}</td>
-          <td>
+          <td class="text-muted small">{{ wd.wd_cmt|default:"-" }}</td>
+          <td class="text-center">
             {% if wd.wd_status == 0 %}
               <button class="btn btn-sm btn-primary fw-semibold px-3"
                       onclick="openPayDetail(
@@ -182,7 +335,7 @@
                         '{{ wd.qr_code|default:""|escapejs }}',
                         '{{ wd.wd_req_date|date:"d M Y H:i" }}'
                       )">
-                <i class="fas fa-money-bill-wave me-1"></i>ดูรายละเอียด
+                ดูรายละเอียด
               </button>
             {% else %}
               <button class="btn btn-sm btn-outline-secondary px-3"
@@ -203,292 +356,179 @@
                         {{ wd.wd_status }},
                         '{{ wd.wd_cmt|default:""|escapejs }}'
                       )">
-                <i class="fas fa-eye me-1"></i>ดูรายละเอียด
+                ดูรายละเอียด
               </button>
             {% endif %}
           </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="8" class="text-center py-5 text-muted">ไม่พบรายการ</td>
+          <td colspan="8" class="text-center py-5 text-muted">ไม่พบรายการถอนเงิน</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
-  <!-- Pagination -->
   {% if page.has_other_pages %}
-  <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3 px-4">
-    <span class="text-muted small">
-      แสดง {{ page.start_index }}–{{ page.end_index }} จาก {{ page.paginator.count }} รายการ
-    </span>
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-4 py-3 border-top">
+    <span class="text-muted small">แสดง {{ page.start_index }}-{{ page.end_index }} จาก {{ page.paginator.count }} รายการ</span>
     <div class="d-flex gap-1">
       {% if page.has_previous %}
-        <a href="?page={{ page.previous_page_number }}&status={{ status_filter }}"
-           class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></a>
+        <a href="?page={{ page.previous_page_number }}&status={{ status_filter }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-left"></i></a>
       {% endif %}
       {% for num in page.paginator.page_range %}
         {% if page.number == num %}
           <button class="btn btn-sm btn-primary">{{ num }}</button>
         {% elif num >= page.number|add:"-2" and num <= page.number|add:"2" %}
-          <a href="?page={{ num }}&status={{ status_filter }}"
-             class="btn btn-sm btn-outline-secondary">{{ num }}</a>
+          <a href="?page={{ num }}&status={{ status_filter }}" class="btn btn-sm btn-outline-secondary">{{ num }}</a>
         {% endif %}
       {% endfor %}
       {% if page.has_next %}
-        <a href="?page={{ page.next_page_number }}&status={{ status_filter }}"
-           class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-right"></i></a>
+        <a href="?page={{ page.next_page_number }}&status={{ status_filter }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chevron-right"></i></a>
       {% endif %}
     </div>
-  </div>
-  {% else %}
-  <div class="card-footer bg-white py-3 px-4">
-    <span class="text-muted small">แสดง {{ page.start_index }}–{{ page.end_index }} จาก {{ page.paginator.count }} รายการ</span>
   </div>
   {% endif %}
 </div>
 
-<!-- ══════════════════════════════════════════
-     Detail Modal (QR ซ้าย | ข้อมูลขวา)
-     ══════════════════════════════════════════ -->
-<div class="modal fade" id="payDetailModal" tabindex="-1">
+<div class="modal fade pay-detail-modal" id="payDetailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0 shadow" style="border-radius:14px;overflow:hidden;">
-
-      <!-- header -->
-      <div class="modal-header border-0 px-4 pt-4 pb-3" style="background:#2563EB;">
-        <div class="d-flex align-items-center gap-2">
-          <i class="fas fa-money-bill-wave text-white"></i>
-          <h5 class="modal-title text-white fw-bold mb-0">
-            รายละเอียดการถอนเงิน: <span id="pdWdId"></span>
-          </h5>
+    <div class="modal-content">
+      <div class="pay-detail-head">
+        <div class="d-flex align-items-center justify-content-between gap-3">
+          <div>
+            <div class="fw-bold">รายละเอียดการถอนเงิน: <span id="pdWdId"></span></div>
+            <div class="small opacity-75">ตรวจสอบข้อมูลและเลือกการดำเนินการ</div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
       </div>
+      <div id="pdStatusBanner" class="d-none text-center fw-semibold py-2 px-4 small"></div>
 
-      <div class="modal-body p-0">
+      <div class="pay-detail-grid">
+        <div id="pdQrSection" class="pay-qr-panel d-none">
+          <div class="fw-bold text-primary">สแกนพร้อมเพย์<br>เพื่อจ่ายเงิน</div>
+          <div class="pay-qr-frame">
+            <img id="pdQrImg" src="" alt="PromptPay QR">
+          </div>
+          <div class="fw-bold text-danger" id="pdQrNet"></div>
+        </div>
 
-        <!-- status banner (จ่ายแล้ว / ปฏิเสธ) -->
-        <div id="pdStatusBanner" class="d-none text-center fw-semibold py-2 px-4"
-             style="font-size:14px;"></div>
+        <div class="pay-detail-main">
+          <div class="pay-info-row"><span class="text-muted">ชื่อสมาชิก</span><span id="pdName"></span></div>
+          <div class="pay-info-row"><span class="text-muted">ประเภทเครดิต</span><span id="pdType"></span></div>
+          <div class="pay-info-row"><span class="text-muted">จำนวนเครดิต</span><span id="pdCredit"></span></div>
+          <div class="pay-info-row"><span class="text-muted">ธนาคาร</span><span id="pdBank"></span></div>
+          <div class="pay-info-row"><span class="text-muted">ชื่อบัญชี</span><span id="pdAccName"></span></div>
+          <div class="pay-info-row" id="rowAccNo"><span class="text-muted">เลขที่บัญชี</span><span id="pdAccNo"></span></div>
+          <div class="pay-info-row" id="rowPromptpay"><span class="text-muted">หมายเลขพร้อมเพย์</span><span id="pdPromptPay" class="text-primary"></span></div>
+          <div class="pay-info-row"><span class="text-muted">วันที่ขอถอน</span><span id="pdDate"></span></div>
 
-        <!-- ── layout หลัก: QR ซ้าย | ข้อมูล ขวา ── -->
-        <div class="d-flex" style="min-height:420px;">
-
-          <!-- ── คอลัมน์ซ้าย: QR Code ── -->
-          <div id="pdQrSection"
-               class="d-none d-flex flex-column align-items-center justify-content-center p-4 flex-shrink-0"
-               style="width:220px;background:#F0F9FF;border-right:1px solid #E0EAF5;">
-            <div class="fw-bold text-primary small mb-3 text-center">
-              <i class="fas fa-qrcode me-1"></i>สแกนพร้อมเพย์<br>เพื่อจ่ายเงิน
-            </div>
-            <div class="rounded-3 p-2" style="background:#fff;border:1px dashed #93C5FD;">
-              <img id="pdQrImg" src="" alt="PromptPay QR"
-                   style="width:150px;height:150px;object-fit:contain;display:block;">
-            </div>
-            <div class="text-danger fw-bold mt-3 text-center" style="font-size:17px;"
-                 id="pdQrNet"></div>
+          <div class="pay-breakdown">
+            <div class="pay-info-row"><span class="text-muted">จำนวนเงิน</span><span id="pdGross"></span></div>
+            <div class="pay-info-row"><span class="text-muted">ค่าธรรมเนียม</span><span class="text-danger" id="pdFee"></span></div>
+            <div class="pay-info-row"><span class="fw-bold">ยอดสุทธิที่จ่าย</span><span class="text-success" id="pdNet"></span></div>
           </div>
 
-          <!-- ── คอลัมน์ขวา: ข้อมูล ── -->
-          <div class="flex-grow-1 p-4 overflow-auto">
+          <div id="pdCmtSection" class="d-none mt-3">
+            <div id="pdCmtWrap" class="d-none pay-note-box">
+              <div class="fw-bold mb-1"><i class="fas fa-comment-alt me-1"></i>หมายเหตุ</div>
+              <div id="pdCmt"></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            <!-- info rows -->
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">ชื่อสมาชิก</span>
-              <span class="fw-semibold small" id="pdName"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">ประเภทเครดิต</span>
-              <span class="fw-semibold small" id="pdType"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">จำนวนเครดิต</span>
-              <span class="fw-semibold small" id="pdCredit"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">ธนาคาร</span>
-              <span class="fw-semibold small" id="pdBank"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">ชื่อบัญชี</span>
-              <span class="fw-semibold small" id="pdAccName"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2" id="rowAccNo">
-              <span class="text-muted small">เลขที่บัญชี</span>
-              <span class="fw-semibold small" id="pdAccNo"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2" id="rowPromptpay">
-              <span class="text-muted small">หมายเลขพร้อมเพย์</span>
-              <span class="fw-semibold small text-primary" id="pdPromptPay"></span>
-            </div>
-            <div class="mb-3 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">วันที่ขอถอน</span>
-              <span class="fw-semibold small" id="pdDate"></span>
-            </div>
-
-            <!-- fee breakdown -->
-            <div class="rounded-3 p-3 mb-3" style="background:#F8FAFC;border:1px solid #E5E7EB;">
-              <div class="d-flex justify-content-between small mb-2">
-                <span class="text-muted">จำนวนเงิน</span>
-                <span id="pdGross"></span>
-              </div>
-              <div class="d-flex justify-content-between small mb-2">
-                <span class="text-muted">ค่าธรรมเนียม</span>
-                <span class="text-danger" id="pdFee"></span>
-              </div>
-              <div class="d-flex justify-content-between fw-bold">
-                <span>ยอดสุทธิที่จ่าย</span>
-                <span class="text-success" id="pdNet"></span>
-              </div>
-            </div>
-
-            <!-- action section (pending only) -->
-            <div id="pdActionSection">
-              <div class="fw-semibold small mb-2">หมายเหตุ</div>
-              <textarea id="pdNote" class="form-control form-control-sm mb-3" rows="2"
-                        placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)..."></textarea>
-            </div>
-
-            <!-- cmt section (done/rejected) -->
-            <div id="pdCmtSection" class="d-none">
-              <div id="pdCmtWrap" class="d-none rounded-3 p-3"
-                   style="background:#FEF9C3;border:1px solid #FDE68A;">
-                <div class="fw-semibold small mb-1" style="color:#92400E;">
-                  <i class="fas fa-comment-alt me-1"></i>หมายเหตุ
-                </div>
-                <div class="small" id="pdCmt"></div>
-              </div>
-            </div>
-
-          </div><!-- /คอลัมน์ขวา -->
-        </div><!-- /layout หลัก -->
-      </div><!-- /modal-body -->
-
-      <!-- footer -->
       <div class="modal-footer border-top px-4 py-3">
         <form method="post" id="pdForm" action="{% url 'admin_panel:payment_mgmt' %}" data-skip-admin-confirm="true">
           {% csrf_token %}
-          <input type="hidden" name="wd_id"   id="pdFormWdId">
-          <input type="hidden" name="action"  id="pdFormAction">
-          <input type="hidden" name="note"    id="pdFormNote">
-
-          <button type="button" class="btn btn-outline-secondary me-2"
-                  data-bs-dismiss="modal">ปิด</button>
-
-          <!-- ปุ่ม action (pending only) -->
+          <input type="hidden" name="wd_id" id="pdFormWdId">
+          <input type="hidden" name="action" id="pdFormAction">
+          <input type="hidden" name="note" id="pdFormNote">
+          <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">ปิด</button>
           <div id="pdActionBtns" class="d-inline-flex gap-2">
-            <button type="button" class="btn btn-danger fw-semibold"
-                    onclick="askConfirm('reject')">
+            <button type="button" class="btn btn-danger fw-semibold" onclick="askConfirm('reject')">
               <i class="fas fa-times-circle me-1"></i>ปฏิเสธ
             </button>
-            <button type="button" class="btn btn-success fw-semibold"
-                    onclick="askConfirm('pay')">
+            <button type="button" class="btn btn-success fw-semibold" onclick="askConfirm('pay')">
               <i class="fas fa-check-circle me-1"></i>บันทึกการจ่าย
             </button>
           </div>
         </form>
       </div>
-
     </div>
   </div>
 </div>
 
-
-<!-- ══════════════════════════════════════════
-     Confirm Modal (ขั้นที่ 2)
-     ══════════════════════════════════════════ -->
-<div class="modal fade" id="payConfirmModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
-    <div class="modal-content border-0 shadow-lg" style="border-radius:14px;overflow:hidden;">
-
-      <div class="modal-header border-0 pb-0 px-4 pt-4">
-        <div class="d-flex align-items-center gap-3">
-          <!-- ไอคอนเปลี่ยนตาม action -->
-          <div id="cfIconWrap"
-               class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-               style="width:46px;height:46px;">
+<div class="modal fade pay-confirm-modal" id="payConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+    <div class="modal-content">
+      <div class="pay-confirm-head">
+        <div class="d-flex align-items-start gap-3">
+          <div id="cfIconWrap" class="confirm-icon">
             <i id="cfIcon" style="font-size:20px;"></i>
           </div>
-          <div>
-            <h5 class="fw-bold mb-0" id="cfTitle"></h5>
+          <div class="flex-grow-1">
+            <h5 class="fw-bold mb-1" id="cfTitle"></h5>
             <div class="text-muted small" id="cfSubtitle"></div>
           </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
       </div>
-
-      <div class="modal-body px-4 py-3">
-        <!-- สรุปข้อมูล -->
-        <div class="rounded-3 border p-3 mb-3" style="background:#F8FAFC;">
-          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:13px;">
-            <span class="text-muted">รหัสการถอน</span>
-            <span class="fw-semibold" id="cf2WdId">—</span>
-          </div>
-          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:13px;">
-            <span class="text-muted">ชื่อสมาชิก</span>
-            <span class="fw-semibold" id="cf2Name">—</span>
-          </div>
-          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:13px;">
-            <span class="text-muted">ยอดสุทธิที่จ่าย</span>
-            <span class="fw-bold text-success" id="cf2Net">—</span>
-          </div>
-          <div class="d-flex justify-content-between py-2" style="font-size:13px;">
-            <span class="text-muted">หมายเหตุ</span>
-            <span class="fw-semibold text-end" id="cf2Note" style="max-width:55%;word-break:break-word;">—</span>
-          </div>
+      <div class="pay-confirm-body">
+        <div class="rounded-3 border px-3 mb-3" style="background:#f8fafc;">
+          <div class="pay-info-row"><span class="text-muted">รหัสการถอน</span><span id="cf2WdId">-</span></div>
+          <div class="pay-info-row"><span class="text-muted">ชื่อสมาชิก</span><span id="cf2Name">-</span></div>
+          <div class="pay-info-row"><span class="text-muted">ยอดสุทธิที่จ่าย</span><span class="text-success" id="cf2Net">-</span></div>
         </div>
-        <!-- คำเตือน -->
-        <div id="cfAlertBox" class="alert small mb-0 py-2"></div>
-      </div>
 
-      <div class="modal-footer border-0 px-4 pb-4 pt-0 gap-2">
-        <button type="button" class="btn btn-light border fw-semibold flex-fill"
-                data-bs-dismiss="modal">
-          <i class="fas fa-arrow-left me-1"></i>ย้อนกลับ
-        </button>
-        <button type="button" class="btn fw-bold flex-fill" id="cfConfirmBtn"
-                onclick="doSubmit()">
-        </button>
-      </div>
+        <div id="cfRejectNoteWrap" class="d-none mb-3">
+          <label class="form-label fw-bold small">หมายเหตุการปฏิเสธ</label>
+          <textarea id="cfRejectNote" class="form-control" rows="3" placeholder="ระบุเหตุผลที่ปฏิเสธคำขอถอน..."></textarea>
+          <div class="invalid-feedback">กรุณาระบุหมายเหตุการปฏิเสธ</div>
+        </div>
 
+        <div id="cfAlertBox" class="pay-note-box"></div>
+      </div>
+      <div class="pay-confirm-actions">
+        <button type="button" class="btn btn-light border fw-semibold flex-fill" data-bs-dismiss="modal">
+          ย้อนกลับ
+        </button>
+        <button type="button" class="btn fw-bold flex-fill" id="cfConfirmBtn" onclick="doSubmit()"></button>
+      </div>
     </div>
   </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-/* ── เก็บ action ที่รอยืนยัน ── */
 let _pendingAction = '';
 
-/* ── เปิด Detail Modal (pending) ── */
 function openPayDetail(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, promptpayNo, qrCode, date) {
   _fillModal(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, promptpayNo, qrCode, date);
   document.getElementById('pdStatusBanner').classList.add('d-none');
-  document.getElementById('pdActionSection').classList.remove('d-none');
   document.getElementById('pdCmtSection').classList.add('d-none');
   document.getElementById('pdActionBtns').classList.remove('d-none');
-  document.getElementById('pdNote').value = '';
   new bootstrap.Modal(document.getElementById('payDetailModal')).show();
 }
 
-/* ── เปิด Detail Modal (done/rejected) ── */
 function openViewDetail(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, promptpayNo, qrCode, date, status, cmt) {
   _fillModal(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, promptpayNo, qrCode, date);
-  document.getElementById('pdActionSection').classList.add('d-none');
   document.getElementById('pdActionBtns').classList.add('d-none');
   document.getElementById('pdCmtSection').classList.remove('d-none');
 
   const banner = document.getElementById('pdStatusBanner');
   banner.classList.remove('d-none');
   if (status === 1) {
-    banner.style.cssText = 'background:#DCFCE7;color:#166534;font-size:14px;';
+    banner.style.cssText = 'background:#dcfce7;color:#166534;font-size:14px;';
     banner.innerHTML = '<i class="fas fa-check-circle me-2"></i>จ่ายแล้ว';
+  } else if (status === 3) {
+    banner.style.cssText = 'background:#f1f5f9;color:#475569;font-size:14px;';
+    banner.innerHTML = '<i class="fas fa-rotate-left me-2"></i>ยกเลิกโดยผู้ใช้';
   } else {
-    banner.style.cssText = 'background:#FEE2E2;color:#991B1B;font-size:14px;';
+    banner.style.cssText = 'background:#fee2e2;color:#991b1b;font-size:14px;';
     banner.innerHTML = '<i class="fas fa-times-circle me-2"></i>ปฏิเสธการถอน';
   }
 
@@ -503,29 +543,26 @@ function openViewDetail(wdId, name, type, credit, gross, fee, net, bank, accName
   new bootstrap.Modal(document.getElementById('payDetailModal')).show();
 }
 
-/* ── เติมข้อมูลใน Detail Modal ── */
 function _fillModal(wdId, name, type, credit, gross, fee, net, bank, accName, accNo, promptpayNo, qrCode, date) {
-  document.getElementById('pdWdId').textContent    = 'WD' + String(wdId).padStart(5,'0');
-  document.getElementById('pdName').textContent    = name;
-  document.getElementById('pdType').textContent    = type === '1' ? 'เครดิตรายได้' : 'เครดิตนำฝาก';
-  document.getElementById('pdCredit').textContent  = credit + ' เครดิต';
-  document.getElementById('pdBank').textContent    = bank;
+  document.getElementById('pdWdId').textContent = 'WD' + String(wdId).padStart(5, '0');
+  document.getElementById('pdName').textContent = name;
+  document.getElementById('pdType').textContent = type === '1' ? 'เครดิตรายได้' : 'เครดิตนำฝาก';
+  document.getElementById('pdCredit').textContent = credit + ' เครดิต';
+  document.getElementById('pdBank').textContent = bank;
   document.getElementById('pdAccName').textContent = accName;
-  document.getElementById('pdDate').textContent    = date;
-  document.getElementById('pdGross').textContent   = '฿' + gross;
-  document.getElementById('pdFee').textContent     = '-฿' + fee;
-  document.getElementById('pdNet').textContent     = '฿' + net;
-  document.getElementById('pdFormWdId').value      = wdId;
+  document.getElementById('pdAccNo').textContent = accNo;
+  document.getElementById('pdDate').textContent = date;
+  document.getElementById('pdGross').textContent = '฿' + gross;
+  document.getElementById('pdFee').textContent = '-฿' + fee;
+  document.getElementById('pdNet').textContent = '฿' + net;
+  document.getElementById('pdFormWdId').value = wdId;
 
-  const rowAccNo     = document.getElementById('rowAccNo');
   const rowPromptpay = document.getElementById('rowPromptpay');
-  const pdAccNo      = document.getElementById('pdAccNo');
-  const pdPromptPay  = document.getElementById('pdPromptPay');
-  const qrSection    = document.getElementById('pdQrSection');
-  const qrImg        = document.getElementById('pdQrImg');
-  const qrNet        = document.getElementById('pdQrNet');
+  const pdPromptPay = document.getElementById('pdPromptPay');
+  const qrSection = document.getElementById('pdQrSection');
+  const qrImg = document.getElementById('pdQrImg');
+  const qrNet = document.getElementById('pdQrNet');
 
-  /* พร้อมเพย์ + QR */
   if (promptpayNo && promptpayNo !== '-' && promptpayNo !== 'None') {
     rowPromptpay.classList.remove('d-none');
     pdPromptPay.textContent = promptpayNo;
@@ -540,66 +577,69 @@ function _fillModal(wdId, name, type, credit, gross, fee, net, bank, accName, ac
     rowPromptpay.classList.add('d-none');
     qrSection.classList.add('d-none');
   }
-
-  rowAccNo.classList.remove('d-none');
-  pdAccNo.textContent = accNo;
 }
 
-/* ── ขั้นที่ 2: เปิด Confirm Modal ── */
 function askConfirm(action) {
   _pendingAction = action;
-
   const wdId = document.getElementById('pdWdId').textContent;
   const name = document.getElementById('pdName').textContent;
-  const net  = document.getElementById('pdNet').textContent;
-  const note = document.getElementById('pdNote').value.trim() || '—';
+  const net = document.getElementById('pdNet').textContent;
 
-  /* เติมข้อมูลสรุปใน Confirm Modal */
   document.getElementById('cf2WdId').textContent = wdId;
   document.getElementById('cf2Name').textContent = name;
-  document.getElementById('cf2Net').textContent  = net;
-  document.getElementById('cf2Note').textContent = note;
+  document.getElementById('cf2Net').textContent = net;
+
+  const rejectWrap = document.getElementById('cfRejectNoteWrap');
+  const rejectNote = document.getElementById('cfRejectNote');
+  rejectNote.value = '';
+  rejectNote.classList.remove('is-invalid');
 
   if (action === 'pay') {
-    /* สีเขียว — บันทึกจ่าย */
-    document.getElementById('cfIconWrap').style.cssText = 'width:46px;height:46px;background:#DCFCE7;';
-    document.getElementById('cfIcon').className         = 'fas fa-check-circle';
-    document.getElementById('cfIcon').style.color       = '#16A34A';
-    document.getElementById('cfTitle').textContent      = 'ยืนยันบันทึกการจ่าย';
-    document.getElementById('cfSubtitle').textContent   = 'กรุณาตรวจสอบข้อมูลก่อนดำเนินการ';
-    document.getElementById('cfAlertBox').className     = 'alert alert-success small mb-0 py-2';
-    document.getElementById('cfAlertBox').innerHTML     = '<i class="fas fa-info-circle me-1"></i>เมื่อยืนยันแล้ว ระบบจะบันทึกสถานะเป็น <strong>จ่ายแล้ว</strong> และไม่สามารถแก้ไขได้';
-    document.getElementById('cfConfirmBtn').className   = 'btn btn-success fw-bold flex-fill';
-    document.getElementById('cfConfirmBtn').innerHTML   = '<i class="fas fa-check-circle me-1"></i>ยืนยันบันทึกการจ่าย';
+    rejectWrap.classList.add('d-none');
+    document.getElementById('cfIconWrap').style.cssText = 'background:#dcfce7;color:#16a34a;';
+    document.getElementById('cfIcon').className = 'fas fa-check-circle';
+    document.getElementById('cfTitle').textContent = 'ยืนยันบันทึกการจ่าย';
+    document.getElementById('cfSubtitle').textContent = 'ตรวจสอบยอดโอนก่อนยืนยัน';
+    document.getElementById('cfAlertBox').style.cssText = 'background:#dcfce7;border-color:#bbf7d0;color:#166534;';
+    document.getElementById('cfAlertBox').innerHTML = '<i class="fas fa-circle-info me-1"></i>เมื่อยืนยันแล้ว ระบบจะหักเครดิตและบันทึกสถานะเป็น <strong>จ่ายแล้ว</strong>';
+    document.getElementById('cfConfirmBtn').className = 'btn btn-success fw-bold flex-fill';
+    document.getElementById('cfConfirmBtn').innerHTML = '<i class="fas fa-check-circle me-1"></i>ยืนยันบันทึกการจ่าย';
   } else {
-    /* สีแดง — ปฏิเสธ */
-    document.getElementById('cfIconWrap').style.cssText = 'width:46px;height:46px;background:#FEE2E2;';
-    document.getElementById('cfIcon').className         = 'fas fa-times-circle';
-    document.getElementById('cfIcon').style.color       = '#DC2626';
-    document.getElementById('cfTitle').textContent      = 'ยืนยันปฏิเสธการถอน';
-    document.getElementById('cfSubtitle').textContent   = 'กรุณาตรวจสอบข้อมูลก่อนดำเนินการ';
-    document.getElementById('cfAlertBox').className     = 'alert alert-danger small mb-0 py-2';
-    document.getElementById('cfAlertBox').innerHTML     = '<i class="fas fa-exclamation-triangle me-1"></i>เมื่อยืนยันแล้ว ระบบจะบันทึกสถานะเป็น <strong>ปฏิเสธการถอน</strong> และไม่สามารถแก้ไขได้';
-    document.getElementById('cfConfirmBtn').className   = 'btn btn-danger fw-bold flex-fill';
-    document.getElementById('cfConfirmBtn').innerHTML   = '<i class="fas fa-times-circle me-1"></i>ยืนยันปฏิเสธ';
+    rejectWrap.classList.remove('d-none');
+    document.getElementById('cfIconWrap').style.cssText = 'background:#fee2e2;color:#dc2626;';
+    document.getElementById('cfIcon').className = 'fas fa-times-circle';
+    document.getElementById('cfTitle').textContent = 'ยืนยันปฏิเสธการถอน';
+    document.getElementById('cfSubtitle').textContent = 'ระบุหมายเหตุเพื่อแจ้งเหตุผลให้สมาชิกทราบ';
+    document.getElementById('cfAlertBox').style.cssText = 'background:#fee2e2;border-color:#fecaca;color:#991b1b;';
+    document.getElementById('cfAlertBox').innerHTML = '<i class="fas fa-triangle-exclamation me-1"></i>เมื่อยืนยันแล้ว ระบบจะปลดล็อกเครดิตคืนให้สมาชิกและบันทึกสถานะเป็น <strong>ปฏิเสธการถอน</strong>';
+    document.getElementById('cfConfirmBtn').className = 'btn btn-danger fw-bold flex-fill';
+    document.getElementById('cfConfirmBtn').innerHTML = '<i class="fas fa-times-circle me-1"></i>ยืนยันปฏิเสธ';
   }
 
-  /* ซ่อน Detail Modal แล้วเปิด Confirm Modal */
   bootstrap.Modal.getInstance(document.getElementById('payDetailModal')).hide();
   setTimeout(() => {
     new bootstrap.Modal(document.getElementById('payConfirmModal')).show();
-  }, 300);
+  }, 250);
 }
 
-/* ── submit จริง ── */
 function doSubmit() {
-  document.getElementById('pdFormAction').value = _pendingAction;
-  document.getElementById('pdFormNote').value   = document.getElementById('pdNote').value;
+  const rejectNote = document.getElementById('cfRejectNote');
+  let note = '';
+  if (_pendingAction === 'reject') {
+    note = rejectNote.value.trim();
+    if (!note) {
+      rejectNote.classList.add('is-invalid');
+      rejectNote.focus();
+      return;
+    }
+  }
 
-  /* ใช้ hidden button เพื่อให้ CSRF ส่งครบ */
+  document.getElementById('pdFormAction').value = _pendingAction;
+  document.getElementById('pdFormNote').value = note;
+
   const form = document.getElementById('pdForm');
-  const btn  = document.createElement('button');
-  btn.type   = 'submit';
+  const btn = document.createElement('button');
+  btn.type = 'submit';
   btn.style.display = 'none';
   form.appendChild(btn);
   btn.click();

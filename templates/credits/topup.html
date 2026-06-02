@@ -1,286 +1,437 @@
 {% extends 'main/base.html' %}
 {% load static %}
 
-{% block title %}การเติมเครดิต — Puean Chuay Tu{% endblock %}
+{% block title %}เติมเครดิต - Puean Chuay Tu{% endblock %}
 
 {% block extra_css %}
 <style>
+  .topup-page {
+    background: #f6f8fb;
+    min-height: 100vh;
+    padding: 28px 12px 44px;
+  }
+  .topup-shell {
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+  .topup-back {
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 14px;
+  }
+  .topup-hero,
+  .topup-panel {
+    background: #fff;
+    border: 1px solid #e6eaf0;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+  }
+  .topup-hero {
+    padding: 22px;
+  }
+  .topup-panel {
+    padding: 22px;
+  }
+  .topup-sticky {
+    position: sticky;
+    top: 92px;
+  }
+  .topup-title {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0;
+  }
+  .topup-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .topup-section-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 14px;
+  }
+  .topup-info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 0;
+    border-bottom: 1px solid #eef2f7;
+    font-size: 13px;
+  }
+  .topup-info-row:last-child {
+    border-bottom: 0;
+  }
+  .topup-value {
+    font-weight: 800;
+    text-align: right;
+    word-break: break-word;
+  }
+  .qr-card {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .qr-frame {
+    width: 172px;
+    height: 172px;
+    margin: 0 auto 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .qr-frame img {
+    width: 156px;
+    height: 156px;
+    object-fit: contain;
+  }
+  .topup-field {
+    margin-bottom: 14px;
+  }
+  .topup-field .form-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 6px;
+  }
+  .topup-field .form-control,
+  .topup-field .form-select,
+  .topup-field .input-group-text {
+    border-color: #dbe2ea;
+    border-radius: 8px;
+  }
+  .topup-field .input-group .form-control {
+    border-radius: 0;
+  }
+  .topup-field .input-group .input-group-text:first-child {
+    border-radius: 8px 0 0 8px;
+  }
+  .topup-field .input-group .input-group-text:last-child {
+    border-radius: 0 8px 8px 0;
+  }
+  .money-box {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
   .upload-zone {
-    border: 2px dashed #D1D5DB;
-    border-radius: 12px;
-    padding: 32px 20px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 28px 18px;
     text-align: center;
     cursor: pointer;
-    transition: border-color .2s, background .2s;
-    background: #FAFAFA;
+    transition: border-color .16s, background .16s;
+    background: #f8fafc;
     position: relative;
   }
-  .upload-zone:hover, .upload-zone.drag-over { border-color: #2563EB; background: #EFF6FF; }
-  .upload-zone.done { border-color: #16A34A; background: #F0FDF4; }
+  .upload-zone:hover,
+  .upload-zone.drag-over {
+    border-color: #2563eb;
+    background: #eff6ff;
+  }
+  .upload-zone.done {
+    border-color: #16a34a;
+    background: #f0fdf4;
+  }
   .upload-zone input[type=file] {
-    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+  .soft-note {
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+  }
+  .confirm-modal .modal-content {
+    border: 0;
+    border-radius: 8px;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, .22);
+    overflow: hidden;
+  }
+  .confirm-head {
+    padding: 20px 22px 10px;
+  }
+  .confirm-body {
+    padding: 10px 22px 20px;
+  }
+  .confirm-actions {
+    padding: 0 22px 22px;
+    display: flex;
+    gap: 10px;
+  }
+  @media (max-width: 991px) {
+    .topup-sticky {
+      position: static;
+    }
+  }
+  @media (max-width: 576px) {
+    .topup-hero,
+    .topup-panel {
+      padding: 16px;
+    }
+    .topup-title {
+      font-size: 21px;
+    }
+    .money-box,
+    .confirm-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="bg-light min-vh-100 py-4 px-2 px-md-3">
-  <div class="container" style="max-width:1060px;">
-
-    <!-- ── Page header ── -->
-    <div class="pt-1 pb-3">
-      <a href="{% url 'credits:credit' %}"
-         class="btn btn-light border d-inline-flex align-items-center gap-2 shadow-sm"
-         style="border-radius:10px;font-weight:600;font-size:13.5px;padding:8px 16px;">
-        <i class="fas fa-arrow-left" style="font-size:12px;"></i> ย้อนกลับ
+<div class="topup-page">
+  <div class="topup-shell">
+    <div class="mb-3">
+      <a href="{% url 'credits:credit' %}" class="btn btn-light border topup-back">
+        <i class="fas fa-arrow-left me-1"></i> ย้อนกลับ
       </a>
     </div>
-    <h4 class="fw-bold mb-1">การเติมเครดิต</h4>
-    <p class="text-muted small mb-4">
-      โอนเงินและอัปโหลดสลิปเพื่อรับเครดิต
-      ({{ crd_val|floatformat:"0" }} บาท = 1 เครดิต)
-    </p>
 
-    <div class="row g-4 align-items-start">
+    <div class="topup-hero mb-3">
+      <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+        <div>
+          <h1 class="topup-title">เติมเครดิต</h1>
+          <div class="text-muted small mt-2">โอนเงินตามยอดที่ระบบคำนวณ แล้วอัปโหลดสลิปเพื่อรอแอดมินตรวจสอบ</div>
+        </div>
+        <div class="text-end">
+          <div class="text-muted small fw-semibold">อัตราเติมเครดิต</div>
+          <div class="fw-bold">{{ crd_val|floatformat:"2" }} บาท / 1 เครดิต</div>
+        </div>
+      </div>
+    </div>
 
-      <!-- ── Left: Bank info ── -->
+    <div class="row g-3 align-items-start">
       <div class="col-lg-5">
-
-        <!-- Bank details card -->
-        <div class="card border-0 shadow-sm mb-3">
-          <div class="card-body p-4">
-            <h6 class="fw-bold mb-3">
-              <i class="fas fa-university text-primary me-2"></i>ข้อมูลการโอน
-            </h6>
-
-            {% if system %}
-            <div class="mb-3 pb-3 border-bottom">
-              <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">ชื่อธนาคาร</div>
-              <div class="fw-semibold">{{ system.bank_name }}</div>
-            </div>
-
-            <div class="mb-3 pb-3 border-bottom">
-              <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">หมายเลขบัญชี</div>
-              <div class="d-flex align-items-center gap-2">
-                <span class="fw-bold fs-5" id="accNo">{{ system.acc_no }}</span>
-                <button type="button" class="btn btn-link p-0 text-secondary" onclick="copyAccNo()" title="คัดลอก">
-                  <i class="fas fa-copy" id="copyIcon"></i>
-                </button>
+        <div class="topup-sticky">
+          <div class="topup-panel mb-3">
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <div class="topup-icon" style="background:#eff6ff;color:#2563eb;">
+                <i class="fas fa-building-columns"></i>
+              </div>
+              <div>
+                <div class="fw-bold">บัญชีรับโอน</div>
+                <div class="text-muted small">ตรวจสอบบัญชีก่อนโอนทุกครั้ง</div>
               </div>
             </div>
 
-            <div class="mb-3 pb-3 border-bottom">
-              <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">ชื่อบัญชี</div>
-              <div class="fw-semibold">{{ system.acc_name }}</div>
-            </div>
-
-            <div class="mb-3">
-              <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">มูลค่าเครดิต</div>
-              <div class="fw-semibold">{{ system.crd_val|floatformat:"0" }} บาท = 1 เครดิต</div>
-            </div>
-
+            {% if system %}
+              <div class="topup-info-row">
+                <span class="text-muted">ธนาคาร</span>
+                <span class="topup-value">{{ system.bank_name }}</span>
+              </div>
+              <div class="topup-info-row">
+                <span class="text-muted">เลขที่บัญชี</span>
+                <span class="topup-value">
+                  <span id="accNo">{{ system.acc_no }}</span>
+                  <button type="button" class="btn btn-link p-0 ms-1 text-secondary" onclick="copyAccNo()" title="คัดลอกเลขบัญชี">
+                    <i class="fas fa-copy" id="copyIcon"></i>
+                  </button>
+                </span>
+              </div>
+              <div class="topup-info-row">
+                <span class="text-muted">ชื่อบัญชี</span>
+                <span class="topup-value">{{ system.acc_name }}</span>
+              </div>
+              <div class="topup-info-row">
+                <span class="text-muted">มูลค่าเครดิต</span>
+                <span class="topup-value">{{ system.crd_val|floatformat:"2" }} บาท = 1 เครดิต</span>
+              </div>
             {% else %}
-            <div class="alert alert-warning small mb-0">
-              <i class="fas fa-exclamation-triangle me-1"></i>
-              ยังไม่มีข้อมูลบัญชีรับชำระ กรุณาติดต่อผู้ดูแลระบบ
-            </div>
+              <div class="soft-note" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">
+                <i class="fas fa-triangle-exclamation me-1"></i>
+                ยังไม่มีข้อมูลบัญชีรับชำระ กรุณาติดต่อผู้ดูแลระบบ
+              </div>
             {% endif %}
-
-            <div class="alert alert-info small mb-0 mt-3">
-              <i class="fas fa-info-circle me-1"></i>
-              โปรดตรวจสอบรายละเอียดบัญชีอีกครั้งก่อนโอนเงิน
-              เครดิตจะถูกเพิ่มเข้าบัญชีของคุณหลังจากตรวจสอบสลิปเรียบร้อยแล้ว
-            </div>
           </div>
-        </div>
 
-        <!-- QR Card -->
-        <div class="card border-0 shadow-sm text-center">
-          <div class="card-body py-4">
-            <div class="text-muted small fw-semibold mb-3">สแกนเพื่อชำระเงินด้วยพร้อมเพย์</div>
-            <div class="d-inline-flex align-items-center justify-content-center rounded-3 mb-3 overflow-hidden"
-                 style="background:#F9FAFB;border:1px dashed #D1D5DB;width:150px;height:150px;">
+          <div class="topup-panel">
+            <div class="topup-section-title">พร้อมเพย์</div>
+            <div class="qr-card">
+              <div class="qr-frame">
                 {% if qr_img %}
-                <img id="qrImg" src="{{ qr_img }}" alt="PromptPay QR"
-                     style="width:140px;height:140px;object-fit:contain;">
-              {% else %}
-                <i class="fas fa-qrcode" style="font-size:72px;color:#374151;"></i>
-              {% endif %}
-            </div>
-            <div id="qrAmount" class="fw-semibold text-primary mb-2" style="font-size:15px;">฿ 0.00</div>
-            <div class="text-muted" style="font-size:12px;">
-              <i class="fas fa-shield-alt text-success me-1"></i>
-              ร้านค้าที่ได้รับการยืนยัน:
-              {% if system %}{{ system.uni_name }}{% else %}Puean Chuay Tutor{% endif %}
+                  <img id="qrImg" src="{{ qr_img }}" alt="PromptPay QR">
+                {% else %}
+                  <i class="fas fa-qrcode" style="font-size:72px;color:#94a3b8;"></i>
+                {% endif %}
+              </div>
+              <div id="qrAmount" class="fw-bold text-primary fs-5">฿ 0.00</div>
+              <div class="text-muted small mt-1">
+                {% if system %}{{ system.uni_name|default:"Puean Chuay Tu" }}{% else %}Puean Chuay Tu{% endif %}
+              </div>
             </div>
           </div>
         </div>
-
       </div>
 
-      <!-- ── Right: Form ── -->
       <div class="col-lg-7">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body p-4">
-            <h6 class="fw-bold mb-4">รายละเอียดการทำธุรกรรม</h6>
+        <div class="topup-panel">
+          <div class="topup-section-title">รายละเอียดการโอน</div>
+          <form method="post" enctype="multipart/form-data" id="topupForm">
+            {% csrf_token %}
+            <input type="hidden" name="rf_money" id="rfMoney" value="0">
 
-            <form method="post" enctype="multipart/form-data" id="topupForm">
-              {% csrf_token %}
-
-              <!-- hidden field ที่ส่งค่าจริงไป view -->
-              <input type="hidden" name="rf_money" id="rfMoney" value="0">
-
-              <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold small">โอนมาจาก (ธนาคาร)</label>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="topup-field">
+                  <label class="form-label">โอนมาจากธนาคาร</label>
                   <select name="bank_from" class="form-select" required>
-                    <option value="">— เลือกธนาคาร —</option>
+                    <option value="">เลือกธนาคาร</option>
                     {% for val, label in bank_choices %}
                       <option value="{{ val }}" {% if prev.bank_from == val %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                   </select>
                 </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold small">เครดิตที่ต้องการ</label>
+              </div>
+              <div class="col-md-6">
+                <div class="topup-field">
+                  <label class="form-label">เครดิตที่ต้องการ</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-coins"></i></span>
-                    <input type="number" id="rfCredits" class="form-control"
-                           placeholder="0" min="1" step="1" required
-                           value="{{ prev.rfCredits|default:'' }}">
+                    <input type="number" id="rfCredits" class="form-control" placeholder="0" min="1" step="1" required value="{{ prev.rfCredits|default:'' }}">
                     <span class="input-group-text text-muted small">เครดิต</span>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div class="mb-3">
-                <label class="form-label fw-semibold small">จำนวนเงินที่ต้องโอน (บาท)</label>
-                <div class="d-flex align-items-center justify-content-between rounded-3 border px-3 py-2"
-                     style="background:#F9FAFB;">
-                  <span class="fw-bold text-primary" style="font-size:20px;">
-                    ฿<span id="moneyDisplay">0.00</span>
-                  </span>
-                  <span class="badge bg-primary-subtle text-primary small">
-                    อัตราส่วน 1:{{ crd_val|floatformat:"0" }} บาท
-                  </span>
+            <div class="money-box mb-3">
+              <div>
+                <div class="text-primary small fw-bold">จำนวนเงินที่ต้องโอน</div>
+                <div class="fw-bold text-primary" style="font-size:28px;">฿<span id="moneyDisplay">0.00</span></div>
+              </div>
+              <div class="badge bg-primary-subtle text-primary px-3 py-2">
+                1 เครดิต = {{ crd_val|floatformat:"2" }} บาท
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="topup-field">
+                  <label class="form-label">วันที่โอน</label>
+                  <input type="date" name="tx_date" class="form-control" required value="{{ prev.tx_date|default:'' }}">
                 </div>
               </div>
-
-              <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold small">วันที่โอน</label>
-                  <input type="date" name="tx_date" class="form-control" required
-                         value="{{ prev.tx_date|default:'' }}">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold small">เวลาโอน</label>
-                  <input type="time" name="tx_time" class="form-control" required
-                         value="{{ prev.tx_time|default:'' }}">
+              <div class="col-md-6">
+                <div class="topup-field">
+                  <label class="form-label">เวลาโอน</label>
+                  <input type="time" name="tx_time" class="form-control" required value="{{ prev.tx_time|default:'' }}">
                 </div>
               </div>
+            </div>
 
-              <div class="mb-4">
-                <label class="form-label fw-semibold small">อัปโหลดสลิป (หลักฐานการโอนเงิน)</label>
-                <div class="upload-zone" id="uploadZone" style="cursor:pointer;position:relative;">
-                  <input type="file" name="rf_slip" id="slipFile" accept="image/*,.pdf" required
-                         style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;z-index:1;">
-                  <!-- placeholder -->
-                  <div id="uploadPlaceholder" style="pointer-events:none;">
-                    <i class="fas fa-cloud-upload-alt mb-2 d-block text-secondary" style="font-size:32px;"></i>
-                    <div class="fw-semibold small mb-1">คลิกเพื่ออัปโหลด หรือลากและวาง</div>
-                    <div class="text-muted" style="font-size:12px;">ไฟล์ PNG, JPG หรือ PDF (ขนาดสูงสุด 5MB)</div>
+            <div class="topup-field">
+              <label class="form-label">สลิปการโอนเงิน</label>
+              <div class="upload-zone" id="uploadZone">
+                <input type="file" name="rf_slip" id="slipFile" accept="image/*,.pdf" required>
+                <div id="uploadPlaceholder" style="pointer-events:none;">
+                  <i class="fas fa-cloud-arrow-up mb-2 d-block text-secondary" style="font-size:34px;"></i>
+                  <div class="fw-bold small mb-1">คลิกเพื่ออัปโหลด หรือลากไฟล์มาวาง</div>
+                  <div class="text-muted" style="font-size:12px;">รองรับ PNG, JPG หรือ PDF</div>
+                </div>
+                <div id="slipPreviewInner" class="d-none w-100 text-center" style="pointer-events:none;">
+                  <img id="slipPreviewImg" style="max-height:210px;max-width:100%;border-radius:8px;object-fit:contain;cursor:zoom-in;pointer-events:all;" alt="preview สลิป" onclick="openSlipModal(this.src)">
+                  <div class="mt-2 text-success fw-bold" style="font-size:12px;">
+                    <i class="fas fa-check-circle me-1"></i><span id="slipFileName"></span>
                   </div>
-                  <!-- preview inline -->
-                  <div id="slipPreviewInner" class="d-none w-100 text-center" style="pointer-events:none;">
-                    <img id="slipPreviewImg"
-                         style="max-height:200px;max-width:100%;border-radius:8px;object-fit:contain;
-                                cursor:zoom-in;pointer-events:all;"
-                         alt="preview สลิป"
-                         onclick="openSlipModal(this.src)">
-                    <div class="mt-2" style="font-size:12px;color:#16A34A;font-weight:600;">
-                      <i class="fas fa-check-circle me-1"></i>
-                      <span id="slipFileName"></span>
-                    </div>
-                    <div class="d-flex justify-content-center gap-2 mt-2" style="pointer-events:all;">
-                      <button type="button" class="btn btn-sm btn-outline-primary px-3"
-                              onclick="openSlipModal(document.getElementById('slipPreviewImg').src)">
-                        <i class="fas fa-search-plus me-1"></i>ดูรูป
-                      </button>
-                      <button type="button" class="btn btn-sm btn-outline-secondary px-3"
-                              onclick="document.getElementById('slipFile').click()">
-                        <i class="fas fa-sync-alt me-1"></i>เปลี่ยนรูป
-                      </button>
-                    </div>
+                  <div class="d-flex justify-content-center gap-2 mt-2" style="pointer-events:all;">
+                    <button type="button" class="btn btn-sm btn-outline-primary px-3" onclick="openSlipModal(document.getElementById('slipPreviewImg').src)">
+                      <i class="fas fa-magnifying-glass-plus me-1"></i>ดูรูป
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary px-3" onclick="chooseSlipAgain()">
+                      <i class="fas fa-rotate me-1"></i>เปลี่ยนไฟล์
+                    </button>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div class="d-flex gap-3 mt-2">
-                <button type="button" class="btn btn-primary w-100 py-2 fw-bold"
-                  onclick="openTopupConfirm()">
-                  ส่งเพื่อตรวจสอบยืนยัน
-                </button>
-              </div>
-              <p class="text-center text-muted mt-2 mb-0" style="font-size:12px;">
-                โดยปกติการตรวจสอบจะใช้เวลา 15-30 นาทีในช่วงเวลาทำการ
-              </p>
-
-            </form>
-          </div>
+            <button type="button" class="btn btn-primary w-100 fw-bold py-2" onclick="openTopupConfirm()">
+              <i class="fas fa-paper-plane me-1"></i>ส่งตรวจสอบ
+            </button>
+            <div class="soft-note mt-3">
+              <i class="fas fa-circle-info me-1 text-primary"></i>
+              ปกติการตรวจสอบใช้เวลาประมาณ 15-30 นาทีในช่วงเวลาทำการ
+            </div>
+          </form>
         </div>
       </div>
-
     </div>
   </div>
 </div>
-<div class="modal fade" id="topupConfirmModal" tabindex="-1" aria-labelledby="topupConfirmLabel" aria-hidden="true">
+
+<div class="modal fade confirm-modal" id="topupConfirmModal" tabindex="-1" aria-labelledby="topupConfirmLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
-    <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden;">
-      <div class="modal-header border-0 pb-0 px-4 pt-4">
-        <div class="d-flex align-items-center gap-3">
-          <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-               style="width:44px;height:44px;background:#DBEAFE;">
-            <i class="fas fa-coins" style="color:#2563EB;font-size:18px;"></i>
+    <div class="modal-content">
+      <div class="confirm-head">
+        <div class="d-flex align-items-start gap-3">
+          <div class="topup-icon" style="background:#dbeafe;color:#2563eb;">
+            <i class="fas fa-coins"></i>
           </div>
-          <div>
-            <h5 class="fw-bold mb-0" id="topupConfirmLabel">ยืนยันการเติมเครดิต</h5>
-            <div class="text-muted small">กรุณาตรวจสอบข้อมูลก่อนส่ง</div>
+          <div class="flex-grow-1">
+            <h5 class="fw-bold mb-1" id="topupConfirmLabel">ยืนยันการเติมเครดิต</h5>
+            <div class="text-muted small">ตรวจสอบข้อมูลก่อนส่งให้แอดมินตรวจสลิป</div>
           </div>
-        </div>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body px-4 py-3">
-        <div class="rounded-3 border p-3 mb-3" style="background:#F8FAFC;">
-          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:14px;">
-            <span class="text-muted">จำนวนเครดิต</span>
-            <span class="fw-bold text-primary" id="cfCredits">—</span>
-          </div>
-          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:14px;">
-            <span class="text-muted">จำนวนเงินที่ต้องโอน</span>
-            <span class="fw-bold text-primary" id="cfMoney">—</span>
-          </div>
-          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:14px;">
-            <span class="text-muted">โอนจากธนาคาร</span>
-            <span class="fw-semibold" id="cfBank">—</span>
-          </div>
-          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:14px;">
-            <span class="text-muted">วันที่โอน</span>
-            <span class="fw-semibold" id="cfDate">—</span>
-          </div>
-        </div>
-        <div class="alert alert-warning small mb-0 py-2">
-          <i class="fas fa-exclamation-triangle me-1"></i>
-          เมื่อส่งแล้วจะไม่สามารถแก้ไขข้อมูลได้ กรุณาตรวจสอบให้ครบถ้วน
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
       </div>
-      <div class="modal-footer border-0 px-4 pb-4 pt-0 gap-2">
-        <button type="button" class="btn btn-light border fw-semibold flex-fill"
-                data-bs-dismiss="modal">
-          <i class="fas fa-arrow-left me-1"></i>แก้ไข
+      <div class="confirm-body">
+        <div class="rounded-3 border px-3 mb-3" style="background:#f8fafc;">
+          <div class="topup-info-row"><span class="text-muted">จำนวนเครดิต</span><span class="topup-value text-primary" id="cfCredits">-</span></div>
+          <div class="topup-info-row"><span class="text-muted">จำนวนเงิน</span><span class="topup-value text-primary" id="cfMoney">-</span></div>
+          <div class="topup-info-row"><span class="text-muted">โอนจากธนาคาร</span><span class="topup-value" id="cfBank">-</span></div>
+          <div class="topup-info-row"><span class="text-muted">วันที่โอน</span><span class="topup-value" id="cfDate">-</span></div>
+        </div>
+        <div class="soft-note" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">
+          <i class="fas fa-triangle-exclamation me-1"></i>
+          หลังส่งแล้วจะไม่สามารถแก้ไขข้อมูลรายการนี้ได้ กรุณาตรวจสอบยอดโอนและสลิปให้ถูกต้อง
+        </div>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-light border fw-semibold flex-fill" data-bs-dismiss="modal">
+          แก้ไข
         </button>
-        <button type="button" class="btn btn-primary fw-bold flex-fill"
-        onclick="submitTopupForm()">
-          <i class="fas fa-paper-plane me-1"></i>ยืนยันส่ง
+        <button type="button" class="btn btn-primary fw-bold flex-fill" onclick="submitTopupForm()">
+          ยืนยันส่ง
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="slipModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:90vw;width:fit-content;">
+    <div class="modal-content border-0" style="background:transparent;">
+      <div class="modal-body p-0 position-relative">
+        <button type="button" data-bs-dismiss="modal" style="position:absolute;top:-12px;right:-12px;z-index:10;background:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;">
+          <i class="fas fa-times text-secondary"></i>
+        </button>
+        <img id="slipModalImg" src="" alt="สลิปขนาดเต็ม" style="max-width:85vw;max-height:85vh;border-radius:10px;display:block;object-fit:contain;">
       </div>
     </div>
   </div>
@@ -290,19 +441,20 @@
 {% block extra_js %}
 <script>
   const crdVal = {{ crd_val }};
-
   const promptpayId = "{{ promptpay_id }}";
 
-  document.getElementById('rfCredits')?.addEventListener('input', function () {
-    const credits = parseInt(this.value) || 0;
-    const money   = credits * crdVal;
+  document.getElementById('rfCredits')?.addEventListener('input', updateTopupAmount);
+  updateTopupAmount();
+
+  function updateTopupAmount() {
+    const credits = parseInt(document.getElementById('rfCredits').value) || 0;
+    const money = credits * crdVal;
     document.getElementById('moneyDisplay').textContent = money.toFixed(2);
     document.getElementById('rfMoney').value = money.toFixed(2);
 
     const qrAmount = document.getElementById('qrAmount');
     if (qrAmount) qrAmount.textContent = `฿ ${money.toFixed(2)}`;
 
-    // generate QR ใหม่จาก server
     if (promptpayId && money > 0) {
       fetch(`/credits/qr/?amount=${money.toFixed(2)}`)
         .then(r => r.json())
@@ -311,44 +463,39 @@
           if (qrImg && data.qr) qrImg.src = data.qr;
         });
     }
-  });
+  }
 
   function openTopupConfirm() {
-    // ตรวจ form validity ก่อนเปิด modal
     const form = document.getElementById('topupForm');
-    if (!form.checkValidity()) { form.reportValidity(); return; }
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
 
-    // ดึงค่าจากฟิลด์มาแสดงใน modal
-    const credits  = document.getElementById('rfCredits').value || '0';
-    const money    = document.getElementById('moneyDisplay').textContent;
-    const bankSel  = document.querySelector('select[name="bank_from"]');
-    const bankText = bankSel.options[bankSel.selectedIndex]?.text || '—';
-    const txDate   = document.querySelector('input[name="tx_date"]').value || '—';
-    const txTime   = document.querySelector('input[name="tx_time"]').value || '';
-    const slipEl   = document.getElementById('slipFileName');
-    
+    const credits = document.getElementById('rfCredits').value || '0';
+    const money = document.getElementById('moneyDisplay').textContent;
+    const bankSel = document.querySelector('select[name="bank_from"]');
+    const bankText = bankSel.options[bankSel.selectedIndex]?.text || '-';
+    const txDate = document.querySelector('input[name="tx_date"]').value || '-';
+    const txTime = document.querySelector('input[name="tx_time"]').value || '';
 
     document.getElementById('cfCredits').textContent = credits + ' เครดิต';
-    document.getElementById('cfMoney').textContent   = '฿' + money;
-    document.getElementById('cfBank').textContent    = bankText;
-    document.getElementById('cfDate').textContent    = txDate + (txTime ? ' ' + txTime : '');
-
+    document.getElementById('cfMoney').textContent = '฿' + money;
+    document.getElementById('cfBank').textContent = bankText;
+    document.getElementById('cfDate').textContent = txDate + (txTime ? ' ' + txTime : '');
 
     new bootstrap.Modal(document.getElementById('topupConfirmModal')).show();
   }
 
-function submitTopupForm() {
-  // สร้าง hidden submit button ใน form แล้วกด
-  // วิธีนี้รับประกันว่า enctype="multipart/form-data" และ CSRF ส่งไปครบ
-  const form = document.getElementById('topupForm');
-  const btn  = document.createElement('button');
-  btn.type   = 'submit';
-  btn.style.display = 'none';
-  form.appendChild(btn);
-  btn.click();
+  function submitTopupForm() {
+    const form = document.getElementById('topupForm');
+    const btn = document.createElement('button');
+    btn.type = 'submit';
+    btn.style.display = 'none';
+    form.appendChild(btn);
+    btn.click();
   }
 
-  // ── Thai validation messages ──
   function setThaiValidation(el, emptyMsg, invalidMsg) {
     el.addEventListener('invalid', function () {
       if (el.validity.valueMissing) {
@@ -357,19 +504,22 @@ function submitTopupForm() {
         el.setCustomValidity(invalidMsg || emptyMsg);
       }
     });
-    el.addEventListener('input',  function () { el.setCustomValidity(''); });
+    el.addEventListener('input', function () { el.setCustomValidity(''); });
     el.addEventListener('change', function () { el.setCustomValidity(''); });
   }
 
-  const bankSel  = document.querySelector('select[name="bank_from"]');
-  const credInp  = document.getElementById('rfCredits');
-  const dateInp  = document.querySelector('input[name="tx_date"]');
-  const timeInp  = document.querySelector('input[name="tx_time"]');
+  const bankSel = document.querySelector('select[name="bank_from"]');
+  const credInp = document.getElementById('rfCredits');
+  const dateInp = document.querySelector('input[name="tx_date"]');
+  const timeInp = document.querySelector('input[name="tx_time"]');
+  const slipFile = document.getElementById('slipFile');
+  const uploadZone = document.getElementById('uploadZone');
 
   if (bankSel) setThaiValidation(bankSel, 'กรุณาเลือกธนาคารที่โอน', 'กรุณาเลือกธนาคารที่โอน');
-  if (credInp) setThaiValidation(credInp, 'กรุณากรอกจำนวนเครดิตที่ต้องการ', 'กรุณากรอกจำนวนเครดิตที่ถูกต้อง (ตัวเลขเท่านั้น)');
+  if (credInp) setThaiValidation(credInp, 'กรุณากรอกจำนวนเครดิตที่ต้องการ', 'กรุณากรอกจำนวนเครดิตที่ถูกต้อง');
   if (dateInp) setThaiValidation(dateInp, 'กรุณากรอกวันที่โอน', 'กรุณากรอกวันที่โอนให้ถูกต้อง');
   if (timeInp) setThaiValidation(timeInp, 'กรุณากรอกเวลาโอน', 'กรุณากรอกเวลาโอนให้ถูกต้อง');
+  if (slipFile) setThaiValidation(slipFile, 'กรุณาอัปโหลดสลิปการโอนเงิน', 'กรุณาอัปโหลดไฟล์สลิปที่ถูกต้อง');
 
   function copyAccNo() {
     const text = document.getElementById('accNo').textContent.trim();
@@ -380,10 +530,10 @@ function submitTopupForm() {
     });
   }
 
-  const slipFile   = document.getElementById('slipFile');
-  const uploadZone = document.getElementById('uploadZone');
-
-  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    uploadZone.classList.add('drag-over');
+  });
   uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
   uploadZone.addEventListener('drop', e => {
     e.preventDefault();
@@ -393,22 +543,19 @@ function submitTopupForm() {
       showPreview(e.dataTransfer.files[0]);
     }
   });
-
   slipFile.addEventListener('change', function () {
     if (this.files[0]) showPreview(this.files[0]);
   });
 
   function showPreview(file) {
     const placeholder = document.getElementById('uploadPlaceholder');
-    const preview     = document.getElementById('slipPreviewInner');
-    const img         = document.getElementById('slipPreviewImg');
-    const nameEl      = document.getElementById('slipFileName');
+    const preview = document.getElementById('slipPreviewInner');
+    const img = document.getElementById('slipPreviewImg');
+    const nameEl = document.getElementById('slipFileName');
 
     nameEl.textContent = file.name;
-
     if (file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      img.src   = url;
+      img.src = URL.createObjectURL(file);
       img.classList.remove('d-none');
     } else {
       img.classList.add('d-none');
@@ -416,37 +563,21 @@ function submitTopupForm() {
 
     placeholder.classList.add('d-none');
     preview.classList.remove('d-none');
-    uploadZone.style.borderColor = '#16A34A';
-    uploadZone.style.background  = '#F0FDF4';
-    uploadZone.style.cursor      = 'default';
-
-    // ปิด overlay ของ file input — ใช้ปุ่ม "เปลี่ยนรูป" แทน
+    uploadZone.classList.add('done');
     slipFile.style.pointerEvents = 'none';
-    slipFile.style.zIndex        = '-1';
+    slipFile.style.zIndex = '-1';
+  }
+
+  function chooseSlipAgain() {
+    slipFile.style.pointerEvents = 'auto';
+    slipFile.style.zIndex = '1';
+    slipFile.click();
   }
 
   function openSlipModal(src) {
+    if (!src) return;
     document.getElementById('slipModalImg').src = src;
     new bootstrap.Modal(document.getElementById('slipModal')).show();
   }
 </script>
-
-<!-- Lightbox modal สลิป -->
-<div class="modal fade" id="slipModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered" style="max-width:90vw;width:fit-content;">
-    <div class="modal-content border-0" style="background:transparent;">
-      <div class="modal-body p-0 position-relative">
-        <button type="button" data-bs-dismiss="modal"
-                style="position:absolute;top:-12px;right:-12px;z-index:10;
-                       background:#fff;border:none;border-radius:50%;
-                       width:32px;height:32px;font-size:16px;
-                       box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;">
-          <i class="fas fa-times text-secondary"></i>
-        </button>
-        <img id="slipModalImg" src="" alt="สลิปขนาดเต็ม"
-             style="max-width:85vw;max-height:85vh;border-radius:10px;display:block;object-fit:contain;">
-      </div>
-    </div>
-  </div>
-</div>
 {% endblock %}
