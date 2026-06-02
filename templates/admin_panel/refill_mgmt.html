@@ -24,7 +24,7 @@
         </div>
         <div class="rounded-3 d-flex align-items-center justify-content-center"
              style="width:48px;height:48px;background:#FEF9C3;">
-          <i class="fas fa-hourglass-half text-warning"></i>
+          <i class="bi bi-hourglass-split text-warning fs-5"></i>
         </div>
       </div>
     </div>
@@ -39,7 +39,7 @@
         </div>
         <div class="rounded-3 d-flex align-items-center justify-content-center"
              style="width:48px;height:48px;background:#DCFCE7;">
-          <i class="fas fa-check-circle text-success"></i>
+          <i class="bi bi-check2-circle text-success fs-5"></i>
         </div>
       </div>
     </div>
@@ -54,7 +54,7 @@
         </div>
         <div class="rounded-3 d-flex align-items-center justify-content-center"
              style="width:48px;height:48px;background:#DBEAFE;">
-          <i class="fas fa-wallet text-primary"></i>
+          <i class="bi bi-wallet2 text-primary fs-5"></i>
         </div>
       </div>
     </div>
@@ -268,9 +268,6 @@
                     <i class="fas fa-times-circle me-1"></i>ไม่ถูกต้อง
                   </button>
                 </div>
-                <div class="small text-muted mb-1">หมายเหตุ</div>
-                <textarea id="mdNote" class="form-control form-control-sm mb-0" rows="3"
-                          placeholder="ใส่หมายเหตุภายในหรือเหตุผลในการปฏิเสธ..."></textarea>
               </div>
             </div>
 
@@ -294,20 +291,77 @@
       </div>
 
       <div class="modal-footer">
-        <form method="post" id="mdForm" action="{% url 'admin_panel:refill_mgmt' %}">
+        <form method="post" id="mdForm" action="{% url 'admin_panel:refill_mgmt' %}" data-skip-admin-confirm="true">
           {% csrf_token %}
           <input type="hidden" name="rf_id"  id="mdFormRfId">
           <input type="hidden" name="action" id="mdFormAction">
           <input type="hidden" name="note"   id="mdFormNote">
           <button type="button" class="btn btn-outline-secondary me-2"
                   data-bs-dismiss="modal">ยกเลิก</button>
-          <button type="submit" id="mdSubmitBtn" class="btn btn-primary fw-bold"
-                  onclick="beforeSubmit()" disabled>
+          <button type="button" id="mdSubmitBtn" class="btn btn-primary fw-bold"
+                  onclick="askRefillConfirm()" disabled>
             ยืนยันการอัปเดต
           </button>
         </form>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="refillConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:14px;overflow:hidden;">
+      <div class="modal-header border-0 pb-0 px-4 pt-4">
+        <div class="d-flex align-items-start gap-3">
+          <div id="rfCfIconWrap"
+               class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+               style="width:46px;height:46px;">
+            <i id="rfCfIcon" style="font-size:21px;"></i>
+          </div>
+          <div class="flex-grow-1">
+            <h5 class="fw-bold mb-1" id="rfCfTitle"></h5>
+            <div class="text-muted small" id="rfCfSubtitle"></div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+
+      <div class="modal-body px-4 py-3">
+        <div class="rounded-3 border p-3 mb-3" style="background:#F8FAFC;">
+          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:13px;">
+            <span class="text-muted">รหัสการเติมเครดิต</span>
+            <span class="fw-semibold" id="rfCfId">-</span>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:13px;">
+            <span class="text-muted">ชื่อสมาชิก</span>
+            <span class="fw-semibold text-end" id="rfCfName">-</span>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:13px;">
+            <span class="text-muted">จำนวนเงิน</span>
+            <span class="fw-bold text-primary" id="rfCfMoney">-</span>
+          </div>
+          <div class="d-flex justify-content-between py-2" style="font-size:13px;">
+            <span class="text-muted">เครดิต</span>
+            <span class="fw-bold text-success" id="rfCfCredit">-</span>
+          </div>
+        </div>
+
+        <div id="rfCfNoteWrap" class="d-none mb-3">
+          <label class="form-label fw-bold small">หมายเหตุการปฏิเสธ</label>
+          <textarea id="rfCfNote" class="form-control" rows="3" placeholder="ระบุเหตุผลที่ปฏิเสธรายการเติมเครดิต..."></textarea>
+          <div class="invalid-feedback">กรุณาระบุหมายเหตุการปฏิเสธ</div>
+        </div>
+
+        <div id="rfCfAlert" class="rounded-3 border p-3 small"></div>
+      </div>
+
+      <div class="modal-footer border-0 px-4 pb-4 pt-0 gap-2">
+        <button type="button" class="btn btn-light border fw-semibold flex-fill" data-bs-dismiss="modal">
+          ย้อนกลับ
+        </button>
+        <button type="button" class="btn fw-bold flex-fill" id="rfCfConfirmBtn" onclick="submitRefillAction()"></button>
+      </div>
     </div>
   </div>
 </div>
@@ -326,8 +380,8 @@ function openDetail(rfId, name, mbId, money, credit, slipUrl, date, bankName, st
   document.getElementById('mdCredit').textContent = '+' + credit + ' เครดิต';
   document.getElementById('mdDate').textContent   = date;
   document.getElementById('mdFormRfId').value     = rfId;
-  document.getElementById('mdNote').value         = '';
   document.getElementById('mdSubmitBtn').disabled = true;
+  document.getElementById('mdSubmitBtn').textContent = 'เลือกผลการตรวจสอบก่อน';
 
   // bank row
   const mdBank    = document.getElementById('mdBank');
@@ -386,14 +440,17 @@ function selectAction(action) {
   selectedAction = action;
   const btnA = document.getElementById('btnApprove');
   const btnR = document.getElementById('btnReject');
+  const submitBtn = document.getElementById('mdSubmitBtn');
   if (action === 'approve') {
     btnA.style.background = '#16A34A'; btnA.style.color = '#fff';
     btnR.style.background = '#fff';    btnR.style.color = '#DC2626';
+    submitBtn.textContent = 'ยืนยันว่าเติมเครดิตถูกต้อง';
   } else {
     btnR.style.background = '#DC2626'; btnR.style.color = '#fff';
     btnA.style.background = '#fff';    btnA.style.color = '#16A34A';
+    submitBtn.textContent = 'ยืนยันว่าไม่ถูกต้อง';
   }
-  document.getElementById('mdSubmitBtn').disabled = false;
+  submitBtn.disabled = false;
 }
 
 function resetActionBtns() {
@@ -403,9 +460,64 @@ function resetActionBtns() {
   if (btnR) { btnR.style.background = '#fff'; btnR.style.color = '#DC2626'; }
 }
 
-function beforeSubmit() {
+function askRefillConfirm() {
+  if (!selectedAction) return;
+
+  document.getElementById('rfCfId').textContent = document.getElementById('mdRfId').textContent;
+  document.getElementById('rfCfName').textContent = document.getElementById('mdName').textContent;
+  document.getElementById('rfCfMoney').textContent = document.getElementById('mdMoney').textContent;
+  document.getElementById('rfCfCredit').textContent = document.getElementById('mdCredit').textContent;
+
+  const noteWrap = document.getElementById('rfCfNoteWrap');
+  const note = document.getElementById('rfCfNote');
+  note.value = '';
+  note.classList.remove('is-invalid');
+
+  if (selectedAction === 'approve') {
+    noteWrap.classList.add('d-none');
+    document.getElementById('rfCfIconWrap').style.cssText = 'width:46px;height:46px;background:#DCFCE7;color:#16A34A;';
+    document.getElementById('rfCfIcon').className = 'bi bi-check2-circle';
+    document.getElementById('rfCfTitle').textContent = 'ยืนยันอนุมัติการเติมเครดิต';
+    document.getElementById('rfCfSubtitle').textContent = 'ตรวจสอบยอดเงินและเครดิตก่อนยืนยัน';
+    document.getElementById('rfCfAlert').style.cssText = 'background:#DCFCE7;border-color:#BBF7D0;color:#166534;';
+    document.getElementById('rfCfAlert').innerHTML = '<i class="bi bi-info-circle me-1"></i>เมื่อยืนยันแล้ว ระบบจะบันทึกสถานะเป็น <strong>อนุมัติแล้ว</strong> และเพิ่มเครดิตให้สมาชิก';
+    document.getElementById('rfCfConfirmBtn').className = 'btn btn-success fw-bold flex-fill';
+    document.getElementById('rfCfConfirmBtn').innerHTML = '<i class="bi bi-check2-circle me-1"></i>ยืนยันอนุมัติ';
+  } else {
+    noteWrap.classList.remove('d-none');
+    document.getElementById('rfCfIconWrap').style.cssText = 'width:46px;height:46px;background:#FEE2E2;color:#DC2626;';
+    document.getElementById('rfCfIcon').className = 'bi bi-x-circle';
+    document.getElementById('rfCfTitle').textContent = 'ยืนยันปฏิเสธการเติมเครดิต';
+    document.getElementById('rfCfSubtitle').textContent = 'ระบุหมายเหตุเพื่อแจ้งเหตุผลให้สมาชิกทราบ';
+    document.getElementById('rfCfAlert').style.cssText = 'background:#FEE2E2;border-color:#FECACA;color:#991B1B;';
+    document.getElementById('rfCfAlert').innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>เมื่อยืนยันแล้ว ระบบจะบันทึกสถานะเป็น <strong>ไม่อนุมัติ</strong>';
+    document.getElementById('rfCfConfirmBtn').className = 'btn btn-danger fw-bold flex-fill';
+    document.getElementById('rfCfConfirmBtn').innerHTML = '<i class="bi bi-x-circle me-1"></i>ยืนยันปฏิเสธ';
+  }
+
+  const detailModal = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
+  if (detailModal) detailModal.hide();
+  setTimeout(() => {
+    new bootstrap.Modal(document.getElementById('refillConfirmModal')).show();
+  }, 250);
+}
+
+function submitRefillAction() {
+  const note = document.getElementById('rfCfNote');
+  let noteValue = '';
+
+  if (selectedAction === 'reject') {
+    noteValue = note.value.trim();
+    if (!noteValue) {
+      note.classList.add('is-invalid');
+      note.focus();
+      return;
+    }
+  }
+
   document.getElementById('mdFormAction').value = selectedAction || '';
-  document.getElementById('mdFormNote').value   = document.getElementById('mdNote').value;
+  document.getElementById('mdFormNote').value = noteValue;
+  document.getElementById('mdForm').requestSubmit();
 }
 </script>
 {% endblock %}
