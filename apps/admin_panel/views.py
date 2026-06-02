@@ -126,15 +126,38 @@ def system_settings(request):
     """หน้าตั้งค่าระบบ (System + Admin User)"""
     system    = System.objects.select_related('admin').first()
     admin_user = system.admin if system else None
+    credit_value_locked = bool(system and system.crd_val and system.crd_val > 0)
+    email_domain_locked = credit_value_locked
 
     sys_form  = SystemForm(instance=system)
     user_form = AdminUserForm(instance=admin_user)
+    if credit_value_locked:
+        sys_form.fields['crd_val'].disabled = True
+        sys_form.fields['crd_val'].help_text = 'มูลค่าเครดิตถูกล็อกแล้ว ไม่สามารถแก้ไขได้'
+    if email_domain_locked:
+        sys_form.fields['email_domain'].disabled = True
+        sys_form.fields['email_domain'].help_text = 'โดเมนอีเมลถูกล็อกแล้ว หากจำเป็นต้องเปลี่ยนให้ใช้คำสั่งดูแลระบบ'
 
     if request.method == 'POST':
         action = request.POST.get('action')
 
         if action == 'system':
-            sys_form = SystemForm(request.POST, instance=system)
+            post_data = request.POST.copy()
+            if credit_value_locked:
+                post_data['crd_val'] = str(system.crd_val)
+            if email_domain_locked:
+                post_data['email_domain'] = system.email_domain
+            elif post_data.get('confirm_credit_value_lock') != '1':
+                messages.error(request, 'กรุณายืนยันการล็อกมูลค่าเครดิตและโดเมนอีเมลก่อนบันทึกข้อมูลระบบ')
+                return redirect('admin_panel:system_settings')
+
+            sys_form = SystemForm(post_data, instance=system)
+            if credit_value_locked:
+                sys_form.fields['crd_val'].disabled = True
+                sys_form.fields['crd_val'].help_text = 'มูลค่าเครดิตถูกล็อกแล้ว ไม่สามารถแก้ไขได้'
+            if email_domain_locked:
+                sys_form.fields['email_domain'].disabled = True
+                sys_form.fields['email_domain'].help_text = 'โดเมนอีเมลถูกล็อกแล้ว หากจำเป็นต้องเปลี่ยนให้ใช้คำสั่งดูแลระบบ'
             if sys_form.is_valid():
                 sys_form.save()
                 messages.success(request, 'บันทึกข้อมูลระบบเรียบร้อยแล้ว')
@@ -155,6 +178,8 @@ def system_settings(request):
         'system'            : system,
         'sys_form'          : sys_form,
         'user_form'         : user_form,
+        'credit_value_locked': credit_value_locked,
+        'email_domain_locked': email_domain_locked,
         'active_menu'       : 'system',
         'topbar_breadcrumb' : 'ตั้งค่าระบบ',
     })

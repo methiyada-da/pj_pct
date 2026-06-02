@@ -65,6 +65,12 @@ class SystemForm(forms.ModelForm):
             raise forms.ValidationError('กรุณาระบุโดเมนอีเมลให้ถูกต้อง เช่น rmuti.ac.th')
         return domain
 
+    def clean_crd_val(self):
+        value = self.cleaned_data.get('crd_val')
+        if value is None or value <= 0:
+            raise forms.ValidationError('มูลค่าเครดิตต้องมากกว่า 0 บาท')
+        return value
+
 
 class AdminUserForm(forms.ModelForm):
     """ฟอร์มแก้ไข/สร้างข้อมูล Admin (Django User) ที่ผูกกับ System แบบ OneToOne"""
