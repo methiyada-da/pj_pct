@@ -4,11 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}การจัดการข้อมูลพื้นฐาน{% endblock %} — Puean Chuay Tu</title>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <title>{% block title %}Admin Panel{% endblock %} - Puean Chuay Tu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
-  <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+  <link rel="stylesheet" href="{% static 'css/admin.css' %}?v=20260602-admin-redesign-5">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -16,19 +16,17 @@
 {% include 'admin_panel/_topbar.html' %}
 {% include 'admin_panel/_sidebar.html' %}
 
-<!-- ── Main ── -->
-<div class="main-content">
+<main class="main-content">
   <div class="page-body">
-
     {% if messages %}
     <div aria-live="polite" aria-atomic="true"
-         style="position:fixed;top:72px;right:16px;z-index:9999;min-width:260px;max-width:calc(100vw - 32px);">
+         style="position:fixed;top:78px;right:16px;z-index:9999;min-width:260px;max-width:calc(100vw - 32px);">
       {% for msg in messages %}
       <div class="toast align-items-center text-bg-{% if msg.level >= 30 %}danger{% else %}success{% endif %} border-0 show mb-2"
            role="alert" data-bs-autohide="true" data-bs-delay="3500">
         <div class="d-flex">
           <div class="toast-body">{{ msg }}</div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="ปิด"></button>
         </div>
       </div>
       {% endfor %}
@@ -37,24 +35,56 @@
 
     {% block content %}{% endblock %}
   </div>
+</main>
+
+<div class="modal fade" id="adminConfirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content admin-confirm-modal">
+      <div class="modal-header">
+        <div class="d-flex align-items-center gap-3">
+          <div class="admin-confirm-icon" id="adminConfirmIcon">
+            <i class="bi bi-exclamation-triangle"></i>
+          </div>
+          <div>
+            <h5 class="modal-title mb-1" id="adminConfirmTitle">ยืนยันการดำเนินการ</h5>
+            <div class="text-muted small" id="adminConfirmSubtitle">การดำเนินการนี้อาจแก้ไขกลับไม่ได้</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+      </div>
+      <div class="modal-body">
+        <div class="admin-confirm-box" id="adminConfirmMessage">
+          โปรดตรวจสอบข้อมูลให้ถูกต้องก่อนยืนยัน
+        </div>
+      </div>
+      <div class="modal-footer admin-modal-actions">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          ยกเลิก
+        </button>
+        <button type="button" class="btn btn-primary" id="adminConfirmSubmitBtn">
+          ยืนยัน
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   document.querySelectorAll('.toast').forEach(el => new bootstrap.Toast(el).show());
 
-  /* ── Sidebar toggle (mobile) ── */
   (function () {
-    const btn      = document.getElementById('sidebarToggleBtn');
-    const sidebar  = document.getElementById('adminSidebar');
+    const btn = document.getElementById('sidebarToggleBtn');
+    const sidebar = document.getElementById('adminSidebar');
     const backdrop = document.getElementById('sidebarBackdrop');
     if (!btn || !sidebar || !backdrop) return;
 
     function openSidebar() {
       sidebar.classList.add('sidebar--open');
       backdrop.classList.add('show');
-      document.body.style.overflow = 'hidden'; // ป้องกัน scroll หลัง
+      document.body.style.overflow = 'hidden';
     }
+
     function closeSidebar() {
       sidebar.classList.remove('sidebar--open');
       backdrop.classList.remove('show');
@@ -63,12 +93,127 @@
 
     btn.addEventListener('click', openSidebar);
     backdrop.addEventListener('click', closeSidebar);
-
-    // ปิด sidebar อัตโนมัติเมื่อคลิก link บน mobile
     sidebar.querySelectorAll('.sidebar-link').forEach(link => {
       link.addEventListener('click', () => {
         if (window.innerWidth < 992) closeSidebar();
       });
+    });
+  })();
+
+  (function () {
+    const irreversibleActions = {
+      approve: {
+        title: 'ยืนยันการอนุมัติ',
+        subtitle: 'ระบบจะเปลี่ยนสถานะเป็นอนุมัติ',
+        message: 'โปรดตรวจสอบข้อมูลให้ครบถ้วนก่อนยืนยันการอนุมัติ',
+        tone: 'success',
+        confirm: 'ยืนยันอนุมัติ'
+      },
+      reject: {
+        title: 'ยืนยันการปฏิเสธ',
+        subtitle: 'ระบบจะบันทึกผลเป็นปฏิเสธ',
+        message: 'เมื่อยืนยันแล้ว ผู้ใช้จะเห็นผลการปฏิเสธตามขั้นตอนของระบบ',
+        tone: 'danger',
+        confirm: 'ยืนยันปฏิเสธ'
+      },
+      suspend: {
+        title: 'ยืนยันการระงับ',
+        subtitle: 'การระงับจะกระทบสิทธิ์การใช้งาน/การสอน',
+        message: 'โปรดระบุเหตุผลให้ชัดเจนก่อนยืนยันการระงับ',
+        tone: 'danger',
+        confirm: 'ยืนยันระงับ'
+      },
+      unsuspend: {
+        title: 'ยืนยันการปลดระงับ',
+        subtitle: 'บัญชีจะกลับมาใช้งานตามสิทธิ์เดิม',
+        message: 'ตรวจสอบให้แน่ใจว่าต้องการปลดระงับบัญชีนี้',
+        tone: 'success',
+        confirm: 'ยืนยันปลดระงับ'
+      },
+      pay: {
+        title: 'ยืนยันการบันทึกจ่ายเงิน',
+        subtitle: 'รายการถอนจะถูกบันทึกเป็นจ่ายแล้ว',
+        message: 'โปรดตรวจสอบยอดเงินสุทธิและข้อมูลบัญชีก่อนยืนยัน',
+        tone: 'success',
+        confirm: 'ยืนยันจ่ายเงิน'
+      },
+      resolve_transfer: {
+        title: 'ยืนยันการโอนเครดิต',
+        subtitle: 'เครดิตจะถูกโอนและปิดเคสรายงาน',
+        message: 'โปรดตรวจสอบหลักฐานและเหตุผลการตัดสินใจก่อนยืนยัน',
+        tone: 'success',
+        confirm: 'ยืนยันโอนเครดิต'
+      }
+    };
+
+    let pendingForm = null;
+    let pendingSubmitter = null;
+    let confirmedOnce = false;
+
+    function getAction(form, submitter) {
+      if (submitter && submitter.name === 'action' && submitter.value) return submitter.value;
+      const actionInput = form.querySelector('[name="action"]');
+      return actionInput ? actionInput.value : '';
+    }
+
+    function setTone(config) {
+      const icon = document.getElementById('adminConfirmIcon');
+      const btn = document.getElementById('adminConfirmSubmitBtn');
+      icon.className = 'admin-confirm-icon';
+      btn.className = 'btn';
+      if (config.tone === 'danger') {
+        icon.classList.add('admin-confirm-icon-danger');
+        btn.classList.add('btn-danger');
+        icon.innerHTML = '<i class="bi bi-exclamation-octagon"></i>';
+      } else {
+        icon.classList.add('admin-confirm-icon-success');
+        btn.classList.add('btn-success');
+        icon.innerHTML = '<i class="bi bi-check-circle"></i>';
+      }
+    }
+
+    document.addEventListener('submit', function (event) {
+      const form = event.target;
+      if (!form || form.dataset.skipAdminConfirm === 'true' || form.getAttribute('onsubmit')) return;
+      if (confirmedOnce) {
+        confirmedOnce = false;
+        return;
+      }
+
+      const submitter = event.submitter || null;
+      const action = getAction(form, submitter);
+      const config = irreversibleActions[action];
+      if (!config) return;
+
+      event.preventDefault();
+      pendingForm = form;
+      pendingSubmitter = submitter;
+
+      document.getElementById('adminConfirmTitle').textContent = config.title;
+      document.getElementById('adminConfirmSubtitle').textContent = config.subtitle;
+      document.getElementById('adminConfirmMessage').textContent = config.message;
+      document.getElementById('adminConfirmSubmitBtn').textContent = config.confirm;
+      setTone(config);
+
+      new bootstrap.Modal(document.getElementById('adminConfirmModal')).show();
+    }, true);
+
+    document.getElementById('adminConfirmSubmitBtn').addEventListener('click', function () {
+      if (!pendingForm) return;
+      confirmedOnce = true;
+      const modal = bootstrap.Modal.getInstance(document.getElementById('adminConfirmModal'));
+      if (modal) modal.hide();
+
+      if (pendingSubmitter && pendingSubmitter.name && pendingSubmitter.value) {
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = pendingSubmitter.name;
+        hidden.value = pendingSubmitter.value;
+        pendingForm.appendChild(hidden);
+      }
+      pendingForm.requestSubmit();
+      pendingForm = null;
+      pendingSubmitter = null;
     });
   })();
 </script>
@@ -76,11 +221,11 @@
 
 {% if user.is_authenticated %}
 <script>
-  window.NOTIF_API      = "{% url 'notifications:api_list' %}";
+  window.NOTIF_API = "{% url 'notifications:api_list' %}";
   window.NOTIF_READ_ALL = "{% url 'notifications:api_mark_all_read' %}";
-  window.NOTIF_CSRF     = "{{ csrf_token }}";
+  window.NOTIF_CSRF = "{{ csrf_token }}";
 </script>
-<script src="{% static 'js/notifications.js' %}"></script>
+<script src="{% static 'js/notifications.js' %}?v=20260602-admin-redesign-5"></script>
 <script>
   adminFetchNotifications();
   setInterval(adminFetchNotifications, 30000);

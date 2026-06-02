@@ -2,116 +2,172 @@
 {% block title %}ตั้งค่าระบบ{% endblock %}
 
 {% block content %}
-<!-- <div class="page-breadcrumb">
-  <a href="{% url 'admin_panel:dashboard' %}">แดชบอร์ด</a>
-  <span class="sep"><i class="bi bi-chevron-right" style="font-size:10px;"></i></span>
-  <span class="current">ตั้งค่าระบบ</span>
-</div> -->
-
-<div class="page-header">
+<div class="page-header admin-page-hero">
   <div>
+    <span class="page-kicker">System configuration</span>
     <h1>ตั้งค่าระบบ</h1>
-    <p>จัดการข้อมูลระบบและข้อมูลผู้ดูแล</p>
+    <p>กำหนดบัญชีรับเงิน มูลค่าเครดิต ค่าธรรมเนียม และข้อมูลผู้ดูแลระบบ</p>
+  </div>
+</div>
+
+<div class="admin-stat-grid admin-stat-grid-3 mb-4">
+  <div class="admin-stat">
+    <div>
+      <div class="admin-stat-label">มูลค่าเครดิต</div>
+      <div class="admin-stat-value">฿{{ system.crd_val|floatformat:"2"|default:"0.00" }}</div>
+      <div class="admin-stat-note">ราคาต่อ 1 เครดิต</div>
+    </div>
+    <div class="admin-stat-icon"><i class="bi bi-coin"></i></div>
+  </div>
+  <div class="admin-stat">
+    <div>
+      <div class="admin-stat-label">ค่าธรรมเนียมนำฝาก</div>
+      <div class="admin-stat-value">{{ system.deposit_withdraw_fee_pct|floatformat:"2"|default:"0.00" }}%</div>
+      <div class="admin-stat-note">ใช้กับเครดิตนำฝาก</div>
+    </div>
+    <div class="admin-stat-icon admin-stat-icon-warning"><i class="bi bi-percent"></i></div>
+  </div>
+  <div class="admin-stat">
+    <div>
+      <div class="admin-stat-label">ค่าธรรมเนียมรายได้</div>
+      <div class="admin-stat-value">{{ system.income_withdraw_fee_pct|floatformat:"2"|default:"0.00" }}%</div>
+      <div class="admin-stat-note">ใช้กับเครดิตรายได้ติวเตอร์</div>
+    </div>
+    <div class="admin-stat-icon admin-stat-icon-accent"><i class="bi bi-bank2"></i></div>
   </div>
 </div>
 
 <div class="row g-4">
-
-  <!-- ── System Form ── -->
-  <div class="col-lg-6">
-    <div class="card-panel">
-      <div class="modal-header" style="border-radius:0;">
-        <h5 class="modal-title"><i class="bi bi-sliders me-2 text-primary"></i>ข้อมูลระบบ</h5>
-      </div>
-      <div class="modal-body">
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="system" />
-          <div class="mb-3">
-            <label class="form-label">ชื่อมหาวิทยาลัย</label>
-            {{ sys_form.uni_name }}
-          </div>
-          <div class="mb-3">
-            <label class="form-label">ชื่อธนาคาร</label>
-            {{ sys_form.bank_name }}
-          </div>
-          <div class="mb-3">
-            <label class="form-label">ชื่อบัญชี</label>
-            {{ sys_form.acc_name }}
-          </div>
-          <div class="mb-3">
-            <label class="form-label">เลขที่บัญชี</label>
-            {{ sys_form.acc_no }}
-          </div>
-          <div class="mb-3">
-            <label class="form-label">หมายเลขพร้อมเพย์ <span class="text-muted small">(เบอร์โทร 10 หลัก หรือเลขบัตรประชาชน 13 หลัก)</span></label>
-            {{ sys_form.promptpay_id }}
-          </div>
-          <div class="row g-2 mb-3">
-            <div class="col-4">
-              <label class="form-label">มูลค่าเครดิต (บาท)</label>
-              {{ sys_form.crd_val }}
-            </div>
-            <div class="col-4">
-              <label class="form-label">ค่าธรรมเนียมนำฝาก (%)</label>
-              {{ sys_form.deposit_withdraw_fee_pct }}
-            </div>
-            <div class="col-4">
-              <label class="form-label">ค่าธรรมเนียมรายได้ (%)</label>
-              {{ sys_form.income_withdraw_fee_pct }}
-            </div>
-          </div>
-          <button type="submit" class="btn-primary-custom">
-            <i class="bi bi-check2"></i> บันทึกข้อมูลระบบ
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Admin User Form ── -->
-  <div class="col-lg-6">
-    <div class="card-panel">
-      <div class="modal-header" style="border-radius:0;">
-        <h5 class="modal-title"><i class="bi bi-person-gear me-2 text-primary"></i>ข้อมูลผู้ดูแลระบบ</h5>
-      </div>
-      <div class="modal-body">
-        {% if system.admin %}
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="admin_user" />
-          <div class="row g-2 mb-3">
-            <div class="col-6">
-              <label class="form-label">ชื่อ</label>
-              {{ user_form.first_name }}
-            </div>
-            <div class="col-6">
-              <label class="form-label">นามสกุล</label>
-              {{ user_form.last_name }}
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">อีเมล</label>
-            {{ user_form.email }}
-          </div>
-          <div class="mb-3">
-            <label class="form-label">รหัสผ่านใหม่</label>
-            {{ user_form.password }}
-            <div class="form-text">{{ user_form.password.help_text }}</div>
-          </div>
-          <button type="submit" class="btn-primary-custom">
-            <i class="bi bi-check2"></i> บันทึกข้อมูลผู้ดูแล
-          </button>
-        </form>
-        {% else %}
-        <div class="empty-state">
-          <i class="bi bi-person-x d-block"></i>
-          <p>ยังไม่ได้กำหนดผู้ดูแลระบบ</p>
+  <div class="col-xl-7">
+    <section class="admin-form-card">
+      <div class="admin-form-card-header">
+        <div>
+          <span class="panel-kicker">Payment</span>
+          <h2>ข้อมูลระบบและบัญชีรับเงิน</h2>
         </div>
-        {% endif %}
+        <i class="bi bi-sliders"></i>
       </div>
-    </div>
+
+      <form method="post" class="admin-form-grid">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="system" />
+
+        <div class="admin-field admin-field-full">
+          <label class="form-label">ชื่อมหาวิทยาลัย</label>
+          {{ sys_form.uni_name }}
+        </div>
+
+        <div class="admin-field admin-field-full">
+          <label class="form-label">ธนาคาร</label>
+          {{ sys_form.bank_name }}
+        </div>
+
+        <div class="admin-field">
+          <label class="form-label">ชื่อบัญชี</label>
+          {{ sys_form.acc_name }}
+        </div>
+
+        <div class="admin-field">
+          <label class="form-label">เลขที่บัญชี</label>
+          {{ sys_form.acc_no }}
+        </div>
+
+        <div class="admin-field admin-field-full">
+          <label class="form-label">หมายเลขพร้อมเพย์</label>
+          {{ sys_form.promptpay_id }}
+          <div class="form-text">รองรับเบอร์โทรศัพท์ 10 หลัก หรือเลขบัตรประชาชน 13 หลัก</div>
+        </div>
+
+        <div class="admin-field">
+          <label class="form-label">มูลค่าเครดิต (บาท)</label>
+          {{ sys_form.crd_val }}
+        </div>
+
+        <div class="admin-field">
+          <label class="form-label">ค่าธรรมเนียมนำฝาก (%)</label>
+          {{ sys_form.deposit_withdraw_fee_pct }}
+        </div>
+
+        <div class="admin-field">
+          <label class="form-label">ค่าธรรมเนียมรายได้ (%)</label>
+          {{ sys_form.income_withdraw_fee_pct }}
+        </div>
+
+        <div class="admin-form-actions admin-field-full">
+          <button type="submit" class="btn-primary-custom">
+            <i class="bi bi-check2"></i>
+            บันทึกข้อมูลระบบ
+          </button>
+        </div>
+      </form>
+    </section>
   </div>
 
+  <div class="col-xl-5">
+    <section class="admin-form-card">
+      <div class="admin-form-card-header">
+        <div>
+          <span class="panel-kicker">Administrator</span>
+          <h2>ข้อมูลผู้ดูแลระบบ</h2>
+        </div>
+        <i class="bi bi-person-gear"></i>
+      </div>
+
+      {% if system.admin %}
+      <div class="admin-profile-strip">
+        <div class="admin-avatar">
+          {{ system.admin.first_name|first|default:system.admin.username|first|upper }}{{ system.admin.last_name|first|upper }}
+        </div>
+        <div>
+          <div class="admin-row-title">{{ system.admin.get_full_name|default:system.admin.username }}</div>
+          <div class="admin-row-subtitle">{{ system.admin.email|default:"ยังไม่ระบุอีเมล" }}</div>
+        </div>
+      </div>
+
+      <form method="post" class="admin-form-grid admin-form-grid-single mt-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="admin_user" />
+
+        <div class="admin-field">
+          <label class="form-label">ชื่อ</label>
+          {{ user_form.first_name }}
+        </div>
+
+        <div class="admin-field">
+          <label class="form-label">นามสกุล</label>
+          {{ user_form.last_name }}
+        </div>
+
+        <div class="admin-field admin-field-full">
+          <label class="form-label">อีเมล</label>
+          {{ user_form.email }}
+        </div>
+
+        <div class="admin-field admin-field-full">
+          <label class="form-label">รหัสผ่านใหม่</label>
+          {{ user_form.password }}
+          <div class="form-text">{{ user_form.password.help_text }}</div>
+        </div>
+
+        <div class="admin-field admin-field-full">
+          <label class="form-label">ยืนยันรหัสผ่านใหม่</label>
+          {{ user_form.password2 }}
+        </div>
+
+        <div class="admin-form-actions admin-field-full">
+          <button type="submit" class="btn-primary-custom">
+            <i class="bi bi-check2"></i>
+            บันทึกข้อมูลผู้ดูแล
+          </button>
+        </div>
+      </form>
+      {% else %}
+      <div class="empty-state">
+        <i class="bi bi-person-x d-block"></i>
+        <p>ยังไม่ได้กำหนดผู้ดูแลระบบ</p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
 </div>
 {% endblock %}
