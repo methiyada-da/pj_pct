@@ -673,7 +673,17 @@ function sortSlotsInGroup(group, addBtn) {
   rows.forEach(row => group.insertBefore(row, addBtn));
 }
 
+
+
+
 // ── Add New Date (เพิ่มทีละวัน) — กรุ๊ปเข้ากลุ่มวันเดียวกัน ──
+function formatDateLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 let newDateCounter = 9000;
 function addDateSlot() {
   const inp    = document.getElementById('newDateInput');
@@ -698,15 +708,16 @@ function addDateSlot() {
   }
 
   // ตรวจวันในอดีต — ห้ามเพิ่ม
-  const todayCheck = new Date().toISOString().slice(0, 10);
+  const todayCheck = formatDateLocal(new Date());
   if (dateStr < todayCheck) {
     errEl.textContent = 'ไม่สามารถเพิ่มวันที่ผ่านมาแล้วได้';
     inp.classList.add('is-invalid');
     return;
   }
 
-  const dateObj = new Date(dateStr + 'T00:00:00');
-  const pyDay = (dateObj.getDay() + 6) % 7; // 0=จ … 6=อา
+const [y, m, d] = dateStr.split('-').map(Number);
+const dateObj = new Date(y, m - 1, d);
+const pyDay = dateObj.getDay() === 0 ? 6 : dateObj.getDay() - 1; // 0=จ … 6=อา
 
   newDateCounter++;
   const sdId = `new_${newDateCounter}`;
@@ -730,6 +741,14 @@ function addDateSlot() {
   errEl.textContent = '';
 }
 
+
+function formatDateLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // ══════════════════════════════════════════════════════════════
 // ── Helper: ตรวจวันซ้ำ ──
 // ══════════════════════════════════════════════════════════════
@@ -749,7 +768,8 @@ function isDateExists(dateStr) {
 function createDayGroup(sdId, dateStr, pyDay, isNew) {
   const DAY_TH_SHORT = ['จ','อ','พ','พฤ','ศ','ส','อา'];
   const MONTH_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  const d = new Date(dateStr + 'T00:00:00');
+  const [y, m, day] = dateStr.split('-').map(Number);
+  const d = new Date(y, m - 1, day);
   const label = `${DAY_TH_SHORT[pyDay]}. ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear() + 543}`;
   const newBadge = isNew ? '<span class="badge bg-success bg-opacity-75 ms-1" style="font-size:.6rem;">ใหม่</span>' : '';
 
@@ -1317,7 +1337,7 @@ function doRepeatGenerate() {
   if (diffDays > 365) { showRepeatError('ช่วงวันที่ต้องไม่เกิน 1 ปี'); return; }
 
   // JS getDay(): 0=อา,1=จ…6=ส  ←→  python day: 0=จ…6=อา
-  const jsWeekdays = weekdays.map(d => (d + 1) % 7);
+const jsWeekdays = weekdays.map(d => d === 6 ? 0 : d + 1);
 
   // ── step 1: collect วันทั้งหมดแยกตาม pyDay ──
   const byDay = new Map();
@@ -1327,12 +1347,12 @@ function doRepeatGenerate() {
   const endDate = new Date(endStr + 'T00:00:00');
 
   // แยก: วันใหม่ vs วันที่มีอยู่แล้ว (และกรองวันในอดีตออก)
-  const todayForRepeat = new Date().toISOString().slice(0, 10);
+  const todayForRepeat = formatDateLocal(new Date());
   let totalPastSkipped = 0;
   while (cur <= endDate) {
     const jsDay  = cur.getDay();
     const pyDay  = (jsDay + 6) % 7;
-    const dateStr = cur.toISOString().slice(0, 10);
+    const dateStr = formatDateLocal(cur);
     if (jsWeekdays.includes(jsDay)) {
       if (dateStr < todayForRepeat) {
         totalPastSkipped++; // วันในอดีต → ข้าม
@@ -1472,7 +1492,7 @@ function showRepeatError(msg) {
 }
 
 // ── set min date = วันนี้ ──
-const todayStr = new Date().toISOString().slice(0, 10);
+const todayStr = formatDateLocal(new Date());
 document.getElementById('repeatStart').min = todayStr;
 document.getElementById('repeatEnd').min   = todayStr;
 document.getElementById('newDateInput').min = todayStr;
