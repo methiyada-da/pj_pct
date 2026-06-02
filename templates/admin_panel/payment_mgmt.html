@@ -368,7 +368,7 @@
 
       <!-- footer -->
       <div class="modal-footer border-top px-4 py-3">
-        <form method="post" id="pdForm" action="{% url 'admin_panel:payment_mgmt' %}">
+        <form method="post" id="pdForm" action="{% url 'admin_panel:payment_mgmt' %}" data-skip-admin-confirm="true">
           {% csrf_token %}
           <input type="hidden" name="wd_id"   id="pdFormWdId">
           <input type="hidden" name="action"  id="pdFormAction">
