@@ -35,8 +35,7 @@ def tutor_requests(request):
     studying  = [b for b in bookings if b.bk_status == 2]   # รอแจ้งจบงาน (เรียนแล้ว)
     notified  = [b for b in bookings if b.bk_status == 3]   # แจ้งจบงานแล้ว
     done      = [b for b in bookings if b.bk_status in (4, 5)]  # เสร็จสิ้น + รีวิวแล้ว
-    rejected  = [b for b in bookings if b.bk_status == 6 and b.bk_cmt != 'ผู้เรียนยกเลิกการจอง']
-    cancelled = [b for b in bookings if b.bk_status == 6 and b.bk_cmt == 'ผู้เรียนยกเลิกการจอง']
+    rejected  = [b for b in bookings if b.bk_status == 6]
 
     return render(request, 'bookings/tutor_requests.html', {
         'pending':      pending,
@@ -45,7 +44,6 @@ def tutor_requests(request):
         'notified':     notified,
         'done':         done,
         'rejected':     rejected,
-        'cancelled':    cancelled,
         'all_bookings': bookings,
     })
 
