@@ -635,6 +635,7 @@ def admin_setup(request):
                 system = System.objects.create(
                     admin                    = user,
                     uni_name                 = '',
+                    email_domain             = 'rmuti.ac.th',
                     bank_name                = '',
                     acc_name                 = '',
                     acc_no                   = '',

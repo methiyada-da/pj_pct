@@ -79,6 +79,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'apps.messaging.context_processors.unread_message_count',
+                'apps.admin_panel.context_processors.system_config',
             ],
         },
     },

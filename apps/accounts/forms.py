@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from .models import Member, Tutor
 from apps.courses.models import Major
+from apps.admin_panel.utils import get_system_email_suffix
 
 
 class MemberRegisterForm(UserCreationForm):
@@ -14,8 +15,8 @@ class MemberRegisterForm(UserCreationForm):
         'password_mismatch': 'รหัสผ่านไม่ตรงกัน กรุณาป้อนรหัสใหม่อีกครั้ง',
     }
     mb_email = forms.EmailField(
-        label='อีเมลมหาวิทยาลัย (@rmuti.ac.th)',
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'xxxxx@rmuti.ac.th'})
+        label='อีเมลมหาวิทยาลัย',
+        widget=forms.EmailInput(attrs={'class': 'form-control'})
     )
     mj_id = forms.ModelChoiceField(
         queryset=Major.objects.all(),
@@ -42,6 +43,9 @@ class MemberRegisterForm(UserCreationForm):
         self.fields['first_name'].required = True   # ← เพิ่ม
         self.fields['last_name'].required = True    # ← เพิ่ม
         self.fields['mj_id'].required = True 
+        email_suffix = get_system_email_suffix()
+        self.fields['mb_email'].label = f'อีเมลมหาวิทยาลัย ({email_suffix})'
+        self.fields['mb_email'].widget.attrs.setdefault('placeholder', f'xxxxx{email_suffix}')
         for field in self.fields.values():
             if not isinstance(field.widget, (forms.CheckboxInput, forms.Select)):
                 field.widget.attrs.setdefault('class', 'form-control')
@@ -82,8 +86,9 @@ class MemberRegisterForm(UserCreationForm):
 
     def clean_mb_email(self):
         email = self.cleaned_data.get('mb_email')
-        if not email.endswith('@rmuti.ac.th'):
-            raise forms.ValidationError('กรุณาใช้อีเมลมหาวิทยาลัย (@rmuti.ac.th) เท่านั้น')
+        email_suffix = get_system_email_suffix()
+        if not email.lower().endswith(email_suffix):
+            raise forms.ValidationError(f'กรุณาใช้อีเมลมหาวิทยาลัย ({email_suffix}) เท่านั้น')
         if Member.objects.filter(mb_email=email).exists():
             raise forms.ValidationError('อีเมลนี้ถูกใช้งานแล้ว')
         return email

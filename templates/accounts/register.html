@@ -22,7 +22,7 @@
     <div class="alert-info-soft d-flex gap-2 align-items-start mb-4">
       <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
       <span>การลงทะเบียนเปิดให้เฉพาะนักศึกษาและบุคลากรของ RMUTI
-        โดยใช้ที่อยู่อีเมล @rmuti.ac.th ของคุณ</span>
+        โดยใช้ที่อยู่อีเมล {{ UNIVERSITY_EMAIL_SUFFIX }} ของคุณ</span>
     </div>
 
     {% if form.non_field_errors %}
@@ -89,9 +89,9 @@
           <input type="text" name="mb_email_prefix" id="emailPrefix"
                  class="form-control pct-input email-prefix {% if form.mb_email.errors %}is-invalid{% endif %}"
                  placeholder="your.name"
-                 value="{% if form.mb_email.value %}{{ form.mb_email.value|cut:'@rmuti.ac.th' }}{% endif %}"
+                 value="{% if form.mb_email.value %}{{ form.mb_email.value|cut:UNIVERSITY_EMAIL_SUFFIX }}{% endif %}"
                  oninput="syncEmail()">
-          <span class="email-suffix">@rmuti.ac.th</span>
+          <span class="email-suffix">{{ UNIVERSITY_EMAIL_SUFFIX }}</span>
           <input type="hidden" name="mb_email" id="hiddenEmail" value="{{ form.mb_email.value|default:'' }}">
         </div>
         {% if form.mb_email.errors %}
@@ -156,7 +156,8 @@
 <script>
 function syncEmail() {
   const prefix = document.getElementById('emailPrefix').value.trim();
-  document.getElementById('hiddenEmail').value = prefix ? prefix + '@rmuti.ac.th' : '';
+  const emailSuffix = '{{ UNIVERSITY_EMAIL_SUFFIX|escapejs }}';
+  document.getElementById('hiddenEmail').value = prefix ? prefix + emailSuffix : '';
 }
 function togglePass(id, btn) {
   const inp = document.getElementById(id);
