@@ -46,6 +46,7 @@ class Withdrawals(models.Model):
         (0, 'รอดำเนินการ'),
         (1, 'จ่ายแล้ว'),
         (2, 'ปฏิเสธการถอน'),
+        (3, 'ยกเลิกโดยผู้ใช้'),
     ]
 
     wd_id        = models.AutoField(primary_key=True, verbose_name="รหัสการขอถอนเครดิต")
