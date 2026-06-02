@@ -18,15 +18,119 @@
         เลือกเรียนกับนักเรียนนักศึกษาที่เรียนรู้วิชาเดียวกัน และความสำเร็จทางวิชา<br>
         การ เข้าร่วมชุมชนผู้เรียนที่กำลังเติบโตของเราได้แล้ววันนี้
       </p>
-      <div class="d-flex gap-3 flex-wrap">
-        {% if user.is_authenticated %}
-          <a href="#" class="btn btn-primary btn-hero">ค้นหาติวเตอร์</a>
-        {% else %}
-          <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-hero">เริ่มต้นใช้งาน</a>
-        {% endif %}
-        <a href="#" class="btn btn-outline-light btn-hero">ดูตัวอย่าง</a>
-      </div>
+      <form class="home-search-form" method="get" action="{% url 'tutoring:search_tutors' %}">
+        <div class="home-search-box">
+          <i class="fas fa-search"></i>
+          <input
+            type="text"
+            name="q"
+            placeholder="ค้นหาชื่อติวเตอร์ รายวิชา หรือกลุ่มวิชา"
+            autocomplete="off"
+          >
+          <button type="submit" class="btn btn-primary btn-hero">ค้นหา</button>
+        </div>
+      </form>
     </div>
+  </div>
+</section>
+
+<!-- ===== FEATURED TUTORS ===== -->
+<section class="home-showcase-section">
+  <div class="container home-showcase-container">
+    <div class="home-section-head">
+      <div>
+        <h2 class="section-title mb-1">ติวเตอร์แนะนำ</h2>
+        <p class="section-sub mb-0">เลือกดูติวเตอร์บางส่วนที่เปิดรับสอนอยู่ในระบบ</p>
+      </div>
+      <a href="{% url 'tutoring:search_tutors' %}" class="btn btn-outline-primary btn-sm">แสดงทั้งหมด</a>
+    </div>
+
+    {% if featured_tutors %}
+    <div class="row g-4">
+      {% for tutor in featured_tutors %}
+      {% with member=tutor.tut_id %}
+      <div class="col-md-6 col-xl-4">
+        <a href="{% url 'tutoring:tutor_profile' member.pk %}" class="home-tutor-card">
+          <div class="home-tutor-card-top">
+            {% if member.mb_img %}
+              <img src="{{ member.mb_img.url }}" class="home-tutor-avatar" alt="{{ member.mb_full_name }}">
+            {% else %}
+              <div class="home-tutor-avatar home-avatar-placeholder">{{ member.mb_full_name|first|upper }}</div>
+            {% endif %}
+            <div class="home-tutor-info">
+              <div class="home-tutor-name">{{ member.mb_full_name }}</div>
+              <div class="home-tutor-major">
+                {% if member.mj_id %}{{ member.mj_id.mj_name }}{% else %}ติวเตอร์{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="home-card-meta">
+            <span><i class="fas fa-star"></i> {{ tutor.tut_rating|floatformat:1|default:"0.0" }}</span>
+            <span><i class="fas fa-book-open"></i> {{ tutor.course_count }} รายวิชา</span>
+          </div>
+          {% if tutor.tut_skill %}
+          <p class="home-card-desc">{{ tutor.tut_skill|truncatechars:95 }}</p>
+          {% else %}
+          <p class="home-card-desc">พร้อมช่วยสอนและแนะนำรายวิชาที่เปิดรับในระบบ</p>
+          {% endif %}
+        </a>
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="home-empty">ยังไม่มีติวเตอร์ที่เปิดรับสอน</div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ===== FEATURED COURSES ===== -->
+<section class="home-showcase-section home-showcase-section-alt" id="featured-courses">
+  <div class="container home-showcase-container">
+    <div class="home-section-head">
+      <div>
+        <h2 class="section-title mb-1">รายวิชาแนะนำ</h2>
+        <p class="section-sub mb-0">รายวิชาบางส่วนที่พร้อมให้จองเรียนได้ทันที</p>
+      </div>
+      <a href="{% url 'tutoring:search_tutors' %}" class="btn btn-outline-primary btn-sm">แสดงทั้งหมด</a>
+    </div>
+
+    {% if featured_courses %}
+    <div class="row g-4">
+      {% for tc in featured_courses %}
+      {% with member=tc.tut_id.tut_id %}
+      <div class="col-md-6 col-xl-4">
+        <a href="{% url 'tutoring:course_detail' tc.tutc_id %}" class="home-course-card">
+          <div class="home-course-img">
+            {% if tc.tutc_img %}
+              <img src="{{ tc.tutc_img.url }}" alt="{{ tc.tutc_name }}">
+            {% else %}
+              <div class="home-course-placeholder"><i class="fas fa-book-open"></i></div>
+            {% endif %}
+          </div>
+          <div class="home-course-body">
+            <span class="home-course-group">{{ tc.crs_id.cg_id.cg_name }}</span>
+            <h3>{{ tc.tutc_name }}</h3>
+            <p>{{ tc.tutc_desc|default:tc.crs_id.crs_name|truncatechars:90 }}</p>
+            <div class="home-course-foot">
+              <span><i class="fas fa-user-graduate"></i> {{ member.mb_full_name }}</span>
+              <strong>
+                {% if tc.lowest_price is not None %}
+                  {{ tc.lowest_price }} เครดิต
+                {% else %}
+                  -
+                {% endif %}
+              </strong>
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="home-empty">ยังไม่มีรายวิชาที่เปิดรับสอน</div>
+    {% endif %}
   </div>
 </section>
 
@@ -89,7 +193,7 @@
       ตนเองแล้ว เริ่มต้นเดินทางของคุณได้เลยวันนี้
     </p>
     <div class="d-flex gap-3 justify-content-center flex-wrap">
-      <a href="#" class="btn btn-white btn-lg px-5">ค้นหาติวเตอร์ได้เลยตอนนี้</a>
+      <a href="{% url 'tutoring:search_tutors' %}" class="btn btn-white btn-lg px-5">ค้นหาติวเตอร์ได้เลยตอนนี้</a>
       <a href="{% url 'accounts:register' %}" class="btn btn-outline-white btn-lg px-5">สมัครสมาชิกกับเรา</a>
     </div>
   </div>
