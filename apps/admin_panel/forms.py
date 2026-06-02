@@ -33,11 +33,12 @@ class SystemForm(forms.ModelForm):
     class Meta:
         model = System
         fields = [
-            'uni_name', 'bank_name', 'acc_name', 'acc_no', 'promptpay_id',
+            'uni_name', 'email_domain', 'bank_name', 'acc_name', 'acc_no', 'promptpay_id',
             'crd_val', 'deposit_withdraw_fee_pct', 'income_withdraw_fee_pct',
         ]
         widgets = {
             'uni_name'                : forms.TextInput(attrs={'class': 'form-control'}),
+            'email_domain'            : forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'rmuti.ac.th'}),
             'acc_name'                : forms.TextInput(attrs={'class': 'form-control'}),
             'acc_no'                  : forms.TextInput(attrs={'class': 'form-control'}),
             'promptpay_id'            : forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'เช่น 0812345678 หรือ 1234567890123'}),
@@ -47,6 +48,7 @@ class SystemForm(forms.ModelForm):
         }
         labels = {
             'uni_name'                : 'ชื่อมหาวิทยาลัย',
+            'email_domain'            : 'โดเมนอีเมลมหาวิทยาลัย',
             'bank_name'               : 'ชื่อธนาคาร',
             'acc_name'                : 'ชื่อบัญชี',
             'acc_no'                  : 'เลขที่บัญชี',
@@ -55,6 +57,13 @@ class SystemForm(forms.ModelForm):
             'deposit_withdraw_fee_pct': 'ค่าธรรมเนียมถอนนำฝาก (%)',
             'income_withdraw_fee_pct' : 'ค่าธรรมเนียมถอนรายได้ (%)',
         }
+
+    def clean_email_domain(self):
+        domain = (self.cleaned_data.get('email_domain') or '').strip().lower()
+        domain = domain.removeprefix('@')
+        if not domain or '@' in domain or '.' not in domain:
+            raise forms.ValidationError('กรุณาระบุโดเมนอีเมลให้ถูกต้อง เช่น rmuti.ac.th')
+        return domain
 
 
 class AdminUserForm(forms.ModelForm):

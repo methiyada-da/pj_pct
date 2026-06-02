@@ -15,6 +15,7 @@ class System(models.Model):
     )
     uni_name                 = models.CharField(max_length=100, verbose_name="ชื่อมหาวิทยาลัย")
     bank_name                = models.CharField(max_length=100, verbose_name="ชื่อธนาคาร")
+    email_domain             = models.CharField(max_length=100, default='rmuti.ac.th', verbose_name="โดเมนอีเมลมหาวิทยาลัย")
     acc_name                 = models.CharField(max_length=100, verbose_name="ชื่อบัญชี")
     acc_no                   = models.CharField(max_length=20,  verbose_name="เลขที่บัญชีธนาคาร")
     promptpay_id             = models.CharField(max_length=20, blank=True, default='', verbose_name="หมายเลขพร้อมเพย์ (เบอร์โทร/เลขบัตรประชาชน)")
@@ -29,6 +30,10 @@ class System(models.Model):
 
     def __str__(self):
         return self.uni_name
+
+    @property
+    def email_suffix(self):
+        return '@' + self.email_domain.lstrip('@')
 
     @property
     def admin_email(self):

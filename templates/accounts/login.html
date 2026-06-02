@@ -23,7 +23,7 @@
           <i class="fas fa-at input-icon"></i>
           <input type="email" name="username"
                  class="form-control pct-input {% if form.username.errors %}is-invalid{% endif %}"
-                 placeholder="Example@rmuti.ac.th"
+                 placeholder="Example{{ UNIVERSITY_EMAIL_SUFFIX }}"
                  value="{{ email_value }}"
                  autocomplete="email">
         </div>
@@ -32,7 +32,7 @@
         {% endif %}
         <div class="form-hint">
           <i class="fas fa-info-circle me-1"></i>
-          รองรับเฉพาะบัญชีที่ได้รับการรองรับจากมหาวิทยาลัย @rmuti.ac.th เท่านั้น
+          รองรับเฉพาะบัญชีที่ได้รับการรองรับจากมหาวิทยาลัย {{ UNIVERSITY_EMAIL_SUFFIX }} เท่านั้น
         </div>
       </div>
 
