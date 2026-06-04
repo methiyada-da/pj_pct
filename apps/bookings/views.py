@@ -10,8 +10,120 @@ from django.db.models import Avg
 
 from apps import bookings
 
-from .models import Booking, TutoringActivity, JobCompletion, Review
+from .models import Booking, BookingReportStatement, TutoringActivity, JobCompletion, Review
 from .forms import TutoringActivityForm, ReviewForm
+
+
+STUDENT_CANCEL_MARKER = '[คำขอยกเลิกโดยผู้เรียน]'
+TUTOR_CANCEL_REJECT_MARKER = '[ไม่อนุมัติการยกเลิก]'
+TUTOR_CANCEL_DISPUTE_MARKER = '[ส่งแอดมินหลังไม่อนุมัติยกเลิก]'
+TUTOR_CANCEL_DISPUTE_REASON = 'cancel'
+
+
+def _strip_marker(text, marker):
+    text = text or ''
+    if not text.startswith(marker):
+        return ''
+    return text[len(marker):].lstrip(' :-')
+
+
+def _decorate_cancel_flags(bookings):
+    now = timezone.now()
+
+    for bk in bookings:
+        cmt = bk.bk_cmt or ''
+
+        bk.cancel_request_pending = (
+            bk.bk_status == 1
+            and cmt.startswith(STUDENT_CANCEL_MARKER)
+        )
+
+        bk.cancel_request_rejected = (
+            bk.bk_status == 1
+            and cmt.startswith(TUTOR_CANCEL_REJECT_MARKER)
+        )
+
+        bk.cancel_request_reason = (
+            _strip_marker(cmt, STUDENT_CANCEL_MARKER)
+            if bk.cancel_request_pending else ''
+        )
+
+        bk.cancel_reject_reason = (
+            _strip_marker(cmt, TUTOR_CANCEL_REJECT_MARKER)
+            if bk.cancel_request_rejected else ''
+        )
+
+        # ใช้สำหรับซ่อน/แสดงปุ่ม "ส่งให้แอดมินพิจารณา"
+        # แสดงได้เฉพาะกรณีติวเตอร์ไม่อนุมัติการยกเลิก และถึงเวลาเรียนแล้ว
+        bk.cancel_dispute_available = (
+            bk.cancel_request_rejected
+            and bk.bk_stu_datetime
+            and now >= bk.bk_stu_datetime
+        )
+
+        bk.tutor_cancel_for_student_available = (
+            bk.bk_status == 1
+            and not bk.cancel_request_pending
+            and bk.bk_stu_datetime
+            and now >= bk.bk_stu_datetime - timezone.timedelta(hours=6)
+            and not bk.bk_report_date
+        )
+
+        bk.tutor_can_escalate_after_start = (
+            bk.bk_status == 1
+            and bk.bk_stu_datetime
+            and now >= bk.bk_stu_datetime
+            and not bk.bk_report_date
+        )
+
+    return bookings
+
+
+def _notify_member(member, notif_type, message, url):
+    try:
+        from apps.notifications.signals import _notif_member
+        _notif_member(member, notif_type, message, url)
+    except Exception:
+        pass
+
+
+def _refund_locked_credit_to_student(booking):
+    total_credit = booking.total_credit
+    student = booking.member
+    student.mb_locked_crd = max(0, student.mb_locked_crd - total_credit)
+    student.mb_deposit_crd += total_credit
+    student.save(update_fields=['mb_locked_crd', 'mb_deposit_crd'])
+
+    if booking.ts_id:
+        booking.ts_id.ts_status = 0
+        booking.ts_id.save(update_fields=['ts_status'])
+
+    return total_credit
+
+
+def _get_report_statement_role(booking, member):
+    if booking.member_id == member.pk:
+        return 'student', 'bookings:student_bookings'
+
+    try:
+        tutor_member = booking.tutc_id.tut_id.tut_id
+    except Exception:
+        tutor_member = None
+
+    if tutor_member and tutor_member.pk == member.pk:
+        return 'tutor', 'bookings:tutor_requests'
+
+    return None, 'home'
+
+
+def _create_report_statement(booking, member, role, detail):
+    return BookingReportStatement.objects.create(
+        bk_id=booking,
+        member=member,
+        brs_role=role,
+        brs_desc=detail,
+        brs_date=timezone.now(),
+    )
 
 
 # ─── ฝั่งติวเตอร์: คำขอจองทั้งหมด ───────────────────────────────────────────
@@ -23,19 +135,24 @@ def tutor_requests(request):
         messages.error(request, 'คุณไม่มีสิทธิ์เข้าถึงหน้านี้')
         return redirect('home')
 
-    bookings = (
+    bookings = list(
         Booking.objects
         .filter(tutc_id__tut_id=tutor)
         .select_related('member', 'tutc_id', 'tutc_id__crs_id', 'ts_id', 'ts_id__sd_id')
+        .prefetch_related('report_statements', 'report_statements__member')
         .order_by('-bk_date')
     )
+    _decorate_cancel_flags(bookings)
 
-    pending   = [b for b in bookings if b.bk_status == 0]   # รอยืนยัน
-    accepted  = [b for b in bookings if b.bk_status == 1]   # รับงานแล้ว
-    studying  = [b for b in bookings if b.bk_status == 2]   # รอแจ้งจบงาน (เรียนแล้ว)
-    notified  = [b for b in bookings if b.bk_status == 3]   # แจ้งจบงานแล้ว
-    done      = [b for b in bookings if b.bk_status in (4, 5)]  # เสร็จสิ้น + รีวิวแล้ว
-    rejected  = [b for b in bookings if b.bk_status == 6]
+    reported_bookings = [b for b in bookings if b.bk_report_date]
+    normal_bookings   = [b for b in bookings if not b.bk_report_date]
+
+    pending   = [b for b in normal_bookings if b.bk_status == 0]   # รอยืนยัน
+    accepted  = [b for b in normal_bookings if b.bk_status == 1]   # รับงานแล้ว
+    studying  = [b for b in normal_bookings if b.bk_status == 2]   # รอแจ้งจบงาน (เรียนแล้ว)
+    notified  = [b for b in normal_bookings if b.bk_status == 3]   # แจ้งจบงานแล้ว
+    done      = [b for b in normal_bookings if b.bk_status in (4, 5)]  # เสร็จสิ้น + รีวิวแล้ว
+    rejected  = [b for b in normal_bookings if b.bk_status == 6]
 
     return render(request, 'bookings/tutor_requests.html', {
         'pending':      pending,
@@ -44,6 +161,7 @@ def tutor_requests(request):
         'notified':     notified,
         'done':         done,
         'rejected':     rejected,
+        'reported_bookings': reported_bookings,
         'all_bookings': bookings,
     })
 
@@ -143,7 +261,7 @@ def student_bookings(request):
     # ── lazy check: ยืนยันจบงานอัตโนมัติถ้าเกิน 24 ชม. ──
     _auto_confirm_overdue(mb)
 
-    bookings = (
+    bookings = list(
         Booking.objects
         .filter(member=mb)
         .select_related(
@@ -151,8 +269,10 @@ def student_bookings(request):
             'tutc_id__tut_id', 'tutc_id__tut_id__tut_id',
             'ts_id', 'ts_id__sd_id',
         )
+        .prefetch_related('report_statements', 'report_statements__member')
         .order_by('-bk_date')
     )
+    _decorate_cancel_flags(bookings)
 
     return render(request, 'bookings/student_bookings.html', {
         'bookings':   bookings,
@@ -342,6 +462,16 @@ def report_problem(request, bk_id):
     rp_reason = request.POST.get('rp_reason', '').strip()
     rp_desc   = request.POST.get('rp_desc', '').strip()
 
+    if bk.bk_report_date:
+        if bk.bk_report_resolved_date:
+            messages.warning(request, 'รายงานนี้พิจารณาเสร็จสิ้นแล้ว')
+            return redirect('/bookings/my/?reported=1')
+
+        detail = rp_desc or 'ผู้เรียนส่งคำชี้แจงเพิ่มเติม'
+        _create_report_statement(bk, mb, 'student', detail)
+        messages.success(request, 'ส่งคำชี้แจงเพิ่มเติมให้แอดมินแล้ว')
+        return redirect('/bookings/my/?reported=1')
+
     if not rp_reason:
         messages.error(request, 'กรุณาเลือกสาเหตุของปัญหา')
         return redirect('bookings:student_bookings')
@@ -351,8 +481,290 @@ def report_problem(request, bk_id):
     bk.bk_report_desc   = rp_desc or None
     bk.bk_report_date   = timezone.now()
     bk.save(update_fields=['bk_report_reason', 'bk_report_desc', 'bk_report_date'])
+    _create_report_statement(bk, mb, 'student', rp_desc or 'ผู้เรียนรายงานปัญหา')
 
     return redirect('/bookings/my/?reported=1')
+
+
+@login_required
+def submit_report_statement(request, bk_id):
+    """ผู้เรียน/ติวเตอร์ส่งคำชี้แจงเพิ่มเติมในเคสรายงานที่ยังรอพิจารณา"""
+    if request.method != 'POST':
+        return redirect('home')
+
+    try:
+        mb = request.user.member
+    except Exception:
+        return redirect('home')
+
+    bk = get_object_or_404(
+        Booking.objects.select_related(
+            'member', 'tutc_id', 'tutc_id__tut_id', 'tutc_id__tut_id__tut_id'
+        ),
+        bk_id=bk_id,
+        bk_report_date__isnull=False,
+    )
+    role, redirect_to = _get_report_statement_role(bk, mb)
+    if not role:
+        messages.error(request, 'คุณไม่มีสิทธิ์ส่งคำชี้แจงสำหรับรายการนี้')
+        return redirect('home')
+
+    if bk.bk_report_resolved_date:
+        messages.warning(request, 'รายงานนี้พิจารณาเสร็จสิ้นแล้ว')
+        return redirect(redirect_to)
+
+    detail = request.POST.get('statement_desc', '').strip()
+    if not detail:
+        messages.error(request, 'กรุณาระบุคำชี้แจงก่อนส่งให้แอดมิน')
+        return redirect(redirect_to)
+
+    _create_report_statement(bk, mb, role, detail)
+
+    if role == 'student':
+        _notify_member(
+            bk.tutc_id.tut_id.tut_id,
+            'booking_reported',
+            f'ผู้เรียนส่งคำชี้แจงเพิ่มเติมในรายงาน BK{bk.bk_id:05d}',
+            '/bookings/tutor/',
+        )
+    else:
+        _notify_member(
+            bk.member,
+            'booking_reported',
+            f'ติวเตอร์ส่งคำชี้แจงเพิ่มเติมในรายงาน BK{bk.bk_id:05d}',
+            '/bookings/my/',
+        )
+
+    messages.success(request, 'ส่งคำชี้แจงเพิ่มเติมให้แอดมินแล้ว')
+    return redirect(redirect_to)
+
+
+@login_required
+def student_request_cancel_booking(request, bk_id):
+    """ผู้เรียนส่งคำขอยกเลิกหลังติวเตอร์รับงานแล้ว โดยต้องแจ้งล่วงหน้าอย่างน้อย 6 ชั่วโมง"""
+    if request.method != 'POST':
+        return redirect('bookings:student_bookings')
+
+    try:
+        mb = request.user.member
+    except Exception:
+        return redirect('home')
+
+    bk = get_object_or_404(
+        Booking.objects.select_related('tutc_id', 'tutc_id__tut_id', 'tutc_id__tut_id__tut_id'),
+        bk_id=bk_id,
+        member=mb,
+        bk_status=1,
+    )
+    _decorate_cancel_flags([bk])
+
+    if bk.cancel_request_pending:
+        messages.info(request, 'คุณได้ส่งคำขอยกเลิกการเรียนแล้ว กำลังรอการพิจารณาจากติวเตอร์')
+        return redirect('bookings:student_bookings')
+
+    if bk.cancel_request_rejected:
+        messages.warning(request, 'ติวเตอร์ไม่อนุมัติคำขอยกเลิกก่อนหน้านี้ กรุณาดูรายละเอียดการจอง')
+        return redirect('bookings:student_bookings')
+
+    if bk.bk_stu_datetime and timezone.now() > bk.bk_stu_datetime - timezone.timedelta(hours=6):
+        messages.error(request, 'การยกเลิกการเรียนต้องแจ้งล่วงหน้าอย่างน้อย 6 ชั่วโมงก่อนเวลาเรียน')
+        return redirect('bookings:student_bookings')
+
+    reason = request.POST.get('cancel_reason', '').strip()
+    if not reason:
+        messages.error(request, 'กรุณาระบุเหตุผลในการขอยกเลิกการเรียน')
+        return redirect('bookings:student_bookings')
+
+    bk.bk_cmt = f'{STUDENT_CANCEL_MARKER} {reason}'
+    bk.save(update_fields=['bk_cmt'])
+
+    tutor_member = bk.tutc_id.tut_id.tut_id
+    _notify_member(
+        tutor_member,
+        'booking_completed',
+        f'ผู้เรียนส่งคำขอยกเลิกการเรียน BK{bk.bk_id:05d} โปรดพิจารณา',
+        '/bookings/tutor/',
+    )
+    messages.success(request, 'ส่งคำขอยกเลิกการเรียนแล้ว กำลังรอการพิจารณาจากติวเตอร์')
+    return redirect('bookings:student_bookings')
+
+
+@login_required
+def tutor_approve_cancel_booking(request, bk_id):
+    """ติวเตอร์อนุมัติคำขอยกเลิกจากผู้เรียน คืนเครดิตและเปิดช่วงเวลาเรียน"""
+    if request.method != 'POST':
+        return redirect('bookings:tutor_requests')
+
+    try:
+        tutor = request.user.member.tutor
+    except Exception:
+        messages.error(request, 'ไม่มีสิทธิ์')
+        return redirect('home')
+
+    bk = get_object_or_404(
+        Booking.objects.select_related('member', 'tutc_id', 'tutc_id__tut_id', 'tutc_id__tut_id__tut_id', 'ts_id'),
+        bk_id=bk_id,
+        tutc_id__tut_id=tutor,
+        bk_status=1,
+    )
+    _decorate_cancel_flags([bk])
+    if not bk.cancel_request_pending:
+        messages.warning(request, 'ไม่พบคำขอยกเลิกที่รอพิจารณา')
+        return redirect('bookings:tutor_requests')
+
+    with transaction.atomic():
+        total_credit = _refund_locked_credit_to_student(bk)
+        bk.bk_status = 6
+        bk.bk_cmt = 'ติวเตอร์อนุมัติการยกเลิกตามคำขอผู้เรียน'
+        bk.save(update_fields=['bk_status', 'bk_cmt'])
+
+    _notify_member(
+        bk.member,
+        'booking_rejected',
+        f'ติวเตอร์อนุมัติการยกเลิก BK{bk.bk_id:05d} เครดิต {total_credit} เครดิตได้รับคืนเข้าบัญชีแล้ว',
+        '/bookings/my/',
+    )
+    messages.success(request, f'อนุมัติการยกเลิก BK{bk.bk_id:05d} และคืนเครดิตให้ผู้เรียนแล้ว')
+    return redirect('bookings:tutor_requests')
+
+
+@login_required
+def tutor_reject_cancel_booking(request, bk_id):
+    """ติวเตอร์ไม่อนุมัติคำขอยกเลิก สถานะยังคงเป็นรับงานแล้ว"""
+    if request.method != 'POST':
+        return redirect('bookings:tutor_requests')
+
+    try:
+        tutor = request.user.member.tutor
+    except Exception:
+        messages.error(request, 'ไม่มีสิทธิ์')
+        return redirect('home')
+
+    bk = get_object_or_404(
+        Booking.objects.select_related('member', 'tutc_id'),
+        bk_id=bk_id,
+        tutc_id__tut_id=tutor,
+        bk_status=1,
+    )
+    _decorate_cancel_flags([bk])
+    if not bk.cancel_request_pending:
+        messages.warning(request, 'ไม่พบคำขอยกเลิกที่รอพิจารณา')
+        return redirect('bookings:tutor_requests')
+
+    reason = request.POST.get('reject_reason', '').strip()
+    if not reason:
+        messages.error(request, 'กรุณาระบุเหตุผลที่ไม่อนุมัติการยกเลิก')
+        return redirect('bookings:tutor_requests')
+
+    bk.bk_cmt = f'{TUTOR_CANCEL_REJECT_MARKER} {reason}'
+    bk.save(update_fields=['bk_cmt'])
+
+    _notify_member(
+        bk.member,
+        'booking_completed',
+        f'ติวเตอร์ไม่อนุมัติการยกเลิก BK{bk.bk_id:05d} โปรดดูรายละเอียดการจอง',
+        '/bookings/my/',
+    )
+    messages.info(request, f'บันทึกผลไม่อนุมัติการยกเลิก BK{bk.bk_id:05d} แล้ว')
+    return redirect('bookings:tutor_requests')
+
+
+@login_required
+def tutor_cancel_for_student_booking(request, bk_id):
+    """ติวเตอร์ยกเลิกให้ผู้เรียนหลังพูดคุยกันแล้ว คืนเครดิตและเปิดช่วงเวลาเรียน"""
+    if request.method != 'POST':
+        return redirect('bookings:tutor_requests')
+
+    try:
+        tutor = request.user.member.tutor
+    except Exception:
+        messages.error(request, 'ไม่มีสิทธิ์')
+        return redirect('home')
+
+    bk = get_object_or_404(
+        Booking.objects.select_related('member', 'tutc_id', 'ts_id'),
+        bk_id=bk_id,
+        tutc_id__tut_id=tutor,
+        bk_status=1,
+    )
+    _decorate_cancel_flags([bk])
+
+    if not bk.tutor_cancel_for_student_available:
+        messages.warning(
+            request,
+            'ติวเตอร์ยกเลิกให้ผู้เรียนได้เฉพาะช่วงที่ผู้เรียนส่งคำขอยกเลิกเองไม่ได้แล้ว หรือเมื่อมีการตกลงกันหลังใกล้เวลาเรียน'
+        )
+        return redirect('bookings:tutor_requests')
+
+    with transaction.atomic():
+        total_credit = _refund_locked_credit_to_student(bk)
+        bk.bk_status = 6
+        bk.bk_cmt = 'ติวเตอร์ยกเลิกการเรียนตามคำขอผู้เรียน'
+        bk.save(update_fields=['bk_status', 'bk_cmt'])
+
+    _notify_member(
+        bk.member,
+        'booking_rejected',
+        f'ติวเตอร์ยกเลิกการเรียนตามคำขอ BK{bk.bk_id:05d} เครดิต {total_credit} เครดิตได้รับคืนเข้าบัญชีแล้ว',
+        '/bookings/my/',
+    )
+    messages.success(request, f'ยกเลิกการเรียน BK{bk.bk_id:05d} และคืนเครดิตให้ผู้เรียนแล้ว')
+    return redirect('bookings:tutor_requests')
+
+
+@login_required
+def tutor_escalate_cancel_dispute(request, bk_id):
+    """หลังไม่อนุมัติคำขอยกเลิกและถึงเวลาเรียนแล้ว ติวเตอร์ส่งเรื่องให้แอดมินพิจารณา"""
+    if request.method != 'POST':
+        return redirect('bookings:tutor_requests')
+
+    try:
+        tutor = request.user.member.tutor
+    except Exception:
+        messages.error(request, 'ไม่มีสิทธิ์')
+        return redirect('home')
+
+    bk = get_object_or_404(
+        Booking.objects.select_related('member', 'tutc_id', 'ts_id'),
+        bk_id=bk_id,
+        tutc_id__tut_id=tutor,
+        bk_status=1,
+    )
+    _decorate_cancel_flags([bk])
+    now = timezone.now()
+
+    if not bk.bk_stu_datetime or now < bk.bk_stu_datetime:
+        messages.warning(request, 'ส่งเรื่องให้แอดมินพิจารณาได้เมื่อถึงเวลาเรียนหรือหลังเวลาเรียนแล้ว')
+        return redirect('bookings:tutor_requests')
+
+    detail = request.POST.get('dispute_desc', '').strip()
+    if not detail:
+        messages.error(request, 'กรุณาระบุรายละเอียดเพื่อส่งให้แอดมินพิจารณา')
+        return redirect('bookings:tutor_requests')
+
+    if bk.bk_report_date:
+        if bk.bk_report_resolved_date:
+            messages.warning(request, 'รายงานนี้พิจารณาเสร็จสิ้นแล้ว')
+            return redirect('bookings:tutor_requests')
+        _create_report_statement(bk, request.user.member, 'tutor', detail)
+        messages.success(request, f'ส่งคำชี้แจงเพิ่มเติมสำหรับ BK{bk.bk_id:05d} ให้แอดมินแล้ว')
+        return redirect('bookings:tutor_requests')
+
+    bk.bk_report_reason = TUTOR_CANCEL_DISPUTE_REASON
+    bk.bk_report_desc = detail
+    bk.bk_report_date = timezone.now()
+    bk.bk_cmt = f'{TUTOR_CANCEL_DISPUTE_MARKER} {detail}'
+    bk.save(update_fields=['bk_report_reason', 'bk_report_desc', 'bk_report_date', 'bk_cmt'])
+    _create_report_statement(bk, request.user.member, 'tutor', detail)
+
+    _notify_member(
+        bk.member,
+        'booking_reported',
+        f'ติวเตอร์รายงานการยกเลิก BK{bk.bk_id:05d} ให้แอดมินพิจารณาแล้ว',
+        '/bookings/my/',
+    )
+    messages.success(request, f'ส่งเรื่อง BK{bk.bk_id:05d} ให้แอดมินพิจารณาแล้ว')
+    return redirect('bookings:tutor_requests')
 
 # ═══════════════════════════════════════════════════════════════
 # ผู้เรียนยกเลิกการจอง — ผู้เรียนยกเลิกการจองเมื่อสถานะยังเป็น 0 (รอติวเตอร์รับ)

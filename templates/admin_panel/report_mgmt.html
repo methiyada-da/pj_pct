@@ -2,6 +2,177 @@
 
 {% block title %}รายงานปัญหา{% endblock %}
 
+{% block extra_head %}
+<style>
+  .report-detail-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 16px 24px;
+    background: #F8FAFC;
+    border-top: 1px solid #E5E7EB;
+  }
+
+  .footer-side,
+  .footer-chat-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .report-footer-btn {
+    min-height: 42px;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .report-decision-panel {
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #F8FAFC;
+  }
+
+  .decision-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .decision-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 2px;
+  }
+
+  .decision-subtitle {
+    font-size: 12px;
+    color: #6B7280;
+  }
+
+  .decision-step {
+    flex: 0 0 auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #EEF2FF;
+    color: #3730A3;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .decision-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .decision-option {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 156px;
+    padding: 14px;
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #FFFFFF;
+  }
+
+  .decision-option--refund {
+    border-color: #BBF7D0;
+    background: #F0FDF4;
+  }
+
+  .decision-option--no-refund {
+    border-color: #D1D5DB;
+  }
+
+  .decision-option-head {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .decision-icon {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 18px;
+  }
+
+  .decision-icon--refund {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+
+  .decision-icon--no-refund {
+    background: #F3F4F6;
+    color: #4B5563;
+  }
+
+  .decision-option-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #111827;
+  }
+
+  .decision-option-desc {
+    font-size: 12px;
+    color: #6B7280;
+    line-height: 1.6;
+    margin-top: 2px;
+  }
+
+  .decision-option form {
+    margin-top: auto;
+  }
+
+  .decision-btn {
+    width: 100%;
+    min-height: 42px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 14px;
+  }
+
+  .decision-btn--refund {
+    box-shadow: 0 8px 18px rgba(22, 163, 74, .18);
+  }
+
+  @media (max-width: 992px) {
+    .report-detail-footer {
+      align-items: stretch;
+      flex-direction: column-reverse;
+    }
+
+    .footer-side,
+    .footer-chat-group {
+      justify-content: stretch;
+      flex-wrap: wrap;
+    }
+
+    .report-footer-btn,
+    .footer-chat-group button {
+      flex: 1 1 180px;
+    }
+
+    .decision-options {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
@@ -88,6 +259,7 @@
           {% elif bk.bk_report_reason == '2' %}ไม่ได้สอนแต่แจ้งจบ
           {% elif bk.bk_report_reason == '3' %}เนื้อหาไม่ตรง
           {% elif bk.bk_report_reason == '4' %}กดยืนยันพลาด
+          {% elif bk.bk_report_reason == 'cancel' %}ข้อพิพาทการยกเลิกจากติวเตอร์
           {% elif bk.bk_report_reason == 'other' %}อื่นๆ
           {% else %}—{% endif %}
         </td>
@@ -187,6 +359,11 @@
           <div id="d-desc" class="p-3 rounded" style="background:#FEF2F2;font-size:14px;line-height:1.7;color:#374151;"></div>
         </div>
 
+        <div id="d-statements-wrap" class="mb-3 d-none">
+          <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">คำร้องเรียน</div>
+          <div id="d-statements"></div>
+        </div>
+
         <!-- หลักฐานการสอน -->
         <div id="d-evidence" class="mb-3 d-none">
           <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">
@@ -199,50 +376,90 @@
         <!-- หมายเหตุ (บังคับกรอกก่อนดำเนินการ) -->
         <div class="mb-2">
           <label class="form-label fw-semibold" style="font-size:13px;">
-            หมายเหตุถึงผู้เรียนและติวเตอร์ <span class="text-danger">*</span>
+            หมายเหตุผลการพิจารณา <span class="text-danger">*</span>
           </label>
           <textarea id="d-note" class="form-control" rows="3"
-                    placeholder="ระบุเหตุผลการตัดสินใจ เพื่อแจ้งทั้งผู้เรียนและติวเตอร์..."></textarea>
-          <div class="form-text text-danger d-none" id="note-error">กรุณาระบุหมายเหตุก่อนดำเนินการ</div>
+                    placeholder="ระบุผลการพิจารณา เพื่อแจ้งทั้งผู้เรียนและติวเตอร์..."></textarea>
+          <div class="form-text text-danger d-none" id="note-error">กรุณาระบุหมายเหตุผลการพิจารณาก่อนดำเนินการ</div>
+        </div>
+
+        <!-- แสดงเฉพาะเมื่อยังรอพิจารณา -->
+        <div id="action-buttons" class="report-decision-panel">
+          <div class="decision-panel-head">
+            <div>
+              <div class="decision-title">บันทึกผลการพิจารณา</div>
+              <div class="decision-subtitle">เลือกผลลัพธ์ของรายงานนี้หลังตรวจสอบรายละเอียดและหลักฐานแล้ว</div>
+            </div>
+            <span class="decision-step">ขั้นสุดท้าย</span>
+          </div>
+
+          <div class="decision-options">
+            <div class="decision-option decision-option--no-refund">
+              <div class="decision-option-head">
+                <span class="decision-icon decision-icon--no-refund">
+                  <i class="bi bi-journal-check"></i>
+                </span>
+                <div>
+                  <div class="decision-option-title">พิจารณาไม่คืนเครดิต</div>
+                  <div class="decision-option-desc">
+                    ไม่คืนเครดิตแก่ผู้เรียน โดยเครดิตที่ถูกล็อกไว้จะถูกโอนเป็นรายได้ให้ติวเตอร์ และแจ้งผลการพิจารณาให้ทั้งสองฝ่าย
+                  </div>
+                </div>
+              </div>
+              <form method="post" onsubmit="return validateNote(this)">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="no_refund">
+                <input type="hidden" name="bk_id" class="modal-bk-id">
+                <input type="hidden" name="note" class="modal-note">
+                <button type="submit" class="btn btn-outline-secondary decision-btn">
+                  พิจารณาไม่คืนเครดิต
+                </button>
+              </form>
+            </div>
+
+            <div class="decision-option decision-option--refund">
+              <div class="decision-option-head">
+                <span class="decision-icon decision-icon--refund">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </span>
+                <div>
+                  <div class="decision-option-title">พิจารณาให้คืนเครดิต</div>
+                  <div class="decision-option-desc">
+                    คืนเครดิตที่ถูกล็อกไว้กลับเข้าบัญชีเครดิตของผู้เรียน และแจ้งผลการพิจารณาให้ทั้งสองฝ่าย
+                  </div>
+                </div>
+              </div>
+              <form method="post" onsubmit="return validateNote(this)">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="refund">
+                <input type="hidden" name="bk_id" class="modal-bk-id">
+                <input type="hidden" name="note" class="modal-note">
+                <button type="submit" class="btn btn-success decision-btn decision-btn--refund">
+                  พิจารณาให้คืนเครดิต
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="modal-footer flex-wrap gap-2">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+      <div class="modal-footer report-detail-footer">
+        <div class="footer-side">
+          <button type="button" class="btn btn-light border fw-semibold report-footer-btn" data-bs-dismiss="modal">
+            ปิด
+          </button>
+        </div>
 
-        <!-- แชทกับผู้เรียน -->
-        <button type="button" class="btn btn-outline-secondary fw-semibold" id="btnChatStudent">
-          <i class="bi bi-chat-left-text me-1"></i>แชทกับผู้เรียน
-        </button>
+        <div class="footer-chat-group">
+          <!-- แชทกับผู้เรียน -->
+          <button type="button" class="btn btn-outline-secondary fw-semibold report-footer-btn" id="btnChatStudent">
+            <i class="bi bi-chat-left-text me-1"></i>แชทกับผู้เรียน
+          </button>
 
-        <!-- แชทกับติวเตอร์ -->
-        <button type="button" class="btn btn-outline-info fw-semibold" id="btnChatTutor">
-          <i class="bi bi-chat-left-text me-1"></i>แชทกับติวเตอร์
-        </button>
-
-        <!-- แสดงเฉพาะเมื่อยังรอพิจารณา -->
-        <div id="action-buttons">
-          <!-- ติวเตอร์ถูก → โอนเครดิต -->
-          <form method="post" class="d-inline" onsubmit="return validateNote(this)">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="resolve_transfer">
-            <input type="hidden" name="bk_id" class="modal-bk-id">
-            <input type="hidden" name="note" class="modal-note">
-            <button type="submit" class="btn btn-success fw-semibold">
-              <i class="bi bi-check-circle me-1"></i>ติวเตอร์ถูก → โอนเครดิต
-            </button>
-          </form>
-
-          <!-- ระงับติวเตอร์ + คืนเครดิต -->
-          <form method="post" class="d-inline" onsubmit="return validateNote(this)">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="suspend">
-            <input type="hidden" name="bk_id" class="modal-bk-id">
-            <input type="hidden" name="note" class="modal-note">
-            <button type="submit" class="btn btn-danger fw-semibold">
-              <i class="bi bi-slash-circle me-1"></i>ระงับติวเตอร์ + คืนเครดิต
-            </button>
-          </form>
+          <!-- แชทกับติวเตอร์ -->
+          <button type="button" class="btn btn-outline-info fw-semibold report-footer-btn" id="btnChatTutor">
+            <i class="bi bi-chat-left-text me-1"></i>แชทกับติวเตอร์
+          </button>
         </div>
       </div>
     </div>
@@ -254,13 +471,58 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script>
+const REPORT_STATEMENTS = {
+  {% for bk in page.object_list %}
+  {{ bk.bk_id }}: [
+    {% for st in bk.report_statements.all %}
+    {
+      role: "{{ st.brs_role|escapejs }}",
+      name: "{{ st.member.mb_full_name|escapejs }}",
+      desc: "{{ st.brs_desc|escapejs }}",
+      date: "{{ st.brs_date|date:'d M Y H:i' }}"
+    },
+    {% endfor %}
+  ],
+  {% endfor %}
+};
 const REASON_MAP = {
   "1": "หลักฐานการสอนไม่ตรงความจริง",
   "2": "ไม่ได้สอนเลยแต่แจ้งจบงาน",
   "3": "เนื้อหาไม่ตรงที่ตกลงไว้",
   "4": "กดยืนยันพลาด แต่ยังไม่ได้เรียนจริง",
+  "cancel": "ข้อพิพาทการยกเลิกจากติวเตอร์",
   "other": "อื่นๆ",
 };
+
+function renderReportStatements(pk) {
+  const wrap = document.getElementById('d-statements-wrap');
+  const target = document.getElementById('d-statements');
+  const statements = REPORT_STATEMENTS[pk] || [];
+
+  if (!statements.length) {
+    wrap.classList.add('d-none');
+    target.innerHTML = '';
+    return;
+  }
+
+  target.innerHTML = statements.map(st => {
+    const isTutor = st.role === 'tutor';
+    const roleLabel = isTutor ? 'ติวเตอร์' : 'ผู้เรียน';
+    const tone = isTutor
+      ? 'background:#ECFDF5;border-color:#BBF7D0;color:#14532D;'
+      : 'background:#EFF6FF;border-color:#BFDBFE;color:#1E3A8A;';
+    return `
+      <div class="p-3 rounded-3 mb-2" style="border:1px solid;${tone}">
+        <div class="d-flex justify-content-between gap-2 mb-1" style="font-size:12px;">
+          <span class="fw-semibold">${roleLabel}: ${st.name || '-'}</span>
+          <span class="text-muted">${st.date || ''}</span>
+        </div>
+        <div style="font-size:13px;line-height:1.7;color:#374151;">${st.desc || '-'}</div>
+      </div>`;
+  }).join('');
+  wrap.classList.remove('d-none');
+}
+
 function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tutorPk, reason, img1, img2, img3, taDesc, resolved) {
   document.getElementById('d-bkid').textContent    = bkId;
   document.getElementById('d-student').textContent = student;
@@ -271,6 +533,7 @@ function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tut
   document.getElementById('d-note').value          = '';
   document.getElementById('d-reason').textContent  = REASON_MAP[reason] || reason || '—';
   document.getElementById('note-error').classList.add('d-none');
+  renderReportStatements(pk);
   // set bk_id ในทุก form
   document.querySelectorAll('.modal-bk-id').forEach(el => el.value = pk);
   // ปุ่มแชท
@@ -299,7 +562,7 @@ function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tut
     imgsEl.innerHTML = '';
     taDescEl.style.display = 'none';
   }
-  // ซ่อนปุ่มตัดสินใจถ้าจัดการแล้ว
+  // ซ่อนปุ่มบันทึกผลถ้าจัดการแล้ว
   document.getElementById('action-buttons').style.display = resolved ? 'none' : '';
   document.getElementById('d-note').closest('.mb-2').style.display = resolved ? 'none' : '';
   new bootstrap.Modal(document.getElementById('detailModal')).show();
@@ -314,18 +577,18 @@ function validateNote(form) {
   document.querySelectorAll('.modal-note').forEach(el => el.value = note);
 
   const action   = form.querySelector('input[name="action"]').value;
-  const isDanger = action === 'suspend';
+  const isRefund = action === 'refund';
 
   Swal.fire({
-    title: isDanger ? 'ระงับติวเตอร์ + คืนเครดิต?' : 'ติวเตอร์ถูก → โอนเครดิต?',
-    html: isDanger
-      ? 'ติวเตอร์จะถูกระงับการสอนชั่วคราว<br>และเครดิตจะถูกคืนให้ผู้เรียนทันที'
-      : 'เครดิตจะถูกโอนให้ติวเตอร์ทันที<br>และปิด case รายงานนี้',
-    icon: isDanger ? 'warning' : 'question',
+    title: isRefund ? 'พิจารณาให้คืนเครดิต?' : 'พิจารณาไม่คืนเครดิต?',
+    html: isRefund
+      ? 'เครดิตที่ถูกล็อกไว้จะถูกคืนกลับเข้าบัญชีเครดิตของผู้เรียน'
+      : 'ระบบจะไม่คืนเครดิตแก่ผู้เรียน <br>และโอนเครดิตที่ล็อกไว้ให้ติวเตอร์',
+    icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'ยืนยัน',
+    confirmButtonText: 'บันทึกผลการพิจารณา',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: isDanger ? '#EF4444' : '#10B981',
+    confirmButtonColor: isRefund ? '#10B981' : '#6B7280',
     cancelButtonColor: '#6B7280',
     reverseButtons: true,
     customClass: {
