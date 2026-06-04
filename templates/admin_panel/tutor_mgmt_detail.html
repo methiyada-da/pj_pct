@@ -125,6 +125,81 @@
   </div>
 </div>
 
+<!-- ── Report history ── -->
+<div class="card-panel mb-4" style="padding:22px;">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div class="detail-section-title mb-0">
+      <i class="bi bi-clipboard-data"></i> ประวัติรายงานปัญหา
+    </div>
+    <span class="report-count">{{ report_history|length }} รายการ</span>
+  </div>
+
+  {% if report_history %}
+    <div class="table-responsive">
+      <table class="report-history-table">
+        <thead>
+          <tr>
+            <th>รหัสการจอง</th>
+            <th>ชื่อคอร์ส</th>
+            <th>ผู้เรียน</th>
+            <th>วันที่รายงาน</th>
+            <th>สาเหตุที่รายงาน</th>
+            <th>รายละเอียดรายงาน</th>
+            <th>ผลการพิจารณา / หมายเหตุแอดมิน</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for bk in report_history %}
+          <tr>
+            <td class="fw-semibold">BK{{ bk.bk_id|stringformat:"05d" }}</td>
+            <td>{{ bk.tutc_id.tutc_name }}</td>
+            <td>{{ bk.member.mb_full_name }}</td>
+            <td style="white-space:nowrap;">{{ bk.bk_report_date|date:"d M Y H:i" }}</td>
+            <td>
+              {% if bk.bk_report_reason == 'cancel' %}
+                ข้อพิพาทการยกเลิกจากติวเตอร์
+              {% else %}
+                {{ bk.get_bk_report_reason_display|default:"—" }}
+              {% endif %}
+            </td>
+            <td class="report-text">
+              <div>{{ bk.bk_report_desc|default:"—" }}</div>
+              {% if bk.report_statements.all %}
+                <div class="mt-2 pt-2" style="border-top:1px solid var(--border);">
+                  <div class="fw-semibold mb-1" style="font-size:12px;color:var(--text-muted);">คำชี้แจงในเคสนี้</div>
+                  {% for st in bk.report_statements.all %}
+                    <div class="mb-1" style="font-size:12px;line-height:1.5;">
+                      <span class="fw-semibold">
+                        {% if st.brs_role == 'tutor' %}ติวเตอร์{% else %}ผู้เรียน{% endif %}:
+                      </span>
+                      {{ st.brs_desc }}
+                      <span class="text-muted">({{ st.brs_date|date:"d M Y H:i" }})</span>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </td>
+            <td class="report-text">{{ bk.bk_cmt|default:"—" }}</td>
+            <td>
+              {% if bk.bk_report_resolved_date %}
+                <span class="report-status report-status--resolved">จัดการแล้ว</span>
+              {% else %}
+                <span class="report-status report-status--waiting">รอพิจารณา</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-report-history">
+      ยังไม่มีประวัติรายงานปัญหาของติวเตอร์รายนี้
+    </div>
+  {% endif %}
+</div>
+
 <!-- ── Action footer ── -->
 <div class="card-panel" style="padding:20px 24px;">
   <form method="post">
@@ -269,6 +344,44 @@
     border-radius: 0 8px 8px 0; padding: 12px 16px;
     font-size: 13px; color: var(--text-main); line-height: 1.7;
     margin: 0; font-style: italic;
+  }
+
+  .report-count {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 999px;
+    background: #F3F4F6; color: var(--text-muted);
+    font-size: 12px; font-weight: 600;
+  }
+
+  .report-history-table {
+    width: 100%; border-collapse: collapse; min-width: 980px;
+    font-size: 13px;
+  }
+  .report-history-table th {
+    padding: 10px 12px; background: #F9FAFB;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted); font-weight: 700; text-align: left;
+    white-space: nowrap;
+  }
+  .report-history-table td {
+    padding: 12px; border-bottom: 1px solid var(--border);
+    color: var(--text-main); vertical-align: top;
+  }
+  .report-text {
+    min-width: 180px; max-width: 260px;
+    line-height: 1.6; white-space: normal;
+  }
+  .report-status {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  .report-status--waiting { background: #FEF3C7; color: #92400E; }
+  .report-status--resolved { background: #DCFCE7; color: #166534; }
+  .empty-report-history {
+    padding: 18px; border: 1px dashed var(--border);
+    border-radius: 8px; background: #F9FAFB;
+    color: var(--text-muted); font-size: 13px; text-align: center;
   }
 
   .btn-action-reject {

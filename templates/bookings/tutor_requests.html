@@ -43,6 +43,70 @@
     line-height: 1.3; display: block; word-break: break-word;
   }
 
+  .accepted-booking-row {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    align-items: start;
+  }
+  .accepted-booking-row .course-thumb {
+    width: 150px;
+    height: 170px;
+    align-self: start;
+  }
+  .accepted-booking-row .course-thumb img,
+  .accepted-booking-row .course-thumb .thumb-fallback {
+    height: 170px;
+    min-height: 170px;
+  }
+  .accepted-booking-content {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 190px;
+    gap: 24px;
+    align-items: start;
+  }
+  .accepted-copy {
+    min-width: 0;
+  }
+  .accepted-note {
+    max-width: 100%;
+    line-height: 1.55;
+  }
+  .accepted-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+    text-align: center;
+    min-width: 180px;
+  }
+  .accepted-actions .btn {
+    width: 100%;
+    white-space: nowrap;
+  }
+  @media (max-width: 768px) {
+    .accepted-booking-row {
+      grid-template-columns: 112px minmax(0, 1fr);
+    }
+    .accepted-booking-row .course-thumb {
+      width: 112px;
+      height: 132px;
+    }
+    .accepted-booking-row .course-thumb img,
+    .accepted-booking-row .course-thumb .thumb-fallback {
+      height: 132px;
+      min-height: 132px;
+    }
+    .accepted-booking-content {
+      padding: 16px;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    .accepted-actions {
+      min-width: 0;
+    }
+  }
+
   .tab-pill {
     border-radius: 999px;
     font-size: 13px;
@@ -151,7 +215,7 @@
       <button class="tab-pill" data-tab="notified">แจ้งจบงานแล้ว <span class="badge bg-primary ms-1">{{ notified|length }}</span></button>
       <button class="tab-pill" data-tab="done">เสร็จสิ้น <span class="badge bg-success ms-1">{{ done|length }}</span></button>
       <button class="tab-pill" data-tab="rejected">ปฏิเสธ <span class="badge bg-danger ms-1">{{ rejected|length }}</span></button>
-      <button class="tab-pill" data-tab="reported">รอพิจารณา <span class="badge ms-1" style="background:#7C3AED;" id="cnt-reported">0</span></button>
+      <button class="tab-pill" data-tab="reported">รายงาน <span class="badge ms-1" style="background:#7C3AED;" id="cnt-reported">{{ reported_bookings|length }}</span></button>
     </div>
 
     <!-- ── TAB: รอยืนยัน ── -->
@@ -234,7 +298,13 @@
       {% if accepted %}
         {% for bk in accepted %}
         <div class="bk-card mb-3" style="border-left:4px solid #10B981;">
-          <div class="d-flex align-items-stretch">
+          {% if bk.cancel_request_pending %}
+          <div class="d-flex align-items-center gap-2 p-2" style="background:#FFFBEB;border-bottom:1px solid #FDE68A;">
+            <i class="fas fa-hourglass-half" style="color:#D97706;"></i>
+            <span class="small fw-semibold" style="color:#92400E;">ผู้เรียนส่งคำขอยกเลิกการเรียน</span>
+          </div>
+          {% endif %}
+          <div class="accepted-booking-row">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
                 <img src="{{ bk.tutc_id.tutc_img.url }}" alt="">
@@ -243,33 +313,96 @@
               {% endif %}
               <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
             </div>
-            <div class="flex-fill p-4 d-flex align-items-start justify-content-between gap-3 flex-wrap">
-          <div class="flex-fill">
+            <div class="accepted-booking-content">
+          <div class="accepted-copy">
               <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
+                {% if bk.cancel_request_pending %}
+                <span class="badge" style="background:#F59E0B;color:#111827;">รอพิจารณาการยกเลิก</span>
+                {% elif bk.cancel_request_rejected %}
+                <span class="badge bg-secondary">ไม่อนุมัติการยกเลิก</span>
+                {% elif bk.bk_cmt == 'ติวเตอร์อนุมัติการยกเลิกตามคำขอผู้เรียน' %}
+                  <span class="badge" style="background:#0EA5E9;">ยกเลิกตามคำขอ</span>
+                {% elif bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียนตามคำขอผู้เรียน' %}
+                  <span class="badge" style="background:#0EA5E9;">ยกเลิกตามคำขอ</span>
+                {% else %}
                 <span class="badge bg-success">รับงานแล้ว</span>
+                {% endif %}
 
               </div>
               <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
               <div class="text-muted small mb-1">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_count }} คน · {{ bk.bk_rate_per_person }} เครดิต/คน</div>
               <div class="text-muted small"><i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y H:i" }} น.</div>
+              {% if bk.cancel_request_pending %}
+              <div class="accepted-note mt-2 p-2 rounded-3 small" style="background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;">
+                ผู้เรียนขอยกเลิกการเรียน หากอนุมัติ ระบบจะคืนเครดิตให้ผู้เรียนและเปิดช่วงเวลาเรียนนี้อีกครั้ง หากไม่อนุมัติ การจองยังมีผลตามเวลาเรียนเดิม
+              </div>
+              {% elif bk.cancel_request_rejected %}
+              <div class="accepted-note mt-2 p-2 rounded-3 small" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#374151;">
+                คุณไม่อนุมัติการยกเลิกแล้ว หากถึงเวลาเรียนแล้วยังเกิดข้อพิพาท สามารถส่งเรื่องให้แอดมินพิจารณา โดยเครดิตจะยังถูกล็อกไว้จนกว่าแอดมินจะตัดสิน
+              </div>
+              {% endif %}
             </div>
-            <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
+            <div class="accepted-actions">
               <div class="fw-bold text-dark" style="font-size:18px;">{{ bk.total_credit }} เครดิต</div>
               <form method="post" action="{% url 'bookings:mark_studying' bk.bk_id %}" id="form-studying-{{ bk.bk_id }}">
                 {% csrf_token %}
               </form>
+              {% if bk.cancel_request_pending %}
+              <button class="btn btn-success btn-sm fw-semibold rounded-pill px-3 w-100"
+                onclick="openApproveCancel({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', {{ bk.total_credit }})">
+                <i class="fas fa-check me-1"></i>อนุมัติการยกเลิก
+              </button>
+              <button class="btn btn-outline-danger btn-sm fw-semibold rounded-pill px-3 w-100"
+                onclick="openRejectCancel({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
+                <i class="fas fa-times me-1"></i>ไม่อนุมัติการยกเลิก
+              </button>
+              {% elif bk.cancel_request_rejected %}
+              
               <button class="btn btn-info text-white btn-sm fw-semibold rounded-pill px-3 w-100"
-                      onclick="openFinish('{{ bk.bk_id }}', '{{ bk.tutc_id.tutc_name|escapejs }}')">
+                onclick="openFinish('{{ bk.bk_id }}', '{{ bk.tutc_id.tutc_name|escapejs }}')">
                 <i class="fas fa-graduation-cap me-1"></i>เสร็จสิ้นการสอน
               </button>
+              
+              {% if bk.cancel_dispute_available %}
+              <button class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 w-100"
+                onclick="openEscalateCancelDispute({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
+                ส่งให้แอดมินพิจารณา
+              </button>
+              {% endif %}
+              {% if bk.tutor_cancel_for_student_available %}
+              <button class="btn btn-outline-danger btn-sm fw-semibold rounded-pill px-3 w-100"
+                onclick="openTutorCancelForStudent({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', {{ bk.total_credit }})">
+                <i class="fas fa-rotate-left me-1"></i>ยกเลิกการเรียน
+              </button>
+              {% endif %}
+              {% else %}
+              <button class="btn btn-info text-white btn-sm fw-semibold rounded-pill px-3 w-100"
+                onclick="openFinish('{{ bk.bk_id }}', '{{ bk.tutc_id.tutc_name|escapejs }}')">
+                <i class="fas fa-graduation-cap me-1"></i>เสร็จสิ้นการสอน
+              </button>
+              
+              {% if bk.tutor_can_escalate_after_start %}
+              <button class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 w-100"
+                onclick="openEscalateCancelDispute({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
+                ส่งให้แอดมินพิจารณา
+              </button>
+              {% endif %}
+
+              {% if bk.tutor_cancel_for_student_available %}
+              <button class="btn btn-outline-danger btn-sm fw-semibold rounded-pill px-3 w-100"
+                      onclick="openTutorCancelForStudent({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', {{ bk.total_credit }})">
+                <i class="fas fa-rotate-left me-1"></i>ยกเลิกการเรียน
+              </button>
+              {% endif %}
+              {% endif %}
               <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
                       onclick="openDetail({{ bk.bk_id }})">
                 <i class="fas fa-info-circle me-1"></i>รายละเอียด
               </button>
             </div>
-            </div>{# /flex-fill p-4 #}
-          </div>{# /d-flex align-items-stretch #}
+            </div>{# /accepted-booking-content #}
+          </div>{# /accepted-booking-row #}
         </div>
         {% endfor %}
       {% else %}
@@ -437,8 +570,12 @@
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 {% if bk.bk_cmt == 'ผู้เรียนยกเลิกการจอง' %}
                   <span class="badge" style="background:#F97316;">ยกเลิกโดยผู้เรียน</span>
+                {% elif bk.bk_cmt == 'ติวเตอร์อนุมัติการยกเลิกตามคำขอผู้เรียน' %}
+                  <span class="badge" style="background:#0EA5E9;">ยกเลิกตามคำขอ</span>
+                {% elif bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียนตามคำขอผู้เรียน' %}
+                  <span class="badge" style="background:#0EA5E9;">ยกเลิกตามคำขอ</span>
                 {% else %}
-                  <span class="badge bg-danger">ปฏิเสธ</span>
+                  <span class="badge bg-danger">ติวเตอร์ปฏิเสธ</span>
                 {% endif %}
               </div>
               <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
@@ -464,15 +601,18 @@
     </div>
 
 
-    <!-- ── TAB: รอพิจารณา ── -->
+    <!-- ── TAB: รายงาน ── -->
     <div id="tab-reported" class="d-none">
-      {% for bk in all_bookings %}
-        {% if bk.bk_report_date and not bk.bk_report_resolved_date %}
+      {% for bk in reported_bookings %}
         <div class="bk-card mb-3" style="border-left:4px solid #7C3AED;">
+          {% if not bk.bk_report_resolved_date %}
           <div class="d-flex align-items-center gap-2 p-2" style="background:#F5F3FF;border-bottom:1px solid #DDD6FE;">
             <i class="fas fa-flag" style="color:#7C3AED;"></i>
-            <span class="small fw-semibold" style="color:#5B21B6;">ผู้เรียนรายงานปัญหา — รอการพิจารณาจากแอดมิน</span>
+            <span class="small fw-semibold" style="color:#5B21B6;">
+              {% if bk.bk_report_reason == 'cancel' %}ส่งเรื่องให้แอดมินพิจารณา{% else %}ผู้เรียนรายงานปัญหา{% endif %} — {% if bk.bk_report_resolved_date %}พิจารณาเสร็จสิ้นแล้ว{% else %}รอพิจารณา{% endif %}
+            </span>
           </div>
+          {% endif %}
           <div class="d-flex align-items-stretch">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -486,14 +626,21 @@
               <div>
                 <div class="d-flex align-items-center gap-2 mb-1">
                   <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
-                  <span class="badge" style="background:#7C3AED;">รอพิจารณา</span>
+                  {% if bk.bk_report_resolved_date %}
+                    <span class="badge bg-success">พิจารณาเสร็จสิ้นแล้ว</span>
+                  {% else %}
+                    <span class="badge" style="background:#7C3AED;">รอพิจารณา</span>
+                  {% endif %}
                 </div>
                 <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
                 <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
               </div>
               <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
                 <div class="fw-bold" style="font-size:16px;">{{ bk.total_credit }} เครดิต</div>
-                <span class="small fw-semibold" style="color:#7C3AED;"><i class="fas fa-clock me-1"></i>รอผลการพิจารณา</span>
+                <span class="small fw-semibold" style="color:#7C3AED;">
+                  <i class="fas {% if bk.bk_report_resolved_date %}fa-check-circle{% else %}fa-clock{% endif %} me-1"></i>
+                  {% if bk.bk_report_resolved_date %}พิจารณาเสร็จสิ้นแล้ว{% else %}รอผลการพิจารณา{% endif %}
+                </span>
                 <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
                         onclick="openDetail({{ bk.bk_id }})">
                   <i class="fas fa-info-circle me-1"></i>รายละเอียด
@@ -502,11 +649,10 @@
             </div>
           </div>
         </div>
-        {% endif %}
       {% endfor %}
       <div id="reported-empty" class="empty-state text-center text-muted" style="display:none;">
         <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-flag"></i></div>
-        <div class="fw-semibold mb-1">ไม่มีรายการรอพิจารณา</div>
+        <div class="fw-semibold mb-1">ไม่มีรายการรายงาน</div>
       </div>
     </div>
 
@@ -515,6 +661,14 @@
 
 <!-- hidden reject form -->
 <form id="rejectForm" method="post" style="display:none">{% csrf_token %}<textarea name="reject_reason" id="rejectReason"></textarea></form>
+<form id="cancelDecisionForm" method="post" style="display:none">
+  {% csrf_token %}
+  <textarea name="reject_reason" id="cancelRejectReason"></textarea>
+</form>
+<form id="cancelDisputeForm" method="post" style="display:none">
+  {% csrf_token %}
+  <textarea name="dispute_desc" id="cancelDisputeDesc"></textarea>
+</form>
 
 <!-- ── Modal: ดูรายละเอียด ── -->
 <div class="modal fade" id="detailModal" tabindex="-1">
@@ -547,12 +701,30 @@ const bookingData = {
     count:    {{ bk.bk_stu_count }},
     rate:     {{ bk.bk_rate_per_person }},
     datetime: "{{ bk.bk_stu_datetime|date:'d M Y' }} เวลา {{ bk.bk_stu_datetime|date:'H:i' }} น.",
+    start_iso: "{{ bk.bk_stu_datetime|date:'c' }}",
     booked:   "{{ bk.bk_date|date:'d M Y H:i' }}",
     status:   {{ bk.bk_status }},
+    cancel_pending: {% if bk.cancel_request_pending %}true{% else %}false{% endif %},
+    cancel_rejected: {% if bk.cancel_request_rejected %}true{% else %}false{% endif %},
+    cancel_request_reason: "{{ bk.cancel_request_reason|default:''|escapejs }}",
+    cancel_reject_reason: "{{ bk.cancel_reject_reason|default:''|escapejs }}",
     reported: {% if bk.bk_report_date %}true{% else %}false{% endif %},
+    report_by_tutor: {% if bk.bk_report_reason == 'cancel' %}true{% else %}false{% endif %},
+    report_desc: "{% if bk.bk_report_reason == 'cancel' %}{{ bk.bk_report_desc|default:''|escapejs }}{% endif %}",
     report_resolved: {% if bk.bk_report_resolved_date %}true{% else %}false{% endif %},
-    report_reason:  "{{ bk.bk_report_reason|default:''|escapejs }}",
-    report_desc:    "{{ bk.bk_report_desc|default:''|escapejs }}",
+    report_resolved_date: "{{ bk.bk_report_resolved_date|date:'d M Y H:i'|default:'' }}",
+    report_statements: [
+      {% for st in bk.report_statements.all %}
+      {% if st.brs_role == 'tutor' and st.brs_desc != bk.bk_report_desc %}
+      {
+        role: "{{ st.brs_role|escapejs }}",
+        name: "{{ st.member.mb_full_name|escapejs }}",
+        desc: "{{ st.brs_desc|escapejs }}",
+        date: "{{ st.brs_date|date:'d M Y H:i' }}"
+      },
+      {% endif %}
+      {% endfor %}
+    ],
     desc:     "{{ bk.bk_desc|default:''|escapejs }}",
     cmt:      "{{ bk.bk_cmt|default:''|escapejs }}",
     {% if bk.ts_id %}
@@ -588,7 +760,7 @@ const bookingData = {
 
 const STATUS_LABELS_TH = {
   0:'รอยืนยัน', 1:'รับงานแล้ว', 2:'เรียนแล้ว',
-  3:'แจ้งจบงานแล้ว', 4:'เสร็จสิ้น', 5:'รีวิวแล้ว', 6:'ปฏิเสธ'
+  3:'แจ้งจบงานแล้ว', 4:'เสร็จสิ้น', 5:'รีวิวแล้ว', 6:'ติวเตอร์ปฏิเสธ'
 };
 const STATUS_COLORS = {0:'warning',1:'success',2:'info',3:'primary',4:'secondary',5:'success',6:'danger'};
 
@@ -694,7 +866,7 @@ document.querySelectorAll('.tab-pill').forEach(btn => {
 // นับจำนวน reported
 (function() {
   let cnt = 0;
-  Object.values(bookingData).forEach(bk => { if (bk.reported && !bk.report_resolved) cnt++; });
+  Object.values(bookingData).forEach(bk => { if (bk.reported) cnt++; });
   const el = document.getElementById('cnt-reported');
   if (el) el.textContent = cnt;
   const empty = document.getElementById('reported-empty');
@@ -731,16 +903,318 @@ function openReject(bkId, studentName) {
   });
 }
 
+function submitCancelDecision(actionUrl, rejectReason = '') {
+  const form = document.getElementById('cancelDecisionForm');
+  form.action = actionUrl;
+  document.getElementById('cancelRejectReason').value = rejectReason;
+  form.submit();
+}
+
+function openApproveCancel(bkId, studentName, totalCredit) {
+  Swal.fire({
+    title: 'อนุมัติการยกเลิก?',
+    html: `
+      <div class="text-start small">
+        <div class="mb-2">อนุมัติคำขอยกเลิกของ <strong>${studentName}</strong></div>
+        <div class="p-3 rounded-3" style="background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;">
+          ระบบจะคืนเครดิต <strong>${totalCredit} เครดิต</strong> ให้ผู้เรียน และเปิดช่วงเวลาเรียนนี้ให้จองได้อีกครั้ง
+        </div>
+        <div class="mt-2 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#4B5563;">
+          เมื่อยืนยันแล้ว รายการนี้จะย้ายไปที่แท็บสถานะปฏิเสธ 
+        </div>
+      </div>`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-check me-1"></i> อนุมัติการยกเลิก',
+    cancelButtonText: 'ปิด',
+    confirmButtonColor: '#10B981',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+    customClass: {
+      popup: 'rounded-4 shadow',
+      actions: 'gap-2',
+      confirmButton: 'rounded-3 px-4 fw-bold',
+      cancelButton: 'rounded-3 px-4 fw-semibold',
+    },
+  }).then(result => {
+    if (result.isConfirmed) {
+      submitCancelDecision(`/bookings/tutor/${bkId}/approve-cancel/`);
+    }
+  });
+}
+
+function openRejectCancel(bkId, studentName) {
+  Swal.fire({
+    title: 'ไม่อนุมัติการยกเลิก?',
+    html: `
+      <div class="text-start small">
+        <div class="p-3 rounded-3 mb-2" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#374151;">
+          <div class="fw-semibold mb-1">ผลหลังไม่อนุมัติ</div>
+          <div>• การจองยังมีผลตามเวลาเรียนเดิม</div>
+          <div>• เครดิตของผู้เรียนยังถูกล็อกไว้</div>
+          <div>• ผู้เรียนจะเห็นเหตุผลที่คุณระบุ</div>
+          <div>• หลังถึงเวลาเรียน หากยังมีข้อพิพาท สามารถส่งให้แอดมินพิจารณาได้</div>
+        </div>
+      </div>`,
+    icon: 'warning',
+    input: 'textarea',
+    inputPlaceholder: 'ระบุเหตุผลที่ไม่อนุมัติการยกเลิก...',
+    inputAttributes: { rows: 4 },
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-times me-1"></i> ไม่อนุมัติการยกเลิก',
+    cancelButtonText: 'ปิด',
+    confirmButtonColor: '#EF4444',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+    inputValidator: value => {
+      if (!value || !value.trim()) return 'กรุณาระบุเหตุผลที่ไม่อนุมัติการยกเลิก';
+      return null;
+    },
+    customClass: {
+      popup: 'rounded-4 shadow',
+      actions: 'gap-2',
+      confirmButton: 'rounded-3 px-4 fw-bold',
+      cancelButton: 'rounded-3 px-4 fw-semibold',
+    },
+  }).then(result => {
+    if (result.isConfirmed) {
+      submitCancelDecision(`/bookings/tutor/${bkId}/reject-cancel/`, result.value.trim());
+    }
+  });
+}
+
+function openTutorCancelForStudent(bkId, studentName, totalCredit) {
+  Swal.fire({
+    title: 'ยกเลิกการเรียนให้ผู้เรียน?',
+    html: `
+      <div class="text-start small">
+        <div class="mb-2">ใช้เมื่อตกลงกับ <strong>${studentName}</strong> แล้วว่าต้องยกเลิกการเรียน</div>
+        <div class="p-3 rounded-3 mb-2" style="background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;">
+          ปุ่มนี้ใช้ในช่วงที่ผู้เรียนส่งคำขอยกเลิกเองไม่ได้แล้ว เช่น เหลือเวลาน้อยกว่า 6 ชั่วโมงก่อนเวลาเรียน หรือหลังเวลาเรียน
+        </div>
+        <div class="p-3 rounded-3" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;">
+          ระบบจะคืนเครดิต <strong>${totalCredit} เครดิต</strong> ให้ผู้เรียน และเปิดช่วงเวลาเรียนนี้ให้จองได้อีกครั้ง
+        </div>
+        <div class="mt-2 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#4B5563;">
+          ใช้กรณีตกลงกันแล้วว่าจะยกเลิก ไม่ใช่กรณีที่ต้องการให้แอดมินตัดสินข้อพิพาท
+        </div>
+      </div>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-rotate-left me-1"></i> ยืนยันยกเลิก',
+    cancelButtonText: 'ปิด',
+    confirmButtonColor: '#EF4444',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+    customClass: {
+      popup: 'rounded-4 shadow',
+      actions: 'gap-2',
+      confirmButton: 'rounded-3 px-4 fw-bold',
+      cancelButton: 'rounded-3 px-4 fw-semibold',
+    },
+  }).then(result => {
+    if (result.isConfirmed) {
+      submitCancelDecision(`/bookings/tutor/${bkId}/cancel-for-student/`);
+    }
+  });
+}
+
+function openEscalateCancelDispute(bkId, studentName) {
+  const bk = bookingData[bkId];
+  const startTime = bk.start_iso ? new Date(bk.start_iso) : null;
+  if (startTime && Date.now() < startTime.getTime()) {
+    Swal.fire({
+      title: 'ยังไม่ถึงเวลาเรียน',
+      text: 'ส่งเรื่องให้แอดมินพิจารณาได้เมื่อถึงเวลาเรียนหรือหลังเวลาเรียนแล้ว',
+      icon: 'info',
+      confirmButtonText: 'รับทราบ',
+      confirmButtonColor: '#2563EB',
+      customClass: {
+        popup: 'rounded-4 shadow',
+        confirmButton: 'rounded-3 px-4 fw-bold',
+      },
+    });
+    return;
+  }
+
+  Swal.fire({
+    title: 'ส่งให้แอดมินพิจารณา',
+    html: `
+      <div class="text-start small text-muted mb-2">
+        รายการนี้จะย้ายไปแท็บรายงาน และเครดิตจะยังถูกล็อกไว้จนกว่าแอดมินจะพิจารณา
+      </div>
+      <div class="text-start small p-3 rounded-3 mb-2" style="background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;">
+        ใช้กรณีหลังถึงเวลาเรียนแล้ว และยังตกลงเรื่องการยกเลิกไม่ได้ เช่น ผู้เรียนขอยกเลิกแต่คุณไม่อนุมัติ และต้องการให้แอดมินพิจารณาว่าควรคืนเครดิตหรือไม่
+      </div>
+      <div class="text-start small">
+        ผู้เรียน: <strong>${studentName}</strong>
+      </div>`,
+    icon: 'warning',
+    input: 'textarea',
+    inputPlaceholder: 'ระบุรายละเอียด เช่น ผู้เรียนขอยกเลิกแต่ไม่ได้ตกลงกัน และไม่เข้าเรียนตามเวลานัด...',
+    inputAttributes: { rows: 4 },
+    showCancelButton: true,
+    confirmButtonText: '<i class="fas fa-paper-plane me-1"></i> ส่งให้แอดมิน',
+    cancelButtonText: 'ปิด',
+    confirmButtonColor: '#F59E0B',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+    inputValidator: value => {
+      if (!value || !value.trim()) return 'กรุณาระบุรายละเอียดเพื่อส่งให้แอดมินพิจารณา';
+      return null;
+    },
+    customClass: {
+      popup: 'rounded-4 shadow',
+      actions: 'gap-2',
+      confirmButton: 'rounded-3 px-4 fw-bold',
+      cancelButton: 'rounded-3 px-4 fw-semibold',
+    },
+  }).then(result => {
+    if (result.isConfirmed) {
+      const form = document.getElementById('cancelDisputeForm');
+      form.action = `/bookings/tutor/${bkId}/escalate-cancel-dispute/`;
+      document.getElementById('cancelDisputeDesc').value = result.value.trim();
+      form.submit();
+    }
+  });
+}
+
+function buildReportStatementHtml(statements) {
+  if (!statements.length) return '';
+  const rows = statements.map(st => {
+    const roleLabel = st.role === 'tutor' ? 'ติวเตอร์' : 'ผู้เรียน';
+    const tone = st.role === 'tutor'
+      ? 'background:#ECFDF5;border-color:#BBF7D0;color:#14532D;'
+      : 'background:#EFF6FF;border-color:#BFDBFE;color:#1E3A8A;';
+    return `
+      <div class="p-2 rounded-3 mb-2" style="border:1px solid;${tone}">
+        <div class="d-flex justify-content-between gap-2 mb-1" style="font-size:12px;">
+          <span class="fw-semibold">${roleLabel}</span>
+          <span class="text-muted">${st.date || ''}</span>
+        </div>
+        <div style="font-size:13px;line-height:1.6;color:#374151;">${st.desc}</div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="mt-3 pt-2" style="border-top:1px solid #DDD6FE;">
+      <div class="fw-semibold mb-2" style="font-size:13px;color:#374151;">คำชี้แจงในเคสนี้</div>
+      ${rows}
+    </div>`;
+}
+
+function submitReportStatement(bkId, detail) {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `/bookings/${bkId}/report-statement/`;
+  form.innerHTML = `
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    <textarea name="statement_desc" class="d-none"></textarea>`;
+  form.querySelector('textarea').value = detail;
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  }[ch]));
+}
+
+function showReportStatementModal(bkId) {
+  bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
+  setTimeout(() => {
+    Swal.fire({
+      title: 'ส่งคำชี้แจงให้แอดมิน',
+      html: `<p class="text-muted small mb-2">ใช้สำหรับอธิบายข้อมูลฝั่งติวเตอร์เพิ่มเติมในรายงานนี้ แอดมินจะเห็นคำชี้แจงร่วมกับรายละเอียดเคสเดิม</p>`,
+      icon: 'info',
+      input: 'textarea',
+      inputPlaceholder: 'ระบุคำชี้แจงเพิ่มเติม...',
+      inputAttributes: { rows: 4 },
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-paper-plane me-1"></i>ส่งคำชี้แจง',
+      cancelButtonText: 'ปิด',
+      confirmButtonColor: '#2563EB',
+      cancelButtonColor: '#6B7280',
+      reverseButtons: true,
+      inputValidator: value => {
+        if (!value || !value.trim()) return 'กรุณาระบุคำชี้แจงก่อนส่ง';
+        return null;
+      },
+      customClass: {
+        popup: 'rounded-4 shadow',
+        actions: 'gap-2',
+        confirmButton: 'rounded-3 px-4 fw-bold',
+        cancelButton: 'rounded-3 px-4 fw-semibold',
+      },
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      const detail = result.value.trim();
+      Swal.fire({
+        title: 'ยืนยันส่งคำชี้แจง?',
+        html: `<div class="text-start small">
+          <div class="mb-2">คำชี้แจงนี้จะถูกส่งให้แอดมินใช้ประกอบการพิจารณารายงาน</div>
+          <div class="p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;white-space:pre-wrap;">${escapeHtml(detail)}</div>
+        </div>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-paper-plane me-1"></i>ยืนยันส่ง',
+        cancelButtonText: 'กลับไปแก้ไข',
+        confirmButtonColor: '#2563EB',
+        cancelButtonColor: '#6B7280',
+        reverseButtons: true,
+        customClass: {
+          popup: 'rounded-4 shadow',
+          actions: 'gap-2',
+          confirmButton: 'rounded-3 px-4 fw-bold',
+          cancelButton: 'rounded-3 px-4 fw-semibold',
+        },
+      }).then(confirmResult => {
+        if (confirmResult.isConfirmed) submitReportStatement(bkId, detail);
+        else showReportStatementModal(bkId);
+      });
+    });
+  }, 250);
+}
+
 function openDetail(bkId) {
   const bk = bookingData[bkId];
   if (!bk) return;
   const total = bk.rate * bk.count;
-  const sc = STATUS_COLORS[bk.status] || 'secondary';
+  const isAdminAction = bk.cmt && bk.cmt.startsWith('[แอดมิน]');
+  let sc = STATUS_COLORS[bk.status] || 'secondary';
 
   let label = STATUS_LABELS_TH[bk.status] || '';
 
-  if (bk.status === 6 && bk.cmt === 'ผู้เรียนยกเลิกการจอง') {
+  if (bk.cancel_pending) {
+    label = 'รอพิจารณาการยกเลิก';
+    sc = 'warning';
+  }
+  if (bk.cancel_rejected) {
+    label = 'ไม่อนุมัติการยกเลิก';
+    sc = 'secondary';
+  }
+
+  if (bk.status === 6 && isAdminAction) {
+    label = 'คืนเครดิตตามผลพิจารณา';
+    sc = 'success';
+  } else if (bk.status === 6 && (
+    bk.cmt === 'ติวเตอร์อนุมัติการยกเลิกตามคำขอผู้เรียน' ||
+    bk.cmt === 'ติวเตอร์ยกเลิกการเรียนตามคำขอผู้เรียน'
+  )) {
+    label = 'ยกเลิกตามคำขอ';
+    sc = 'info';
+  } else if (bk.status === 6 && bk.cmt === 'ผู้เรียนยกเลิกการจอง') {
     label = 'ยกเลิกโดยผู้เรียน';
+  } else if (bk.status === 6) {
+    label = 'ติวเตอร์ปฏิเสธ';
+  }
+  if (bk.reported) {
+    label = bk.report_resolved ? 'พิจารณาเสร็จสิ้นแล้ว' : 'รอพิจารณา';
+    sc = bk.report_resolved ? 'success' : 'primary';
   }
 
 
@@ -788,6 +1262,18 @@ function openDetail(bkId) {
     `;
   }
 
+  let adminNote = bk.cmt && bk.cmt.startsWith('[แอดมิน]')
+    ? bk.cmt.replace('[แอดมิน]', '').trim() : '';
+  if (adminNote.startsWith('พิจารณาไม่คืนเครดิต:')) {
+    adminNote = adminNote.replace('พิจารณาไม่คืนเครดิต:', 'พิจารณาโอนเครดิตให้ติวเตอร์:');
+  }
+  const statementHtml = buildReportStatementHtml(bk.report_statements || []);
+  const statementButton = bk.reported && !bk.report_resolved
+    ? `<button onclick="showReportStatementModal(${bkId})" class="btn btn-outline-primary btn-sm rounded-3 mt-3">
+        <i class="fas fa-comment-dots me-1"></i>ส่งคำชี้แจงให้แอดมิน
+      </button>`
+    : '';
+
   document.getElementById('detailBody').innerHTML = `
     <div class="mb-3">
       ${
@@ -817,16 +1303,55 @@ function openDetail(bkId) {
         <div class="d-flex align-items-center gap-2 mb-2">
           <i class="fas fa-flag" style="color:#7C3AED;"></i>
           <span class="fw-semibold small" style="color:#5B21B6;">
-            ${bk.report_resolved ? 'ผู้เรียนรายงานปัญหา — ดำเนินการแล้ว' : 'ผู้เรียนรายงานปัญหา — รอการพิจารณาจากแอดมิน'}
+            ${bk.report_by_tutor
+              ? (bk.report_resolved ? 'คุณส่งเรื่องให้แอดมิน — พิจารณาเสร็จสิ้นแล้ว' : 'คุณส่งเรื่องให้แอดมิน — รอพิจารณา')
+              : (bk.report_resolved ? 'ผู้เรียนรายงานปัญหา — พิจารณาเสร็จสิ้นแล้ว' : 'ผู้เรียนรายงานปัญหา — รอพิจารณา')
+            }
           </span>
         </div>
-
-        ${bk.cmt && bk.cmt.startsWith('[แอดมิน]')
+        ${bk.report_by_tutor && bk.report_desc ? `<div style="font-size:13px;color:#374151;margin-bottom:4px;">
+          <span class="fw-semibold">รายละเอียดที่คุณส่ง:</span> ${bk.report_desc}
+        </div>` : ''}
+        ${!bk.report_by_tutor && !bk.report_resolved ? `<div class="p-2 rounded-3 mb-2" style="background:#FFFFFF;border:1px solid #DDD6FE;font-size:13px;color:#4B5563;">
+          ผู้เรียนส่งรายงานให้แอดมินแล้ว รายการนี้อยู่ระหว่างพิจารณา หากต้องการให้ข้อมูลฝั่งติวเตอร์ ให้กด “ส่งคำชี้แจงให้แอดมิน”
+        </div>` : ''}
+        ${bk.report_resolved_date ? `<div style="font-size:13px;color:#374151;margin-bottom:4px;">
+          <span class="fw-semibold">วันที่จัดการ:</span> ${bk.report_resolved_date}
+        </div>` : ''}
+        ${adminNote
           ? `<div class="mt-2 pt-2" style="border-top:1px solid #DDD6FE;font-size:13px;color:#374151;">
-              <span class="fw-semibold" style="color:#5B21B6;">ผลการพิจารณา:</span> ${bk.cmt.replace('[แอดมิน]','').trim()}
+              <span class="fw-semibold" style="color:#5B21B6;">ผลการพิจารณา:</span> ${adminNote}
              </div>`
-          : `<div class="text-muted small mt-1">แอดมินจะแจ้งผลกลับมาทางการแจ้งเตือน</div>`
+          : `<div class="text-muted small mt-1">แอดมินจะแจ้งผลการพิจารณาหลังตรวจสอบเสร็จสิ้น</div>`
         }
+        ${statementHtml}
+        ${statementButton}
+      </div>` : bk.cancel_pending ? `
+      <div class="mt-3 p-3 rounded-3" style="background:#FFFBEB;border:1px solid #FDE68A;">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="fas fa-hourglass-half" style="color:#D97706;"></i>
+          <span class="fw-semibold small" style="color:#92400E;">ผู้เรียนส่งคำขอยกเลิกการเรียน</span>
+        </div>
+        ${bk.cancel_request_reason ? `<div style="font-size:13px;color:#374151;"><span class="fw-semibold">เหตุผล:</span> ${bk.cancel_request_reason}</div>` : ''}
+        <div class="mt-3 pt-3" style="border-top:1px solid #FDE68A;">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <div class="p-2 rounded-3" style="background:#F0FDF4;border:1px solid #BBF7D0;font-size:13px;color:#166534;">
+                <i class="fas fa-check-circle me-1"></i>อนุมัติ: คืนเครดิตให้ผู้เรียน และเปิดช่วงเวลาเรียนอีกครั้ง
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-2 rounded-3" style="background:#FEF2F2;border:1px solid #FECACA;font-size:13px;color:#991B1B;">
+                <i class="fas fa-times-circle me-1"></i>ไม่อนุมัติ: การจองยังมีผลตามเวลาเดิม และเครดิตยังถูกล็อกไว้
+              </div>
+            </div>
+          </div>
+          <div class="small mt-2" style="color:#6B7280;">หากไม่อนุมัติแล้วภายหลังเกิดข้อพิพาท สามารถส่งเรื่องให้แอดมินพิจารณาหลังถึงเวลาเรียนได้</div>
+        </div>
+      </div>` : bk.cancel_rejected ? `
+      <div class="mt-3 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;">
+        <div class="fw-semibold small mb-1"><i class="fas fa-circle-info me-1 text-secondary"></i>บันทึกผลไม่อนุมัติการยกเลิก</div>
+        ${bk.cancel_reject_reason ? `<div style="font-size:13px;color:#374151;"><span class="fw-semibold">เหตุผล:</span> ${bk.cancel_reject_reason}</div>` : ''}
       </div>` : bk.cmt ? `<div class="mt-2 p-3 rounded-2 bg-danger bg-opacity-10" style="font-size:13px;"><span class="text-muted">หมายเหตุ:</span> ${bk.cmt}</div>` : ''}
     <div class="text-muted small mt-3">จองเมื่อ: ${bk.booked}</div>
     ${activityHtml}

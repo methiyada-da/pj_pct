@@ -279,12 +279,21 @@ def tutor_mgmt_detail(request, pk):
     year     = member.user.date_joined.year
     tutor_id = f"TR-{year}-{tutor.pk:04d}"
     skills   = [s.strip() for s in (tutor.tut_skill or '').split(',') if s.strip()]
+    from apps.bookings.models import Booking
+    report_history = (
+        Booking.objects
+        .filter(tutc_id__tut_id=tutor, bk_report_date__isnull=False)
+        .select_related('member', 'tutc_id')
+        .prefetch_related('report_statements', 'report_statements__member')
+        .order_by('-bk_report_date')
+    )
 
     return render(request, 'admin_panel/tutor_mgmt_detail.html', {
         'tutor'             : tutor,
         'member'            : member,
         'tutor_id'          : tutor_id,
         'skills'            : skills,
+        'report_history'    : report_history,
         'faculty_name'      : member.mj_id.fac_id.fac_name if member.mj_id else '—',
         'major_name'        : member.mj_id.mj_name          if member.mj_id else '—',
         'active_menu'       : 'tutor_mgmt',
@@ -541,11 +550,14 @@ def report_mgmt(request):
             ), pk=bk_id
         )
 
-        if action == 'resolve_transfer':
-            # ติวเตอร์ถูก → โอนเครดิต + ปิด case
+        if bk.bk_report_resolved_date:
+            messages.warning(request, f'รายงาน BK{bk.bk_id:05d} ถูกจัดการแล้ว')
+            return redirect('admin_panel:report_mgmt')
+
+        if action == 'no_refund':
             note = request.POST.get('note', '').strip()
             if not note:
-                messages.error(request, 'กรุณาระบุหมายเหตุก่อนดำเนินการ')
+                messages.error(request, 'กรุณาระบุหมายเหตุผลการพิจารณาก่อนดำเนินการ')
                 return redirect('admin_panel:report_mgmt')
             try:
                 with transaction.atomic():
@@ -558,23 +570,22 @@ def report_mgmt(request):
                     from apps.bookings.models import JobCompletion
                     JobCompletion.objects.filter(bk_id=bk).update(jc_confirm_date=timezone.now())
                     bk.bk_status                = 4
-                    bk.bk_cmt                   = f'[แอดมิน] {note}'
+                    bk.bk_cmt                   = f'[แอดมิน] พิจารณาไม่คืนเครดิต: {note}'
                     bk.bk_report_resolved_date  = timezone.now()
                     bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
                     from apps.notifications.signals import _notif_member
                     _notif_member(bk.member, 'booking_rejected',
-                        f'แอดมินตรวจสอบ BK{bk.bk_id:05d} แล้ว — {note}', '/bookings/my/')
+                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาไม่คืนเครดิต', '/bookings/my/')
                     _notif_member(tutor_member, 'booking_credited',
-                        f'การจอง BK{bk.bk_id:05d} ได้รับการอนุมัติจากแอดมิน — เครดิต {total_credit} เครดิต โอนเข้าบัญชีแล้ว', '/bookings/tutor/')
-                messages.success(request, f'โอนเครดิต {total_credit} เครดิต และปิด BK{bk.bk_id:05d} แล้ว')
+                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: เครดิต {total_credit} เครดิตจากการจองนี้โอนเข้าบัญชีของคุณแล้ว', '/bookings/tutor/')
+                messages.success(request, f'บันทึกผลการพิจารณา BK{bk.bk_id:05d} แล้ว: ไม่คืนเครดิต')
             except Exception as e:
                 messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
 
-        elif action == 'suspend':
-            # ติวเตอร์ผิด → ระงับ + คืนเครดิตผู้เรียน
+        elif action == 'refund':
             note = request.POST.get('note', '').strip()
             if not note:
-                messages.error(request, 'กรุณาระบุหมายเหตุก่อนดำเนินการ')
+                messages.error(request, 'กรุณาระบุหมายเหตุผลการพิจารณาก่อนดำเนินการ')
                 return redirect('admin_panel:report_mgmt')
             try:
                 with transaction.atomic():
@@ -582,20 +593,17 @@ def report_mgmt(request):
                     bk.member.mb_locked_crd  = max(0, bk.member.mb_locked_crd - total_credit)
                     bk.member.mb_deposit_crd += total_credit
                     bk.member.save(update_fields=['mb_locked_crd', 'mb_deposit_crd'])
-                    tutor = bk.tutc_id.tut_id
-                    tutor.tut_status = 3
-                    tutor.save(update_fields=['tut_status'])
                     tutor_member = bk.tutc_id.tut_id.tut_id
                     bk.bk_status                = 6
-                    bk.bk_cmt                   = f'[แอดมิน] {note}'
+                    bk.bk_cmt                   = f'[แอดมิน] พิจารณาให้คืนเครดิต: {note}'
                     bk.bk_report_resolved_date  = timezone.now()
                     bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
                     from apps.notifications.signals import _notif_member
                     _notif_member(bk.member, 'booking_rejected',
-                        f'แอดมินตรวจสอบ BK{bk.bk_id:05d} แล้ว — เครดิต {total_credit} เครดิต ได้รับคืนเข้าบัญชีของคุณแล้ว', '/bookings/my/')
-                    _notif_member(tutor_member, 'tutor_suspended',
-                        f'บัญชีติวเตอร์ของคุณถูกระงับชั่วคราว — {note} — กรุณาติดต่อแอดมินผ่านแชทในระบบเพื่อปลดระงับ', '/messaging/')
-                messages.warning(request, f'ระงับติวเตอร์ + คืนเครดิต {total_credit} เครดิต BK{bk.bk_id:05d} เรียบร้อยแล้ว')
+                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาให้คืนเครดิต — เครดิต {total_credit} เครดิตได้รับคืนเข้าบัญชีแล้ว', '/bookings/my/')
+                    _notif_member(tutor_member, 'booking_rejected',
+                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาให้คืนเครดิตแก่ผู้เรียน', '/bookings/tutor/')
+                messages.success(request, f'คืนเครดิต {total_credit} เครดิต และบันทึกผลการพิจารณา BK{bk.bk_id:05d} แล้ว')
             except Exception as e:
                 messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
 
@@ -606,7 +614,7 @@ def report_mgmt(request):
         Booking.objects
         .filter(bk_report_date__isnull=False)
         .select_related('member', 'tutc_id', 'tutc_id__tut_id__tut_id')
-        .prefetch_related('tutoringactivity')
+        .prefetch_related('tutoringactivity', 'report_statements', 'report_statements__member')
         .order_by('-bk_report_date')
     )
 

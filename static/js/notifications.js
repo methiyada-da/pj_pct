@@ -28,9 +28,17 @@ const NOTIF_ICONS_BI = {
   admin_reported:  'bi-exclamation-triangle text-danger',
 };
 
+function _getNotifIcon(n, iconSet, iconPrefix) {
+  const text = n.text || '';
+  if (n.type === 'booking_rejected' && text.includes('เครดิตได้รับคืนเข้าบัญชี')) {
+    return iconPrefix === 'fas' ? 'fa-coins text-success' : 'bi-coin text-success';
+  }
+  return iconSet[n.type] || (iconPrefix === 'fas' ? 'fa-bell text-secondary' : 'bi-bell text-secondary');
+}
+
 /* ── สร้าง HTML item แต่ละรายการ ── */
 function _buildItem(n, iconSet, iconPrefix) {
-  const iconKey = iconSet[n.type] || (iconPrefix === 'fas' ? 'fa-bell text-secondary' : 'bi-bell text-secondary');
+  const iconKey = _getNotifIcon(n, iconSet, iconPrefix);
   // พื้นหลัง: ยังไม่อ่าน = ฟ้าอ่อน, อ่านแล้ว = ขาว
   const bg = n.is_read ? '' : 'style="background:#EFF6FF;"';
   return `
