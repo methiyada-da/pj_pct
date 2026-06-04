@@ -68,6 +68,39 @@ class Booking(models.Model):
         return f"BK{self.bk_id:05d} | {self.member.mb_full_name}"
 
 
+class BookingReportStatement(models.Model):
+    ROLE_CHOICES = [
+        ('student', 'Student'),
+        ('tutor', 'Tutor'),
+    ]
+
+    brs_id = models.AutoField(primary_key=True, verbose_name="Report statement ID")
+    bk_id = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name='report_statements',
+        db_column='bk_id',
+        verbose_name="Booking",
+    )
+    member = models.ForeignKey(
+        Member,
+        on_delete=models.CASCADE,
+        db_column='member_id',
+        verbose_name="Statement owner",
+    )
+    brs_role = models.CharField(max_length=10, choices=ROLE_CHOICES, verbose_name="Role")
+    brs_desc = models.TextField(verbose_name="Statement detail")
+    brs_date = models.DateTimeField(verbose_name="Statement date")
+
+    class Meta:
+        db_table = 'booking_report_statement'
+        verbose_name = "Booking report statement"
+        ordering = ['brs_date', 'brs_id']
+
+    def __str__(self):
+        return f"Statement | BK{self.bk_id_id:05d} | {self.brs_role}"
+
+
 # 4.3.1.16 ตารางข้อมูลกิจกรรมการติว
 class TutoringActivity(models.Model):
     bk_id   = models.OneToOneField(
