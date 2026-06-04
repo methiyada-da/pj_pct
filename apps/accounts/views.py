@@ -14,7 +14,43 @@ import os
 # ─────────────────────────────────────────────
 def home_view(request):
     """หน้าแรกของเว็บไซต์"""
-    return render(request, 'main/home.html')
+    from django.db.models import Count, OuterRef, Q, Subquery
+    from apps.accounts.models import Tutor
+    from apps.tutoring.models import TutorCourse, TutorRate
+
+    min_rate_subquery = (
+        TutorRate.objects
+        .filter(tutc_id=OuterRef('tutc_id'))
+        .order_by('tut_rate_per_person')
+        .values('tut_rate_per_person')[:1]
+    )
+
+    featured_courses = (
+        TutorCourse.objects
+        .filter(tutc_status=1, tut_id__tut_status=1)
+        .select_related('tut_id', 'tut_id__tut_id', 'crs_id', 'crs_id__cg_id')
+        .annotate(lowest_price=Subquery(min_rate_subquery))
+        .order_by('lowest_price', 'tutc_name')[:6]
+    )
+
+    featured_tutors = (
+        Tutor.objects
+        .filter(tut_status=1)
+        .select_related('tut_id', 'tut_id__mj_id', 'tut_id__mj_id__fac_id')
+        .annotate(
+            course_count=Count(
+                'tutorcourse',
+                filter=Q(tutorcourse__tutc_status=1),
+            )
+        )
+        .filter(course_count__gt=0)
+        .order_by('-tut_rating', 'tut_id__mb_full_name')[:6]
+    )
+
+    return render(request, 'main/home.html', {
+        'featured_tutors': featured_tutors,
+        'featured_courses': featured_courses,
+    })
 
 
 # ─────────────────────────────────────────────
