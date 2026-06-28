@@ -67,11 +67,11 @@
             {{ sys_form.email_domain }}
             {% if email_domain_locked %}
               <div class="form-text text-warning">
-                <i class="bi bi-lock-fill me-1"></i>โดเมนอีเมลถูกกำหนดแล้ว เพื่อป้องกันผลกระทบต่อบัญชีสมาชิกเดิม
+                <i class="bi bi-lock-fill me-1"></i>มีสมาชิกในระบบแล้ว จึงล็อกโดเมนอีเมลเพื่อป้องกันผลกระทบต่อบัญชีสมาชิกเดิม
               </div>
             {% else %}
               <div class="form-text text-danger">
-                <i class="bi bi-exclamation-triangle me-1"></i>ตั้งค่าได้ครั้งเดียว หลังบันทึกแล้วจะไม่สามารถแก้ไขโดเมนอีเมลจากหน้านี้ได้
+                <i class="bi bi-unlock-fill me-1"></i>ยังไม่มีสมาชิกในระบบ สามารถแก้ไขโดเมนอีเมลได้จนกว่าจะมีสมาชิกสมัครใช้งาน
               </div>
             {% endif %}
             {% if sys_form.email_domain.errors %}
@@ -110,11 +110,11 @@
           {{ sys_form.crd_val }}
           {% if credit_value_locked %}
             <div class="form-text text-warning">
-              <i class="bi bi-lock-fill me-1"></i>มูลค่าเครดิตถูกกำหนดแล้ว จึงไม่สามารถแก้ไขได้
+              <i class="bi bi-lock-fill me-1"></i>มีสมาชิกในระบบแล้ว จึงล็อกมูลค่าเครดิตเพื่อป้องกันผลกระทบต่อยอดเครดิตและธุรกรรมเดิม
             </div>
           {% else %}
             <div class="form-text text-danger">
-              <i class="bi bi-exclamation-triangle me-1"></i>ตั้งค่าได้ครั้งเดียว หลังบันทึกแล้วจะไม่สามารถแก้ไขมูลค่าเครดิตได้
+              <i class="bi bi-unlock-fill me-1"></i>ยังไม่มีสมาชิกในระบบ สามารถแก้ไขมูลค่าเครดิตได้จนกว่าจะมีสมาชิกสมัครใช้งาน
             </div>
           {% endif %}
           {% if sys_form.crd_val.errors %}
@@ -163,7 +163,7 @@
         </div>
       </div>
 
-      <form method="post" class="admin-form-grid admin-form-grid-single mt-3">
+      <form method="post" class="admin-form-grid admin-form-grid-single mt-3" id="adminUserForm">
         {% csrf_token %}
         <input type="hidden" name="action" value="admin_user" />
 
@@ -220,8 +220,8 @@
             <i class="bi bi-lock-fill" style="font-size:21px;"></i>
           </div>
           <div class="flex-grow-1">
-            <h5 class="fw-bold mb-1">ยืนยันค่าที่จะล็อก</h5>
-            <div class="text-muted small">มูลค่าเครดิตและโดเมนอีเมลจะถูกล็อกหลังบันทึกครั้งแรก</div>
+            <h5 class="fw-bold mb-1">ยืนยันการบันทึก</h5>
+            <div class="text-muted small">มูลค่าเครดิตและโดเมนอีเมลจะแก้ได้จนกว่าจะมีสมาชิกในระบบ</div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
@@ -229,16 +229,12 @@
       <div class="modal-body px-4 py-3">
         <div class="rounded-3 border p-3 mb-3" style="background:#F8FAFC;">
           <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:13px;">
-            <span class="text-muted">มูลค่าเครดิตที่จะบันทึก</span>
+            <span class="text-muted">มูลค่าเครดิต</span>
             <span class="fw-bold text-primary" id="creditValuePreview">-</span>
-          </div>
-          <div class="d-flex justify-content-between py-2 border-bottom" style="font-size:13px;">
-            <span class="text-muted">โดเมนอีเมลที่จะล็อก</span>
-            <span class="fw-bold text-primary" id="emailDomainPreview">-</span>
           </div>
           <div class="small text-danger mt-3">
             <i class="bi bi-exclamation-triangle me-1"></i>
-            เมื่อตั้งค่าแล้ว ระบบจะล็อกสองค่านี้ทันที และไม่สามารถแก้ไขจากหน้านี้ได้อีก
+            หลังมีสมาชิกในระบบแล้ว ระบบจะล็อกมูลค่าเครดิตและโดเมนอีเมลโดยอัตโนมัติ
           </div>
         </div>
       </div>
@@ -247,7 +243,35 @@
           ย้อนกลับ
         </button>
         <button type="button" class="btn btn-warning fw-bold flex-fill" id="confirmCreditValueBtn">
-          <i class="bi bi-lock-fill me-1"></i>ยืนยันล็อกและบันทึก
+          <i class="bi bi-check2 me-1"></i>ยืนยันและบันทึก
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="saveConfirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:14px;overflow:hidden;">
+      <div class="modal-header border-0 pb-0 px-4 pt-4">
+        <div class="d-flex align-items-start gap-3">
+          <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+               style="width:46px;height:46px;background:#FEF3C7;color:#D97706;">
+            <i class="bi bi-exclamation-triangle" style="font-size:21px;"></i>
+          </div>
+          <div class="flex-grow-1">
+            <h5 class="fw-bold mb-1" id="saveConfirmTitle">ยืนยันการบันทึก</h5>
+            <div class="text-muted small" id="saveConfirmText">กรุณาตรวจสอบข้อมูลก่อนบันทึก</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+      <div class="modal-footer border-0 px-4 pb-4 pt-3 gap-2">
+        <button type="button" class="btn btn-light border fw-semibold flex-fill" data-bs-dismiss="modal">
+          ย้อนกลับ
+        </button>
+        <button type="button" class="btn btn-warning fw-bold flex-fill" id="saveConfirmBtn">
+          <i class="bi bi-check2 me-1"></i>ยืนยันบันทึก
         </button>
       </div>
     </div>
@@ -258,32 +282,61 @@
 {% block extra_js %}
 <script>
   (function () {
-    const form = document.getElementById('systemSettingsForm');
     const confirmInput = document.getElementById('confirmCreditValueLock');
-    const creditInput = document.getElementById('id_crd_val');
-    const emailDomainInput = document.getElementById('id_email_domain');
-    const preview = document.getElementById('creditValuePreview');
-    const domainPreview = document.getElementById('emailDomainPreview');
-    const confirmBtn = document.getElementById('confirmCreditValueBtn');
-    const modalEl = document.getElementById('creditValueLockModal');
-    if (!form || !confirmInput || !creditInput || !modalEl || form.dataset.creditLocked === 'true') return;
+    if (confirmInput) confirmInput.value = '1';
 
-    let confirmed = false;
-    form.addEventListener('submit', function (event) {
-      if (confirmed) return;
-      event.preventDefault();
-      preview.textContent = '฿' + (creditInput.value || '0.00') + ' / 1 เครดิต';
-      domainPreview.textContent = '@' + (emailDomainInput.value || '').replace(/^@+/, '');
-      new bootstrap.Modal(modalEl).show();
-    });
+    const modalEl = document.getElementById('saveConfirmModal');
+    const confirmBtn = document.getElementById('saveConfirmBtn');
+    const titleEl = document.getElementById('saveConfirmTitle');
+    const textEl = document.getElementById('saveConfirmText');
+    if (!modalEl || !confirmBtn || !titleEl || !textEl) return;
+
+    let pendingForm = null;
+    let confirmedForm = null;
+
+    function attachConfirm(formId, title, text) {
+      const form = document.getElementById(formId);
+      if (!form) return;
+
+      form.addEventListener('submit', function (event) {
+        if (confirmedForm === form) {
+          confirmedForm = null;
+          return;
+        }
+
+        event.preventDefault();
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+
+        pendingForm = form;
+        titleEl.textContent = title;
+        textEl.textContent = text;
+        new bootstrap.Modal(modalEl).show();
+      });
+    }
 
     confirmBtn.addEventListener('click', function () {
-      confirmed = true;
-      confirmInput.value = '1';
+      if (!pendingForm) return;
+      confirmedForm = pendingForm;
+      const form = pendingForm;
+      pendingForm = null;
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
       form.requestSubmit();
     });
+
+    attachConfirm(
+      'systemSettingsForm',
+      'ยืนยันการบันทึกข้อมูลระบบ',
+      'การเปลี่ยนข้อมูลระบบจะมีผลกับการใช้งาน เช่น บัญชีรับเงิน มูลค่าเครดิต ค่าธรรมเนียม และโดเมนอีเมล'
+    );
+    attachConfirm(
+      'adminUserForm',
+      'ยืนยันการบันทึกข้อมูลผู้ดูแล',
+      'การเปลี่ยนข้อมูลผู้ดูแลจะมีผลกับชื่อ อีเมล หรือรหัสผ่านสำหรับเข้าสู่ระบบผู้ดูแล'
+    );
   })();
 </script>
 {% endblock %}
