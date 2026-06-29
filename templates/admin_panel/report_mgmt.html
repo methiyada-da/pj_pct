@@ -256,11 +256,14 @@
         </td>
         <td style="font-size:13px;">
           {% if bk.bk_report_reason == '1' %}หลักฐานไม่ตรงความจริง
-          {% elif bk.bk_report_reason == '2' %}ไม่ได้สอนแต่แจ้งจบ
+          {% elif bk.bk_report_reason == '2' or bk.bk_report_reason == 't_no_show' %}ติวเตอร์ไม่เข้าสอน
           {% elif bk.bk_report_reason == '3' %}เนื้อหาไม่ตรง
           {% elif bk.bk_report_reason == '4' %}กดยืนยันพลาด
+          {% elif bk.bk_report_reason == '5' or bk.bk_report_reason == 's_no_show' %}ผู้เรียนไม่เข้าเรียน
+          {% elif bk.bk_report_reason == '6' or bk.bk_report_reason == 'contact' or bk.bk_report_reason == 'cannot_contact' %}ติดต่อไม่ได้
+          {% elif bk.bk_report_reason == '7' or bk.bk_report_reason == 'agree' %}ไม่สามารถตกลงกันได้
+          {% elif bk.bk_report_reason == '8' or bk.bk_report_reason == 'other' %}อื่นๆ
           {% elif bk.bk_report_reason == 'cancel' %}ข้อพิพาทการยกเลิกจากติวเตอร์
-          {% elif bk.bk_report_reason == 'other' %}อื่นๆ
           {% else %}—{% endif %}
         </td>
         <td style="max-width:200px;">
@@ -487,11 +490,20 @@ const REPORT_STATEMENTS = {
 };
 const REASON_MAP = {
   "1": "หลักฐานการสอนไม่ตรงความจริง",
-  "2": "ไม่ได้สอนเลยแต่แจ้งจบงาน",
+  "2": "ติวเตอร์ไม่เข้าสอน",
   "3": "เนื้อหาไม่ตรงที่ตกลงไว้",
   "4": "กดยืนยันพลาด แต่ยังไม่ได้เรียนจริง",
+  "5": "ผู้เรียนไม่เข้าเรียน",
+  "6": "ติดต่อไม่ได้",
+  "7": "ไม่สามารถตกลงกันได้",
+  "8": "อื่นๆ",
   "cancel": "ข้อพิพาทการยกเลิกจากติวเตอร์",
   "other": "อื่นๆ",
+  "t_no_show": "ติวเตอร์ไม่เข้าสอน",
+  "s_no_show": "ผู้เรียนไม่เข้าเรียน",
+  "contact": "ติดต่อไม่ได้",
+  "cannot_contact": "ติดต่อไม่ได้",
+  "agree": "ไม่สามารถตกลงกันได้",
 };
 
 function renderReportStatements(pk) {
@@ -586,9 +598,9 @@ function validateNote(form) {
       : 'ระบบจะไม่คืนเครดิตแก่ผู้เรียน <br>และโอนเครดิตที่ล็อกไว้ให้ติวเตอร์',
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'บันทึกผลการพิจารณา',
+    confirmButtonText: 'บันทึก',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: isRefund ? '#10B981' : '#6B7280',
+    confirmButtonColor: isRefund ? '#10B981' : '#2563EB',
     cancelButtonColor: '#6B7280',
     reverseButtons: true,
     customClass: {
