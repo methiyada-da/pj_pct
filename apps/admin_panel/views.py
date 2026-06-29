@@ -28,6 +28,10 @@ def is_admin(user):
     return System.objects.filter(admin=user).exists()
 
 
+def member_user_queryset():
+    return Member.objects.filter(user__is_staff=False, user__is_superuser=False)
+
+
 # ─── Dashboard ───────────────────────────────────────────────────────────────
 
 @login_required
@@ -38,10 +42,11 @@ def dashboard(request):
     import json
 
     # ── Summary stats ──
-    total_members   = Member.objects.count()
-    active_members  = Member.objects.filter(mb_status=1).count()
-    total_tutors    = Tutor.objects.filter(tut_status=1).count()
-    pending_tutors  = Tutor.objects.filter(tut_status=0).count()
+    member_users = member_user_queryset()
+    total_members   = member_users.count()
+    active_members  = member_users.filter(mb_status=1).count()
+    total_tutors    = Tutor.objects.filter(tut_id__user__is_staff=False, tut_id__user__is_superuser=False, tut_status=1).count()
+    pending_tutors  = Tutor.objects.filter(tut_id__user__is_staff=False, tut_id__user__is_superuser=False, tut_status=0).count()
 
     approved_refills = Refill.objects.filter(rf_status=1)
     total_topup_money = approved_refills.aggregate(t=Sum('rf_money'))['t'] or 0
@@ -63,7 +68,6 @@ def dashboard(request):
     months_data   = []
     MONTH_TH = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
                 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-    from django.contrib.auth.models import User
     for i in range(6, -1, -1):
         # Calculate first day of the month i months ago
         d = today.replace(day=1) - timezone.timedelta(days=i * 30) # approximation
@@ -74,7 +78,7 @@ def dashboard(request):
             month += 12
             year -= 1
         
-        cnt = User.objects.filter(date_joined__year=year, date_joined__month=month).count()
+        cnt = member_users.filter(user__date_joined__year=year, user__date_joined__month=month).count()
         months_labels.append(MONTH_TH[month])
         months_data.append(cnt)
 
@@ -85,7 +89,7 @@ def dashboard(request):
     max_crs = top_groups[0].crs_count if top_groups else 1
 
     # ── Recent activity ──
-    recent_members  = Member.objects.select_related('user').order_by('-user__date_joined')[:5]
+    recent_members  = member_users.select_related('user').order_by('-user__date_joined')[:5]
     recent_refills  = Refill.objects.select_related('member').order_by('-rf_date')[:5]
     recent_withdraw = Withdrawals.objects.select_related('member').order_by('-wd_req_date')[:3]
 
@@ -126,8 +130,9 @@ def system_settings(request):
     """หน้าตั้งค่าระบบ (System + Admin User)"""
     system    = System.objects.select_related('admin').first()
     admin_user = system.admin if system else None
-    credit_value_locked = bool(system and system.crd_val and system.crd_val > 0)
-    email_domain_locked = credit_value_locked
+    member_exists = member_user_queryset().exists()
+    credit_value_locked = member_exists
+    email_domain_locked = member_exists
 
     sys_form  = SystemForm(instance=system)
     user_form = AdminUserForm(instance=admin_user)
@@ -145,11 +150,9 @@ def system_settings(request):
             post_data = request.POST.copy()
             if credit_value_locked:
                 post_data['crd_val'] = str(system.crd_val)
+
             if email_domain_locked:
                 post_data['email_domain'] = system.email_domain
-            elif post_data.get('confirm_credit_value_lock') != '1':
-                messages.error(request, 'กรุณายืนยันการล็อกมูลค่าเครดิตและโดเมนอีเมลก่อนบันทึกข้อมูลระบบ')
-                return redirect('admin_panel:system_settings')
 
             sys_form = SystemForm(post_data, instance=system)
             if credit_value_locked:
@@ -401,7 +404,7 @@ def member_mgmt(request):
     mj_filter     = request.GET.get("mj", "")
     status_filter = request.GET.get("status", "")
 
-    qs = Member.objects.select_related("user", "mj_id", "mj_id__fac_id").order_by("-user__date_joined")
+    qs = member_user_queryset().select_related("user", "mj_id", "mj_id__fac_id").order_by("-user__date_joined")
 
     if q:
         qs = qs.filter(
@@ -416,9 +419,10 @@ def member_mgmt(request):
     if status_filter != "":
         qs = qs.filter(mb_status=status_filter)
 
-    total_count  = Member.objects.count()
-    active_count = Member.objects.filter(mb_status=1).count()
-    tutor_count  = Member.objects.filter(tutor__tut_status=1).count()
+    base_members = member_user_queryset()
+    total_count  = base_members.count()
+    active_count = base_members.filter(mb_status=1).count()
+    tutor_count  = base_members.filter(tutor__tut_status=1).count()
 
     faculties = Faculty.objects.order_by("fac_name")
     majors    = Major.objects.select_related("fac_id").order_by("fac_id", "mj_name")
