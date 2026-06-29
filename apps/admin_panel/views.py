@@ -575,9 +575,9 @@ def report_mgmt(request):
                     bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
                     from apps.notifications.signals import _notif_member
                     _notif_member(bk.member, 'booking_rejected',
-                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาไม่คืนเครดิต', '/bookings/my/')
+                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาไม่คืนเครดิต', '/bookings/my/?tab=6')
                     _notif_member(tutor_member, 'booking_credited',
-                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: เครดิต {total_credit} เครดิตจากการจองนี้โอนเข้าบัญชีของคุณแล้ว', '/bookings/tutor/')
+                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: เครดิต {total_credit} เครดิตจากการจองนี้โอนเข้าบัญชีของคุณแล้ว', '/bookings/tutor/?tab=done')
                 messages.success(request, f'บันทึกผลการพิจารณา BK{bk.bk_id:05d} แล้ว: ไม่คืนเครดิต')
             except Exception as e:
                 messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
@@ -600,9 +600,9 @@ def report_mgmt(request):
                     bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
                     from apps.notifications.signals import _notif_member
                     _notif_member(bk.member, 'booking_rejected',
-                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาให้คืนเครดิต — เครดิต {total_credit} เครดิตได้รับคืนเข้าบัญชีแล้ว', '/bookings/my/')
+                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาให้คืนเครดิต — เครดิต {total_credit} เครดิตได้รับคืนเข้าบัญชีแล้ว', '/bookings/my/?tab=6')
                     _notif_member(tutor_member, 'booking_rejected',
-                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาให้คืนเครดิตแก่ผู้เรียน', '/bookings/tutor/')
+                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาให้คืนเครดิตแก่ผู้เรียน', '/bookings/tutor/?tab=rejected')
                 messages.success(request, f'คืนเครดิต {total_credit} เครดิต และบันทึกผลการพิจารณา BK{bk.bk_id:05d} แล้ว')
             except Exception as e:
                 messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
@@ -629,8 +629,23 @@ def report_mgmt(request):
     elif status_filter == 'resolved':
         qs = qs.filter(bk_report_resolved_date__isnull=False)
 
+    raw_page = request.GET.get('page') or 1
+    try:
+        page_number = int(raw_page)
+    except (TypeError, ValueError):
+        page_number = 1
+    if page_number < 1:
+        page_number = 1
+
     paginator = Paginator(qs, 15)
-    page      = paginator.get_page(request.GET.get('page', 1))
+    page      = paginator.get_page(page_number)
+
+    # Template เรียก previous_page_number/next_page_number แม้ปุ่ม disabled
+    # จึงกันไม่ให้หน้าแรกสร้างเลข 0 หรือหน้าสุดท้ายสร้างเลขเกินจำนวนหน้า
+    if not page.has_previous():
+        page.previous_page_number = lambda: page.number
+    if not page.has_next():
+        page.next_page_number = lambda: page.number
 
     return render(request, 'admin_panel/report_mgmt.html', {
         'page'           : page,

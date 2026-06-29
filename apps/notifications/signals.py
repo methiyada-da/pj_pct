@@ -80,7 +80,7 @@ def booking_post_save(sender, instance, created, **kwargs):
             tutor_member,
             'booking_new',
             f'มีการจองติว "{course_name}" ใหม่',
-            f'/bookings/tutor/',
+            f'/bookings/tutor/?tab=pending',
         )
 
     elif old != new:
@@ -88,42 +88,36 @@ def booking_post_save(sender, instance, created, **kwargs):
 
         if new == 1:
             # รับงานแล้ว → แจ้ง Member ให้ไปดูการจองของตัวเอง
-            _notif_member(member, 'booking_accepted', 'ติวเตอร์ยืนยันรับการจองของคุณแล้ว', f'/bookings/my/')
+            _notif_member(member, 'booking_accepted', 'ติวเตอร์ยืนยันรับการจองของคุณแล้ว', f'/bookings/my/?tab=1')
 
         elif new == 3:
             # แจ้งจบงาน → แจ้ง Member ให้กดยืนยันจบงาน
-            _notif_member(member, 'booking_completed', 'ติวเตอร์แจ้งจบงาน กรุณายืนยันการเรียน', f'/bookings/my/{instance.pk}/confirm-completion/')
+            _notif_member(member, 'booking_completed', 'ติวเตอร์แจ้งจบงาน กรุณายืนยันการเรียน', f'/bookings/my/?tab=23')
 
         elif new == 4:
             # ยืนยันจบงาน → แจ้ง Tutor
-            _notif_member(tutor_member, 'booking_credited', 'งานเสร็จสิ้น คุณได้รับเครดิตจากการสอนแล้ว', f'/bookings/tutor/')
+            _notif_member(tutor_member, 'booking_credited', 'งานเสร็จสิ้น คุณได้รับเครดิตจากการสอนแล้ว', f'/bookings/tutor/?tab=done')
 
         elif new == 5:
             # รีวิวแล้ว → แจ้ง Tutor
-            _notif_member(tutor_member, 'booking_reviewed', 'มีรีวิวใหม่จากผู้เรียน', f'/bookings/tutor/')
+            _notif_member(tutor_member, 'booking_reviewed', 'มีรีวิวใหม่จากผู้เรียน', f'/bookings/tutor/?tab=done')
 
         elif new == 6:
             if instance.bk_cmt == 'ผู้เรียนยกเลิกการจอง':
                 # ผู้เรียนยกเลิกเอง → แจ้ง Tutor ว่าถูกยกเลิก
-                _notif_member(tutor_member, 'booking_cancelled', 'ผู้เรียนยกเลิกการจองของคุณ', f'/bookings/tutor/')
+                _notif_member(tutor_member, 'booking_cancelled', 'ผู้เรียนยกเลิกการจองของคุณ', f'/bookings/tutor/?tab=rejected')
             else:
                 # ติวเตอร์ปฏิเสธ → แจ้ง Member
-                _notif_member(member, 'booking_rejected', 'ติวเตอร์ปฏิเสธการจองของคุณ', f'/bookings/my/')
+                _notif_member(member, 'booking_rejected', 'ติวเตอร์ปฏิเสธการจองของคุณ', f'/bookings/my/?tab=6')
 
-    # รายงานปัญหา → แจ้ง Admin + ติวเตอร์
+    # รายงานปัญหา → แจ้ง Admin เท่านั้น
+    # แจ้งอีกฝ่ายให้เข้าชี้แจงถูกส่งจาก view รายงานปัญหา เพื่อไม่ให้ติวเตอร์ได้รับซ้ำ
     old_report = getattr(instance, '_old_report_date', None)
     if instance.bk_report_date and not old_report:
         _notif_admin(
             'admin_reported',
             f'มีการรายงานปัญหาจากการจอง BK{instance.pk:05d}',
             f'/panel/report-mgmt/',
-        )
-        # แจ้งติวเตอร์ว่าผู้เรียนรายงานปัญหา
-        _notif_member(
-            tutor_member,
-            'booking_reported',
-            f'ผู้เรียนได้รายงานปัญหาการจอง BK{instance.pk:05d} ไปยังแอดมินแล้ว โปรดรอผลการพิจารณา',
-            f'/bookings/tutor/',
         )
 
 

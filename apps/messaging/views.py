@@ -136,10 +136,13 @@ def chat_with(request, mb_id):
 
     # เพิ่ม flag show_date_sep — ขึ้น date separator เฉพาะเมื่อวันเปลี่ยน
     raw_msgs = list(inbox.message_set.select_related("sender").order_by("msg_sent_time"))
+    def local_msg_date(msg):
+        return timezone.localtime(msg.msg_sent_time).date()
+
     for i, m in enumerate(raw_msgs):
         m.show_date_sep = (
             i == 0 or
-            raw_msgs[i-1].msg_sent_time.date() != m.msg_sent_time.date()
+            local_msg_date(raw_msgs[i-1]) != local_msg_date(m)
         )
     messages_qs = raw_msgs
 
