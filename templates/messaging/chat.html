@@ -310,6 +310,7 @@
     const row  = document.createElement('div');
     row.className = `msg-row ${isMe ? 'msg-row--me' : 'msg-row--other'}`;
     row.dataset.msgId = msg.msg_id;
+    row.dataset.sentTime = msg.msg_sent_time;
     if (!isMe) {
       if (msg.sender_img) {
         const img = document.createElement('img');

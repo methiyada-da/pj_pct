@@ -367,7 +367,7 @@
               {% if bk.cancel_dispute_available %}
               <button class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 w-100"
                 onclick="openEscalateCancelDispute({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
-                ส่งให้แอดมินพิจารณา
+                <i class="fas fa-flag me-1"></i>รายงานปัญหา
               </button>
               {% endif %}
               {% if bk.tutor_cancel_for_student_available %}
@@ -385,7 +385,7 @@
               {% if bk.tutor_can_escalate_after_start %}
               <button class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 w-100"
                 onclick="openEscalateCancelDispute({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
-                ส่งให้แอดมินพิจารณา
+                <i class="fas fa-flag me-1"></i>รายงานปัญหา
               </button>
               {% endif %}
 
@@ -609,7 +609,7 @@
           <div class="d-flex align-items-center gap-2 p-2" style="background:#F5F3FF;border-bottom:1px solid #DDD6FE;">
             <i class="fas fa-flag" style="color:#7C3AED;"></i>
             <span class="small fw-semibold" style="color:#5B21B6;">
-              {% if bk.bk_report_reason == 'cancel' %}ส่งเรื่องให้แอดมินพิจารณา{% else %}ผู้เรียนรายงานปัญหา{% endif %} — {% if bk.bk_report_resolved_date %}พิจารณาเสร็จสิ้นแล้ว{% else %}รอพิจารณา{% endif %}
+              {% if bk.report_by_tutor %}คุณรายงานปัญหา{% else %}ผู้เรียนรายงานปัญหา{% endif %} — {% if bk.bk_report_resolved_date %}พิจารณาเสร็จสิ้นแล้ว{% else %}รอพิจารณา{% endif %}
             </span>
           </div>
           {% endif %}
@@ -667,6 +667,7 @@
 </form>
 <form id="cancelDisputeForm" method="post" style="display:none">
   {% csrf_token %}
+  <input type="hidden" name="rp_reason" id="cancelDisputeReason">
   <textarea name="dispute_desc" id="cancelDisputeDesc"></textarea>
 </form>
 
@@ -708,9 +709,11 @@ const bookingData = {
     cancel_rejected: {% if bk.cancel_request_rejected %}true{% else %}false{% endif %},
     cancel_request_reason: "{{ bk.cancel_request_reason|default:''|escapejs }}",
     cancel_reject_reason: "{{ bk.cancel_reject_reason|default:''|escapejs }}",
+    can_report_problem: {% if bk.can_report_problem_after_start %}true{% else %}false{% endif %},
     reported: {% if bk.bk_report_date %}true{% else %}false{% endif %},
-    report_by_tutor: {% if bk.bk_report_reason == 'cancel' %}true{% else %}false{% endif %},
-    report_desc: "{% if bk.bk_report_reason == 'cancel' %}{{ bk.bk_report_desc|default:''|escapejs }}{% endif %}",
+    report_by_tutor: {% if bk.report_by_tutor %}true{% else %}false{% endif %},
+    report_reason: "{{ bk.bk_report_reason|default:''|escapejs }}",
+    report_desc: "{{ bk.bk_report_desc|default:''|escapejs }}",
     report_resolved: {% if bk.bk_report_resolved_date %}true{% else %}false{% endif %},
     report_resolved_date: "{{ bk.bk_report_resolved_date|date:'d M Y H:i'|default:'' }}",
     report_statements: [
@@ -852,14 +855,35 @@ function openFinish(bkId, courseName) {
 // });
 
 // Tab switching
+const tabs = ['pending','accepted','studying','notified','done','rejected','reported'];
+
+function showTab(tabName) {
+  if (!tabs.includes(tabName)) {
+    tabName = 'pending';
+  }
+
+  document.querySelectorAll('.tab-pill').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+
+  tabs.forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) {
+      el.classList.toggle('d-none', t !== tabName);
+    }
+  });
+}
+
+const params = new URLSearchParams(window.location.search);
+showTab(params.get('tab') || 'pending');
+
 document.querySelectorAll('.tab-pill').forEach(btn => {
   btn.addEventListener('click', function () {
-    document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    ['pending','accepted','studying','notified','done','rejected','reported'].forEach(t => {
-      const el = document.getElementById('tab-' + t);
-      if (el) el.classList.toggle('d-none', t !== this.dataset.tab);
-    });
+    showTab(this.dataset.tab);
+
+    const url = new URL(window.location);
+    url.searchParams.set('tab', this.dataset.tab);
+    window.history.replaceState({}, '', url);
   });
 });
 
@@ -953,7 +977,7 @@ function openRejectCancel(bkId, studentName) {
           <div>• การจองยังมีผลตามเวลาเรียนเดิม</div>
           <div>• เครดิตของผู้เรียนยังถูกล็อกไว้</div>
           <div>• ผู้เรียนจะเห็นเหตุผลที่คุณระบุ</div>
-          <div>• หลังถึงเวลาเรียน หากยังมีข้อพิพาท สามารถส่งให้แอดมินพิจารณาได้</div>
+          <div>• หลังถึงเวลาเรียน หากยังมีข้อพิพาท สามารถรายงานปัญหาได้</div>
         </div>
       </div>`,
     icon: 'warning',
@@ -1022,10 +1046,10 @@ function openTutorCancelForStudent(bkId, studentName, totalCredit) {
 function openEscalateCancelDispute(bkId, studentName) {
   const bk = bookingData[bkId];
   const startTime = bk.start_iso ? new Date(bk.start_iso) : null;
-  if (startTime && Date.now() < startTime.getTime()) {
+  if (!bk.can_report_problem || (startTime && Date.now() < startTime.getTime())) {
     Swal.fire({
       title: 'ยังไม่ถึงเวลาเรียน',
-      text: 'ส่งเรื่องให้แอดมินพิจารณาได้เมื่อถึงเวลาเรียนหรือหลังเวลาเรียนแล้ว',
+      text: 'รายงานปัญหาได้เมื่อถึงเวลาเรียนหรือหลังเวลาเรียนแล้ว และต้องยังไม่เคยส่งรายงานมาก่อน',
       icon: 'info',
       confirmButtonText: 'รับทราบ',
       confirmButtonColor: '#2563EB',
@@ -1038,30 +1062,53 @@ function openEscalateCancelDispute(bkId, studentName) {
   }
 
   Swal.fire({
-    title: 'ส่งให้แอดมินพิจารณา',
+    title: 'รายงานปัญหา',
     html: `
-      <div class="text-start small text-muted mb-2">
-        รายการนี้จะย้ายไปแท็บรายงาน และเครดิตจะยังถูกล็อกไว้จนกว่าแอดมินจะพิจารณา
-      </div>
-      <div class="text-start small p-3 rounded-3 mb-2" style="background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;">
-        ใช้กรณีหลังถึงเวลาเรียนแล้ว และยังตกลงเรื่องการยกเลิกไม่ได้ เช่น ผู้เรียนขอยกเลิกแต่คุณไม่อนุมัติ และต้องการให้แอดมินพิจารณาว่าควรคืนเครดิตหรือไม่
-      </div>
-      <div class="text-start small">
-        ผู้เรียน: <strong>${studentName}</strong>
+      <p class="text-muted small mb-3">ผู้เรียน: <strong>${studentName}</strong></p>
+      <div style="text-align:left;">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="tutor_report_reason" id="tr1" value="5">
+          <label class="form-check-label" for="tr1">ผู้เรียนไม่เข้าเรียน</label>
+        </div>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="tutor_report_reason" id="tr2" value="6">
+          <label class="form-check-label" for="tr2">ติดต่อไม่ได้</label>
+        </div>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="tutor_report_reason" id="tr3" value="7">
+          <label class="form-check-label" for="tr3">ไม่สามารถตกลงกันได้</label>
+        </div>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="radio" name="tutor_report_reason" id="tr4" value="8">
+          <label class="form-check-label" for="tr4">อื่น ๆ</label>
+        </div>
+        <textarea id="tutor-report-desc-input" class="form-control" rows="3"
+                  placeholder="รายละเอียดเพิ่มเติม..."
+                  style="font-size:13px;"></textarea>
+        <div class="text-danger small mt-1 d-none" id="tutor-report-error"></div>
       </div>`,
     icon: 'warning',
-    input: 'textarea',
-    inputPlaceholder: 'ระบุรายละเอียด เช่น ผู้เรียนขอยกเลิกแต่ไม่ได้ตกลงกัน และไม่เข้าเรียนตามเวลานัด...',
-    inputAttributes: { rows: 4 },
     showCancelButton: true,
-    confirmButtonText: '<i class="fas fa-paper-plane me-1"></i> ส่งให้แอดมิน',
-    cancelButtonText: 'ปิด',
+    confirmButtonText: '<i class="fas fa-paper-plane me-1"></i> ส่งรายงาน',
+    cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#F59E0B',
     cancelButtonColor: '#6B7280',
     reverseButtons: true,
-    inputValidator: value => {
-      if (!value || !value.trim()) return 'กรุณาระบุรายละเอียดเพื่อส่งให้แอดมินพิจารณา';
-      return null;
+    preConfirm: () => {
+      const reason = document.querySelector('input[name="tutor_report_reason"]:checked');
+      const desc = document.getElementById('tutor-report-desc-input').value.trim();
+      const errEl = document.getElementById('tutor-report-error');
+      if (!reason) {
+        errEl.textContent = 'กรุณาเลือกสาเหตุของปัญหา';
+        errEl.classList.remove('d-none');
+        return false;
+      }
+      if ((reason.value === '8' || reason.value === 'other') && !desc) {
+        errEl.textContent = 'กรุณาระบุรายละเอียดเมื่อเลือก "อื่น ๆ"';
+        errEl.classList.remove('d-none');
+        return false;
+      }
+      return { reason: reason.value, desc };
     },
     customClass: {
       popup: 'rounded-4 shadow',
@@ -1073,7 +1120,8 @@ function openEscalateCancelDispute(bkId, studentName) {
     if (result.isConfirmed) {
       const form = document.getElementById('cancelDisputeForm');
       form.action = `/bookings/tutor/${bkId}/escalate-cancel-dispute/`;
-      document.getElementById('cancelDisputeDesc').value = result.value.trim();
+      document.getElementById('cancelDisputeReason').value = result.value.reason;
+      document.getElementById('cancelDisputeDesc').value = result.value.desc;
       form.submit();
     }
   });
@@ -1128,8 +1176,8 @@ function showReportStatementModal(bkId) {
   bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
   setTimeout(() => {
     Swal.fire({
-      title: 'ส่งคำชี้แจงให้แอดมิน',
-      html: `<p class="text-muted small mb-2">ใช้สำหรับอธิบายข้อมูลฝั่งติวเตอร์เพิ่มเติมในรายงานนี้ แอดมินจะเห็นคำชี้แจงร่วมกับรายละเอียดเคสเดิม</p>`,
+      title: 'ส่งคำชี้แจง',
+      html: `<p class="text-muted small mb-2">ใช้สำหรับอธิบายข้อมูลฝั่งติวเตอร์เพิ่มเติมในรายงานนี้</p>`,
       icon: 'info',
       input: 'textarea',
       inputPlaceholder: 'ระบุคำชี้แจงเพิ่มเติม...',
@@ -1156,7 +1204,7 @@ function showReportStatementModal(bkId) {
       Swal.fire({
         title: 'ยืนยันส่งคำชี้แจง?',
         html: `<div class="text-start small">
-          <div class="mb-2">คำชี้แจงนี้จะถูกส่งให้แอดมินใช้ประกอบการพิจารณารายงาน</div>
+          <div class="mb-2">คำชี้แจงนี้จะถูกบันทึกประกอบรายงาน</div>
           <div class="p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;white-space:pre-wrap;">${escapeHtml(detail)}</div>
         </div>`,
         icon: 'question',
@@ -1262,17 +1310,64 @@ function openDetail(bkId) {
     `;
   }
 
-  let adminNote = bk.cmt && bk.cmt.startsWith('[แอดมิน]')
+  const rawAdminNote = bk.cmt && bk.cmt.startsWith('[แอดมิน]')
     ? bk.cmt.replace('[แอดมิน]', '').trim() : '';
-  if (adminNote.startsWith('พิจารณาไม่คืนเครดิต:')) {
-    adminNote = adminNote.replace('พิจารณาไม่คืนเครดิต:', 'พิจารณาโอนเครดิตให้ติวเตอร์:');
-  }
   const statementHtml = buildReportStatementHtml(bk.report_statements || []);
+  const REASON_LABELS = {
+    '1': 'หลักฐานการสอนไม่ตรงความจริง',
+    '2': 'ติวเตอร์ไม่เข้าสอน',
+    '3': 'เนื้อหาไม่ตรงที่ตกลงไว้',
+    '4': 'กดยืนยันพลาด แต่ยังไม่ได้เรียนจริง',
+    '5': 'ผู้เรียนไม่เข้าเรียน',
+    '6': 'ติดต่อไม่ได้',
+    '7': 'ไม่สามารถตกลงกันได้',
+    '8': 'อื่นๆ',
+    'cancel': 'ข้อพิพาทการยกเลิกจากติวเตอร์',
+    't_no_show': 'ติวเตอร์ไม่เข้าสอน',
+    's_no_show': 'ผู้เรียนไม่เข้าเรียน',
+    'contact': 'ติดต่อไม่ได้',
+    'cannot_contact': 'ติดต่อไม่ได้',
+    'agree': 'ไม่สามารถตกลงกันได้',
+    'other': 'อื่นๆ',
+  };
+  const reasonLabel = REASON_LABELS[bk.report_reason] || '';
   const statementButton = bk.reported && !bk.report_resolved
     ? `<button onclick="showReportStatementModal(${bkId})" class="btn btn-outline-primary btn-sm rounded-3 mt-3">
-        <i class="fas fa-comment-dots me-1"></i>ส่งคำชี้แจงให้แอดมิน
+        <i class="fas fa-comment-dots me-1"></i>ส่งคำชี้แจง
       </button>`
     : '';
+  let reportResultHtml = '';
+  if (bk.reported) {
+    if (!bk.report_resolved) {
+      reportResultHtml = `<div class="text-muted small mt-1">ระบบจะแจ้งผลเมื่อดำเนินการเสร็จสิ้น</div>`;
+    } else if (total === 0) {
+      reportResultHtml = `<div class="mt-2 pt-2" style="border-top:1px solid #DDD6FE;font-size:13px;color:#374151;">
+        <div class="fw-semibold mb-1" style="color:#5B21B6;">ผลการดำเนินการ</div>
+        <div class="fw-semibold">บันทึกเป็นประวัติเรียบร้อยแล้ว</div>
+        <div class="mt-1">เนื่องจากเป็นการสอนฟรี จึงไม่มีการคืนหรือโอนเครดิต</div>
+      </div>`;
+    } else if (rawAdminNote) {
+      let decisionText = 'พิจารณาเสร็จสิ้นแล้ว';
+      let decisionNote = rawAdminNote;
+      if (rawAdminNote.startsWith('พิจารณาให้คืนเครดิต:')) {
+        decisionText = 'คืนเครดิตให้ผู้เรียน';
+        decisionNote = rawAdminNote.replace('พิจารณาให้คืนเครดิต:', '').trim();
+      } else if (rawAdminNote.startsWith('พิจารณาไม่คืนเครดิต:')) {
+        decisionText = 'ไม่คืนเครดิตและโอนเครดิตให้ติวเตอร์';
+        decisionNote = rawAdminNote.replace('พิจารณาไม่คืนเครดิต:', '').trim();
+      }
+      reportResultHtml = `<div class="mt-2 pt-2" style="border-top:1px solid #DDD6FE;font-size:13px;color:#374151;">
+        <div class="fw-semibold mb-1" style="color:#5B21B6;">ผลการดำเนินการ</div>
+        <div>${decisionText}</div>
+        ${decisionNote ? `<div class="mt-1"><span class="fw-semibold">หมายเหตุ:</span> ${decisionNote}</div>` : ''}
+      </div>`;
+    } else {
+      reportResultHtml = `<div class="mt-2 pt-2" style="border-top:1px solid #DDD6FE;font-size:13px;color:#374151;">
+        <div class="fw-semibold mb-1" style="color:#5B21B6;">ผลการดำเนินการ</div>
+        <div>พิจารณาเสร็จสิ้นแล้ว</div>
+      </div>`;
+    }
+  }
 
   document.getElementById('detailBody').innerHTML = `
     <div class="mb-3">
@@ -1304,7 +1399,7 @@ function openDetail(bkId) {
           <i class="fas fa-flag" style="color:#7C3AED;"></i>
           <span class="fw-semibold small" style="color:#5B21B6;">
             ${bk.report_by_tutor
-              ? (bk.report_resolved ? 'คุณส่งเรื่องให้แอดมิน — พิจารณาเสร็จสิ้นแล้ว' : 'คุณส่งเรื่องให้แอดมิน — รอพิจารณา')
+              ? (bk.report_resolved ? 'คุณรายงานปัญหา — จัดการแล้ว' : 'คุณรายงานปัญหา — รอจัดการ')
               : (bk.report_resolved ? 'ผู้เรียนรายงานปัญหา — พิจารณาเสร็จสิ้นแล้ว' : 'ผู้เรียนรายงานปัญหา — รอพิจารณา')
             }
           </span>
@@ -1312,18 +1407,16 @@ function openDetail(bkId) {
         ${bk.report_by_tutor && bk.report_desc ? `<div style="font-size:13px;color:#374151;margin-bottom:4px;">
           <span class="fw-semibold">รายละเอียดที่คุณส่ง:</span> ${bk.report_desc}
         </div>` : ''}
+        ${reasonLabel ? `<div style="font-size:13px;color:#374151;margin-bottom:4px;">
+          <span class="fw-semibold">สาเหตุ:</span> ${reasonLabel}
+        </div>` : ''}
         ${!bk.report_by_tutor && !bk.report_resolved ? `<div class="p-2 rounded-3 mb-2" style="background:#FFFFFF;border:1px solid #DDD6FE;font-size:13px;color:#4B5563;">
-          ผู้เรียนส่งรายงานให้แอดมินแล้ว รายการนี้อยู่ระหว่างพิจารณา หากต้องการให้ข้อมูลฝั่งติวเตอร์ ให้กด “ส่งคำชี้แจงให้แอดมิน”
+          ผู้เรียนส่งรายงานปัญหาแล้ว หากต้องการให้ข้อมูลฝั่งติวเตอร์ ให้กด “ส่งคำชี้แจง”
         </div>` : ''}
         ${bk.report_resolved_date ? `<div style="font-size:13px;color:#374151;margin-bottom:4px;">
           <span class="fw-semibold">วันที่จัดการ:</span> ${bk.report_resolved_date}
         </div>` : ''}
-        ${adminNote
-          ? `<div class="mt-2 pt-2" style="border-top:1px solid #DDD6FE;font-size:13px;color:#374151;">
-              <span class="fw-semibold" style="color:#5B21B6;">ผลการพิจารณา:</span> ${adminNote}
-             </div>`
-          : `<div class="text-muted small mt-1">แอดมินจะแจ้งผลการพิจารณาหลังตรวจสอบเสร็จสิ้น</div>`
-        }
+        ${reportResultHtml}
         ${statementHtml}
         ${statementButton}
       </div>` : bk.cancel_pending ? `
