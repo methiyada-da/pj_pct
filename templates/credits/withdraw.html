@@ -346,7 +346,7 @@
           <div class="summary-row"><span class="text-muted">ประเภทเครดิต</span><span class="summary-value" id="cfWdType">-</span></div>
           <div class="summary-row"><span class="text-muted">เครดิตที่ถอน</span><span class="summary-value text-danger" id="cfWdCredits">-</span></div>
           <div class="summary-row"><span class="text-muted">ยอดก่อนหักค่าธรรมเนียม</span><span class="summary-value" id="cfWdGross">-</span></div>
-          <div class="summary-row"><span class="text-muted">ค่าธรรมเนียม</span><span class="summary-value text-warning" id="cfWdFee">-</span></div>
+          <div class="summary-row"><span class="text-muted">ค่าธรรมเนียม <span class="text-primary fw-bold" id="cfWdFeePct"></span></span><span class="summary-value text-warning" id="cfWdFee">-</span></div>
           <div class="summary-row"><span class="fw-bold">ยอดสุทธิ</span><span class="summary-value text-success" id="cfWdNet">-</span></div>
           <div class="summary-row"><span class="text-muted">ธนาคาร</span><span class="summary-value" id="cfWdBank">-</span></div>
           <div class="summary-row"><span class="text-muted">เลขที่บัญชี</span><span class="summary-value" id="cfWdAccNo">-</span></div>
@@ -418,11 +418,13 @@
     }
 
     const wdType = currentType === 1 ? 'เครดิตรายได้' : 'เครดิตนำฝาก';
+    const feePct = currentType === 1 ? incomeFeePct : depositFeePct;
     const credits = document.getElementById('wdCredit').value || '0';
     const bankSel = document.querySelector('select[name="bank_name"]');
     const bankText = bankSel.options[bankSel.selectedIndex]?.text || '-';
 
     document.getElementById('cfWdType').textContent = wdType;
+    document.getElementById('cfWdFeePct').textContent = `(${feePct}%)`;
     document.getElementById('cfWdCredits').textContent = credits + ' เครดิต';
     document.getElementById('cfWdGross').textContent = document.getElementById('feeGross').textContent;
     document.getElementById('cfWdFee').textContent = document.getElementById('feeFee').textContent;
