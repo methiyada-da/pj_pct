@@ -226,6 +226,29 @@
 .chat-no-msg i { font-size: 2.5rem; color: #CBD5E1; margin-bottom: .5rem; }
 .chat-no-msg p { font-size: .875rem; }
 
+/* date separator */
+.date-sep {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: .15rem 0 .35rem;
+  pointer-events: none;
+}
+.date-sep span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: min(80%, 260px);
+  padding: .12rem .5rem;
+  border-radius: 999px;
+  color: #64748B;
+  font-size: .72rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: center;
+  white-space: normal;
+}
+
 /* ── Message Row ── */
 .msg-row {
   display: flex;
