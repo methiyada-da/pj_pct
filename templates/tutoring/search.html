@@ -213,8 +213,8 @@
                 <!-- Rating badge -->
                 <div class="card-rating-badge">
                   <i class="fas fa-star"></i>
-                  {% if tc.tut_id.tut_rating %}
-                    {{ tc.tut_id.tut_rating|floatformat:1 }}
+                  {% if tc.tutc_rating %}
+                    {{ tc.tutc_rating|floatformat:1 }}
                   {% else %}
                     ใหม่
                   {% endif %}
