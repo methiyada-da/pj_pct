@@ -10,7 +10,7 @@ from django.db.models import Q, OuterRef, Subquery
 
 from apps.accounts.models import Tutor, Member
 from apps.courses.models import CourseGroup, Course
-from apps.bookings.models import Booking
+from apps.bookings.models import Booking, Review
 from .forms import TutorRegisterForm
 from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 import re
@@ -80,7 +80,7 @@ def search_tutors(request):
 
     # ── Filter: คะแนนรีวิว ──
     if min_rating:
-        tutorcourses = tutorcourses.filter(tut_id__tut_rating__gte=float(min_rating))
+        tutorcourses = tutorcourses.filter(tutc_rating__gte=float(min_rating))
 
     # ── Dropdown data ──
     course_groups = CourseGroup.objects.all().order_by('cg_name')
@@ -147,6 +147,11 @@ def course_detail(request, tutc_id):
     tutor  = tutcourse.tut_id
     member = tutor.tut_id
 
+    # นับรีวิวรวมของติวเตอร์และรีวิวเฉพาะคอร์สที่กำลังแสดง
+    tutor_reviews = Review.objects.filter(bk_id__tutc_id__tut_id=tutor)
+    tutor_review_count = tutor_reviews.count()
+    course_review_count = tutor_reviews.filter(bk_id__tutc_id=tutcourse).count()
+
     rates_qs = list(TutorRate.objects.filter(tutc_id=tutcourse).order_by('tut_rate_stu_count'))
 
     # สร้าง rates_with_range: แต่ละ rate จะรู้ช่วงของตัวเอง
@@ -208,6 +213,8 @@ def course_detail(request, tutc_id):
         'rates':           rates,
         'available_dates': available_dates,
         'user_credit':     user_credit,
+        'tutor_review_count': tutor_review_count,
+        'course_review_count': course_review_count,
     }
     return render(request, 'tutoring/detail.html', context)
 

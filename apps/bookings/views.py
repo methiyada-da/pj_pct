@@ -6,7 +6,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Avg
 
 from apps import bookings
 
@@ -504,8 +503,6 @@ def review(request, bk_id):
                     rv.rv_satisfaction  = int(form.cleaned_data['rv_satisfaction'])
                     rv.save()
 
-                    _update_tutor_ratings(tutor)
-
                     bk.bk_status = 5
                     bk.save()
 
@@ -953,32 +950,3 @@ def _auto_confirm_overdue(mb):
             pass  # ถ้าไม่มี jobcompletion หรือ error ข้ามไป
 
 
-# ─── helper: คำนวณและอัพเดต tut_rating ทุกด้าน ──────────────────────────────
-def _update_tutor_ratings(tutor):
-    from apps.bookings.models import Review as ReviewModel
-
-    reviews = ReviewModel.objects.filter(bk_id__tutc_id__tut_id=tutor)
-    if not reviews.exists():
-        return
-
-    agg = reviews.aggregate(
-        avg_quality       = Avg('rv_quality'),
-        avg_knowledge     = Avg('rv_knowledge'),
-        avg_communication = Avg('rv_communication'),
-        avg_punctuality   = Avg('rv_punctuality'),
-        avg_satisfaction  = Avg('rv_satisfaction'),
-    )
-
-    q = round(agg['avg_quality']       or 0, 2)
-    k = round(agg['avg_knowledge']     or 0, 2)
-    c = round(agg['avg_communication'] or 0, 2)
-    p = round(agg['avg_punctuality']   or 0, 2)
-    s = round(agg['avg_satisfaction']  or 0, 2)
-
-    tutor.tut_rating_quality       = q
-    tutor.tut_rating_knowledge     = k
-    tutor.tut_rating_communication = c
-    tutor.tut_rating_punctuality   = p
-    tutor.tut_rating_satisfaction  = s
-    tutor.tut_rating               = round((q + k + c + p + s) / 5, 2)
-    tutor.save()

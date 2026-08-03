@@ -63,10 +63,12 @@
                 {% endwith %}
               </span>
               <span class="rating-text">{{ tutor.tut_rating|floatformat:1 }}</span>
+              <span class="text-muted small">({{ tutor_review_count }} รีวิว)</span>
             {% else %}
               <span class="rating-new"><i class="fas fa-star" style="color:#F59E0B;font-size:.8rem;"></i> ติวเตอร์ใหม่</span>
             {% endif %}
           </div>
+          <!-- <p style="margin:-2px 0 10px;font-size:.72rem;color:#94a3b8;text-align:center;">คะแนนติวเตอร์ (รวมทุกคอร์ส)</p> -->
 
           <!-- GPA -->
           <div class="mb-2">
@@ -87,33 +89,6 @@
             {% if member.mj_id.mj_abbr %}
               <span class="mj-abbr">({{ member.mj_id.mj_abbr }})</span>
             {% endif %}
-          </div>
-          {% endif %}
-
-          <!-- ประสบการณ์สอน (แสดงเฉพาะมีประสบการณ์) -->
-          {% if tutor.tut_has_exp == 1 %}
-          <div class="tutor-info-row">
-            <i class="fas fa-chalkboard-teacher tutor-info-icon"></i>
-            <span>มีประสบการณ์สอน</span>
-          </div>
-          {% if tutor.tut_exp_desc %}
-          <p class="tutor-exp-desc">{{ tutor.tut_exp_desc }}</p>
-          {% endif %}
-          {% endif %}
-
-          <!-- แนะนำตัว -->
-          {% if tutor.tut_desc %}
-          <p class="tutor-section-title">เกี่ยวกับฉัน</p>
-          <p class="tutor-desc">{{ tutor.tut_desc }}</p>
-          {% endif %}
-
-          <!-- ความถนัด -->
-          {% if tutor.tut_skill %}
-          <p class="tutor-section-title">ความถนัด</p>
-          <div class="skill-tags">
-            {% for skill in tutor.tut_skill.split %}
-              <span class="skill-tag">{{ skill }}</span>
-            {% endfor %}
           </div>
           {% endif %}
 
@@ -174,6 +149,18 @@
               <div class="course-meta-item">
                 <span class="course-meta-label">รับสูงสุด</span>
                 <span class="course-meta-value"><strong>{{ tc.tutc_max_stu }}</strong> คน/ครั้ง</span>
+              </div>
+              <div class="course-meta-item">
+                <span class="course-meta-label">คะแนนรีวิวคอร์ส</span>
+                <span class="course-meta-value">
+                  {% if tc.tutc_rating %}
+                    <i class="fas fa-star" style="color:#F59E0B;"></i>
+                    <strong>{{ tc.tutc_rating|floatformat:1 }}</strong>
+                    <span class="text-muted small">({{ course_review_count }} รีวิว)</span>
+                  {% else %}
+                    ยังไม่มีรีวิวคอร์สนี้
+                  {% endif %}
+                </span>
               </div>
             </div>
             {% if tc.tutc_desc %}

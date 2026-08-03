@@ -25,6 +25,7 @@
   .upload-zone.has-image { border-style: solid; border-color: #93C5FD; }
   .upload-zone input[type="file"] {
     position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    z-index: 3;
   }
   .upload-preview {
     width: 100%; height: 100%; object-fit: cover;
@@ -33,7 +34,7 @@
   .upload-overlay {
     position: absolute; inset: 0; background: rgba(0,0,0,.45);
     border-radius: 12px; display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: opacity .2s;
+    opacity: 0; transition: opacity .2s; pointer-events: none;
   }
   .upload-zone:hover .upload-overlay { opacity: 1; }
 
@@ -221,7 +222,7 @@
       <div class="d-flex gap-3 justify-content-between align-items-center flex-wrap">
         <button type="submit" name="action" value="save"
                 class="btn btn-outline-secondary fw-semibold px-4 rounded-pill">
-          <i class="fas fa-save me-2"></i>บันทึกความคืบหน้า
+          <i class="fas fa-save me-2"></i>บันทึกแบบร่าง
         </button>
         <button type="button"
                 class="btn btn-primary fw-bold px-5 rounded-pill shadow-sm"
@@ -322,7 +323,7 @@ function confirmSubmit() {
            <span class="text-muted small">เครดิตจะโอนให้คุณหลังจากผู้เรียนยืนยันแล้ว</span>`,
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: '<i class="fas fa-paper-plane me-1"></i> ยืนยัน',
+    confirmButtonText: 'ยืนยัน',
     cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#2563EB',
     cancelButtonColor: '#6B7280',
