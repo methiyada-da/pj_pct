@@ -312,19 +312,24 @@
 <div class="modal fade" id="refillConfirmModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
     <div class="modal-content border-0 shadow-lg" style="border-radius:14px;overflow:hidden;">
-      <div class="modal-header border-0 pb-0 px-4 pt-4">
-        <div class="d-flex align-items-start gap-3">
+      <div class="modal-header border-0 pb-0 px-4 pt-4 align-items-start">
+        <div class="d-flex align-items-start gap-3 flex-grow-1">
           <div id="rfCfIconWrap"
-               class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-               style="width:46px;height:46px;">
+              class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style="width:46px;height:46px;">
             <i id="rfCfIcon" style="font-size:21px;"></i>
           </div>
+
           <div class="flex-grow-1">
             <h5 class="fw-bold mb-1" id="rfCfTitle"></h5>
             <div class="text-muted small" id="rfCfSubtitle"></div>
           </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+
+        <button type="button"
+                class="btn-close ms-3 flex-shrink-0"
+                data-bs-dismiss="modal"
+                aria-label="Close"></button>
       </div>
 
       <div class="modal-body px-4 py-3">
@@ -444,11 +449,11 @@ function selectAction(action) {
   if (action === 'approve') {
     btnA.style.background = '#16A34A'; btnA.style.color = '#fff';
     btnR.style.background = '#fff';    btnR.style.color = '#DC2626';
-    submitBtn.textContent = 'ยืนยันว่าเติมเครดิตถูกต้อง';
+    submitBtn.textContent = 'ยืนยัน';
   } else {
     btnR.style.background = '#DC2626'; btnR.style.color = '#fff';
     btnA.style.background = '#fff';    btnA.style.color = '#16A34A';
-    submitBtn.textContent = 'ยืนยันว่าไม่ถูกต้อง';
+    submitBtn.textContent = 'ยืนยัน';
   }
   submitBtn.disabled = false;
 }
@@ -482,7 +487,7 @@ function askRefillConfirm() {
     document.getElementById('rfCfAlert').style.cssText = 'background:#DCFCE7;border-color:#BBF7D0;color:#166534;';
     document.getElementById('rfCfAlert').innerHTML = '<i class="bi bi-info-circle me-1"></i>เมื่อยืนยันแล้ว ระบบจะบันทึกสถานะเป็น <strong>อนุมัติแล้ว</strong> และเพิ่มเครดิตให้สมาชิก';
     document.getElementById('rfCfConfirmBtn').className = 'btn btn-success fw-bold flex-fill';
-    document.getElementById('rfCfConfirmBtn').innerHTML = '<i class="bi bi-check2-circle me-1"></i>ยืนยันอนุมัติ';
+    document.getElementById('rfCfConfirmBtn').innerHTML = '<i class="bi bi-check2-circle me-1"></i>ยืนยัน';
   } else {
     noteWrap.classList.remove('d-none');
     document.getElementById('rfCfIconWrap').style.cssText = 'width:46px;height:46px;background:#FEE2E2;color:#DC2626;';

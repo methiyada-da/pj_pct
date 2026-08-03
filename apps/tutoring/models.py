@@ -17,6 +17,7 @@ class TutorCourse(models.Model):
     tutc_img     = models.ImageField(upload_to='tutoring/tutor_img_course/', blank=True, null=True, verbose_name="รูปปก")
     tutc_max_stu = models.IntegerField(verbose_name="จำนวนรับสูงสุด (คน)")
     tutc_status  = models.IntegerField(choices=STATUS_CHOICES, default=1, verbose_name="สถานะการเปิดสอน")
+    tutc_rating  = models.DecimalField(max_digits=3, decimal_places=2, default=0, verbose_name="คะแนนรีวิวเฉลี่ยรายคอร์ส")
     crs_id       = models.ForeignKey(
         Course,
         on_delete=models.CASCADE,
