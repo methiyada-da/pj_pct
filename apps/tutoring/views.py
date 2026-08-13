@@ -4,9 +4,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.core.files.base import ContentFile
+from django.core.paginator import Paginator
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Q, OuterRef, Subquery
+from django.db.models import Avg, Count, Q, OuterRef, Subquery
 
 from apps.accounts.models import Tutor, Member
 from apps.courses.models import CourseGroup, Course
@@ -15,6 +16,74 @@ from .forms import TutorRegisterForm
 from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 import re
 import os
+
+
+BAYESIAN_MIN_REVIEWS = 5
+
+
+def calculate_bayesian_rating(raw_rating, review_count, global_average, minimum_reviews=BAYESIAN_MIN_REVIEWS):
+    """คำนวณคะแนน Bayesian Weighted Rating ของคอร์ส"""
+    if review_count <= 0 or global_average <= 0:
+        return 0.0
+    return round(
+        ((review_count / (review_count + minimum_reviews)) * float(raw_rating))
+        + ((minimum_reviews / (review_count + minimum_reviews)) * global_average),
+        2,
+    )
+
+
+def _get_course_rating_stats():
+    """ดึงค่าเฉลี่ยรวมของระบบและสถิติรีวิวรายคอร์ส"""
+    global_values = Review.objects.aggregate(
+        quality=Avg('rv_quality'),
+        knowledge=Avg('rv_knowledge'),
+        communication=Avg('rv_communication'),
+        punctuality=Avg('rv_punctuality'),
+        satisfaction=Avg('rv_satisfaction'),
+    )
+    global_average = round(
+        sum(float(value or 0) for value in global_values.values()) / 5,
+        4,
+    )
+
+    rows = (
+        Review.objects
+        .values('bk_id__tutc_id')
+        .annotate(
+            review_count=Count('pk'),
+            quality=Avg('rv_quality'),
+            knowledge=Avg('rv_knowledge'),
+            communication=Avg('rv_communication'),
+            punctuality=Avg('rv_punctuality'),
+            satisfaction=Avg('rv_satisfaction'),
+        )
+    )
+    course_stats = {}
+    for row in rows:
+        raw_rating = round(
+            sum(float(row[field] or 0) for field in (
+                'quality', 'knowledge', 'communication',
+                'punctuality', 'satisfaction',
+            )) / 5,
+            2,
+        )
+        course_stats[row['bk_id__tutc_id']] = {
+            'raw_rating': raw_rating,
+            'review_count': row['review_count'],
+        }
+    return global_average, course_stats
+
+
+def _attach_bayesian_rating(course, global_average, course_stats):
+    """แนบคะแนน Bayesian และจำนวนรีวิวให้ออบเจ็กต์คอร์สชั่วคราว"""
+    stats = course_stats.get(course.tutc_id, {})
+    course.review_count = stats.get('review_count', 0)
+    course.bayesian_rating = calculate_bayesian_rating(
+        stats.get('raw_rating', 0),
+        course.review_count,
+        global_average,
+    )
+    return course
 
 
 # ============================================================
@@ -78,9 +147,39 @@ def search_tutors(request):
     if max_price:
         tutorcourses = tutorcourses.filter(lowest_price__lte=int(max_price))
 
-    # ── Filter: คะแนนรีวิว ──
+    # ── คำนวณ กรอง และเรียงด้วย Bayesian Rating ──
+    global_average, course_stats = _get_course_rating_stats()
+    tutorcourses = [
+        _attach_bayesian_rating(course, global_average, course_stats)
+        for course in tutorcourses
+    ]
     if min_rating:
-        tutorcourses = tutorcourses.filter(tutc_rating__gte=float(min_rating))
+        try:
+            minimum_rating = float(min_rating)
+            tutorcourses = [
+                course for course in tutorcourses
+                if course.review_count > 0
+                and round(course.bayesian_rating, 1) >= minimum_rating
+            ]
+        except ValueError:
+            min_rating = ''
+
+    tutorcourses.sort(key=lambda course: (
+        course.review_count == 0,
+        -course.bayesian_rating,
+        -course.review_count,
+        course.tutc_name.casefold(),
+    ))
+
+    # แบ่งหน้าเมื่อมีคอร์สจำนวนมาก โดยคงลำดับ Bayesian เดิมไว้
+    result_count = len(tutorcourses)
+    paginator = Paginator(tutorcourses, 12)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    tutorcourses = page_obj.object_list
+
+    pagination_params = request.GET.copy()
+    pagination_params.pop('page', None)
+    pagination_query = pagination_params.urlencode()
 
     # ── Dropdown data ──
     course_groups = CourseGroup.objects.all().order_by('cg_name')
@@ -102,7 +201,9 @@ def search_tutors(request):
         'tutorcourses':  tutorcourses,
         'course_groups': course_groups,
         'courses':       courses,
-        'result_count':  tutorcourses.count(),
+        'result_count':  result_count,
+        'page_obj':      page_obj,
+        'pagination_query': pagination_query,
         'q':             q,
         'selected_cg':   cg_id,
         'selected_crs':  crs_id,
@@ -151,6 +252,8 @@ def course_detail(request, tutc_id):
     tutor_reviews = Review.objects.filter(bk_id__tutc_id__tut_id=tutor)
     tutor_review_count = tutor_reviews.count()
     course_review_count = tutor_reviews.filter(bk_id__tutc_id=tutcourse).count()
+    global_average, course_stats = _get_course_rating_stats()
+    _attach_bayesian_rating(tutcourse, global_average, course_stats)
 
     rates_qs = list(TutorRate.objects.filter(tutc_id=tutcourse).order_by('tut_rate_stu_count'))
 
