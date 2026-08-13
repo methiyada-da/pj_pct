@@ -61,7 +61,7 @@
     <div class="row g-3">
 
       <!-- ── FILTER SIDEBAR ── -->
-      <div class="col-lg-3 col-md-4">
+      <div class="col-lg-3 col-md-4 filter-column">
         <div class="filter-card">
           <div class="filter-title">
             <span><i class="fas fa-sliders-h me-2"></i>ตัวกรอง</span>
@@ -69,11 +69,19 @@
           </div>
 
           <form method="get" action="{% url 'tutoring:search_tutors' %}" id="filter-form">
-            <!-- ส่ง q ไปด้วย -->
-            {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+            <!-- ช่องค้นหาสำหรับแถบตัวกรองแบบย่อ -->
+            <div class="filter-section filter-query">
+              <label class="filter-label">ค้นหาคอร์ส</label>
+              <div class="filter-query-wrap">
+                <i class="fas fa-search"></i>
+                <input type="search" name="q" value="{{ q }}"
+                       placeholder="ชื่อวิชา กลุ่มวิชา หรือติวเตอร์">
+                <button type="submit" aria-label="ค้นหา"><i class="fas fa-arrow-right"></i></button>
+              </div>
+            </div>
 
             <!-- กลุ่มวิชา -->
-            <div class="filter-section">
+            <div class="filter-section filter-group">
               <label class="filter-label">กลุ่มวิชา</label>
               <select name="cg_id" class="filter-select" id="cg-select">
                 <option value="">-- กลุ่มวิชาทั้งหมด --</option>
@@ -86,7 +94,7 @@
             </div>
 
             <!-- รายวิชา (dependent dropdown) -->
-            <div class="filter-section">
+            <div class="filter-section filter-course">
               <label class="filter-label">รายวิชา</label>
               <select name="crs_id" class="filter-select" id="crs-select"
                       {% if not selected_cg %}disabled{% endif %}>
@@ -103,7 +111,7 @@
             </div>
 
             <!-- ช่วงราคา (เครดิต) -->
-            <div class="filter-section">
+            <div class="filter-section filter-price">
               <label class="filter-label">อัตราค่าติว (เครดิต/ครั้ง)</label>
               <div class="price-inputs">
                 <input type="number" name="min_price" class="price-input"
@@ -114,26 +122,39 @@
               </div>
             </div>
 
-            <!-- คะแนนรีวิว -->
-            <div class="filter-section">
-              <label class="filter-label">คะแนนรีวิว</label>
-              <label class="rating-option">
-                <input type="radio" name="min_rating" value=""
-                       {% if not min_rating %}checked{% endif %}>
-                <span>ทั้งหมด</span>
+            <!-- คะแนนคอร์ส -->
+            <div class="filter-section filter-rating">
+              <label class="filter-label">
+                คะแนนคอร์ส
+                <span class="rating-info" tabindex="0"
+                      title="คะแนนคำนวณโดยพิจารณาทั้งคะแนนรีวิวและจำนวนผู้รีวิว เพื่อให้การจัดอันดับน่าเชื่อถือยิ่งขึ้น">
+                  <i class="fas fa-circle-info"></i>
+                </span>
               </label>
-              <label class="rating-option">
-                <input type="radio" name="min_rating" value="4.0"
-                       {% if min_rating == "4.0" %}checked{% endif %}>
-                <span class="stars">★★★★</span>
-                <span class="rating-label">4.0 ขึ้นไป</span>
-              </label>
-              <label class="rating-option">
-                <input type="radio" name="min_rating" value="3.0"
-                       {% if min_rating == "3.0" %}checked{% endif %}>
-                <span class="stars">★★★</span>
-                <span class="rating-label">3.0 ขึ้นไป</span>
-              </label>
+              <input type="hidden" name="min_rating" id="rating-value" value="{{ min_rating }}">
+              <div class="rating-dropdown" id="rating-dropdown">
+                <button type="button" class="rating-dropdown-toggle" id="rating-dropdown-toggle"
+                        aria-haspopup="listbox" aria-expanded="false">
+                  <span id="rating-current">
+                    {% if min_rating == "4.0" %}<span class="rating-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></span> 4.0 ขึ้นไป
+                    {% elif min_rating == "3.5" %}<span class="rating-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></span> 3.5 ขึ้นไป
+                    {% elif min_rating == "3.0" %}<span class="rating-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></span> 3.0 ขึ้นไป
+                    {% elif min_rating == "2.5" %}<span class="rating-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></span> 2.5 ขึ้นไป
+                    {% else %}คะแนนทั้งหมด{% endif %}
+                  </span>
+                  <i class="fas fa-chevron-down rating-dropdown-chevron"></i>
+                </button>
+                <div class="rating-dropdown-menu" role="listbox">
+                  <button type="button" class="rating-dropdown-option" data-value="">คะแนนทั้งหมด</button>
+                  <button type="button" class="rating-dropdown-option" data-value="4.0"><span class="rating-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></span> 4.0 ขึ้นไป</button>
+                  <button type="button" class="rating-dropdown-option" data-value="3.5"><span class="rating-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></span> 3.5 ขึ้นไป</button>
+                  <button type="button" class="rating-dropdown-option" data-value="3.0"><span class="rating-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></span> 3.0 ขึ้นไป</button>
+                  <button type="button" class="rating-dropdown-option" data-value="2.5"><span class="rating-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-stroke"></i></span> 2.5 ขึ้นไป</button>
+                </div>
+              </div>
+              <p style="font-size:.75rem; color:#94A3B8; margin:.4rem 0 0;">
+                <i class="fas fa-clock me-1"></i>คอร์สที่ยังไม่มีรีวิวจะแสดงเป็น “ใหม่”
+              </p>
             </div>
 
           </form>
@@ -143,7 +164,7 @@
 
 
       <!-- ── RESULTS ── -->
-      <div class="col-lg-9 col-md-8">
+      <div class="col-lg-9 col-md-8 results-column">
 
         <!-- Active filter tags -->
         {% if q or selected_cg or selected_crs or min_price or max_price or min_rating %}
@@ -183,9 +204,15 @@
 
         <!-- Result count -->
         <div class="result-bar">
-          <p class="result-count mb-0">
-            พบ <strong>{{ result_count }}</strong> หลักสูตร
-          </p>
+          <div>
+            <p class="result-count mb-0">
+              พบ <strong>{{ result_count }}</strong> หลักสูตร
+            </p>
+            <p class="ranking-note mb-0">
+              <i class="fas fa-arrow-down-wide-short me-1"></i>จัดอันดับจากคะแนนและจำนวนรีวิว
+            </p>
+          </div>
+
         </div>
 
         <!-- Course grid -->
@@ -210,8 +237,8 @@
                 <!-- Rating badge -->
                 <div class="card-rating-badge">
                   <i class="fas fa-star"></i>
-                  {% if tc.tutc_rating %}
-                    {{ tc.tutc_rating|floatformat:1 }}
+                  {% if tc.review_count %}
+                    {{ tc.bayesian_rating|floatformat:1 }} <span class="rating-review-count">· {{ tc.review_count }} รีวิว</span>
                   {% else %}
                     ใหม่
                   {% endif %}
@@ -262,7 +289,7 @@
                       {% if tc.lowest_price is not None %}
                         {% if tc.lowest_price == 0 %}
                           <span class="price-value" style="color:#23a352 !important;">ฟรี</span>
-                          <span class="price-unit"> ต่อครั้ง สำหรับ 1 คน</span> 
+                          <span class="price-unit"> สำหรับ 1 คน</span>
                         {% else %}
                           <span class="price-value">{{ tc.lowest_price }}</span>
                           <span class="price-unit"> เครดิต/ครั้ง สำหรับ 1 คน</span> 
@@ -282,6 +309,39 @@
           {% endwith %}
           {% endfor %}
         </div>
+
+        {% if page_obj.has_other_pages %}
+        <nav class="course-pagination" aria-label="หน้ารายการคอร์ส">
+          {% if page_obj.has_previous %}
+          <a class="course-page-link course-page-nav"
+             href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">
+            <i class="fas fa-chevron-left"></i> ก่อนหน้า
+          </a>
+          {% else %}
+          <span class="course-page-link course-page-nav disabled"><i class="fas fa-chevron-left"></i> ก่อนหน้า</span>
+          {% endif %}
+
+          <div class="course-page-numbers">
+            {% for page_number in page_obj.paginator.page_range %}
+              {% if page_number == page_obj.number %}
+              <span class="course-page-link active">{{ page_number }}</span>
+              {% elif page_number >= page_obj.number|add:'-2' and page_number <= page_obj.number|add:'2' %}
+              <a class="course-page-link"
+                 href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_number }}">{{ page_number }}</a>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          {% if page_obj.has_next %}
+          <a class="course-page-link course-page-nav"
+             href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">
+            ถัดไป <i class="fas fa-chevron-right"></i>
+          </a>
+          {% else %}
+          <span class="course-page-link course-page-nav disabled">ถัดไป <i class="fas fa-chevron-right"></i></span>
+          {% endif %}
+        </nav>
+        {% endif %}
 
         {% else %}
         <!-- Empty state -->
@@ -360,11 +420,33 @@
     });
   });
 
-  // ── คะแนนรีวิว: submit ทันทีที่เลือก radio ──
-  document.querySelectorAll('input[name="min_rating"]').forEach(radio => {
-    radio.addEventListener('change', function () {
+  // ── คะแนนคอร์ส: custom dropdown เพื่อแสดงไอคอนดาวครึ่งดวง ──
+  const ratingDropdown = document.getElementById('rating-dropdown');
+  const ratingToggle = document.getElementById('rating-dropdown-toggle');
+  const ratingValue = document.getElementById('rating-value');
+
+  ratingToggle?.addEventListener('click', function () {
+    const isOpen = ratingDropdown.classList.toggle('open');
+    form.classList.toggle('rating-menu-open', isOpen);
+    this.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+
+  ratingDropdown?.querySelectorAll('.rating-dropdown-option').forEach(option => {
+    option.addEventListener('click', function () {
+      ratingValue.value = this.dataset.value;
+      ratingDropdown.classList.remove('open');
+      form.classList.remove('rating-menu-open');
+      ratingToggle.setAttribute('aria-expanded', 'false');
       form.submit();
     });
+  });
+
+  document.addEventListener('click', function (event) {
+    if (ratingDropdown && !ratingDropdown.contains(event.target)) {
+      ratingDropdown.classList.remove('open');
+      form.classList.remove('rating-menu-open');
+      ratingToggle?.setAttribute('aria-expanded', 'false');
+    }
   });
 
 })();
