@@ -267,14 +267,6 @@ def tutor_mgmt_detail(request, pk):
         elif action == 'unsuspend':
             tutor.tut_status = 1
             tutor.save(update_fields=['tut_status'])
-            # แจ้งเตือนติวเตอร์
-            from apps.notifications.signals import _notif_member
-            _notif_member(
-                tutor.tut_id,
-                'tutor_approved',
-                'บัญชีติวเตอร์ของคุณได้รับการปลดระงับแล้ว คุณสามารถกลับมาสอนได้ตามปกติ',
-                '/tutoring/manage/',
-            )
             messages.success(request, f'ปลดระงับการสอนของ {tutor.tut_id.mb_full_name} เรียบร้อยแล้ว')
             return redirect('admin_panel:tutor_mgmt_detail', pk=pk)
 
@@ -338,9 +330,13 @@ def refill_mgmt(request):
             messages.success(request, f'อนุมัติการเติมเครดิต RF{refill.rf_id:05d} เรียบร้อย (+{refill.rf_credit} เครดิต)')
 
         elif action == 'reject' and refill.rf_status == 0:
-            refill.rf_status = 2
+            if not note:
+                messages.error(request, 'กรุณาระบุเหตุผลที่ไม่อนุมัติรายการเติมเครดิต')
+                return redirect('admin_panel:refill_mgmt')
+            refill.rf_status       = 2
+            refill.rf_confirm_date = timezone.now()
             orig = (refill.rf_cmt or '').split('| หมายเหตุ:')[0].rstrip()
-            refill.rf_cmt = (orig + f' | หมายเหตุ: {note}') if note else (orig or None)
+            refill.rf_cmt = orig + f' | หมายเหตุ: {note}'
             refill.save()
             messages.error(request, f'ปฏิเสธการเติมเครดิต RF{refill.rf_id:05d} เรียบร้อย')
 
@@ -365,20 +361,25 @@ def refill_mgmt(request):
     paginator = Paginator(qs, 15)
     page      = paginator.get_page(request.GET.get('page', 1))
 
-    # แยก bank name และ admin note ออกจาก rf_cmt สำหรับแต่ละรายการ
+    # เตรียมธนาคารต้นทางและหมายเหตุสำหรับแสดงผล พร้อมรองรับข้อมูลเก่า
     for rf in page.object_list:
-        rf.extracted_bank = ''
+        rf.extracted_bank = rf.rf_bank_from or ''
+        rf.transfer_datetime = ''
         rf.admin_note = ''
-        if rf.rf_cmt and rf.rf_cmt.startswith('โอนจาก:'):
+        if rf.rf_cmt:
             parts = rf.rf_cmt.split('|')
-            rf.extracted_bank = parts[0].replace('โอนจาก:', '').strip()
-            for p in parts[2:]:
+            if not rf.extracted_bank and rf.rf_cmt.startswith('โอนจาก:'):
+                rf.extracted_bank = parts[0].replace('โอนจาก:', '').strip()
+            for p in parts:
                 p = p.strip()
+                if p.startswith('วันที่:'):
+                    rf.transfer_datetime = p.replace('วันที่:', '', 1).strip()
                 if p.startswith('หมายเหตุ:'):
                     rf.admin_note = p.replace('หมายเหตุ:', '', 1).strip()
-        elif rf.rf_cmt:
-            # rf_cmt เก่าที่ยังไม่มีรูปแบบ โอนจาก: ให้ใส่เป็น admin_note
-            rf.admin_note = rf.rf_cmt
+            if not rf.admin_note and not (
+                rf.rf_cmt.startswith('โอนจาก:') or rf.rf_cmt.startswith('วันที่:')
+            ):
+                rf.admin_note = rf.rf_cmt
 
     return render(request, 'admin_panel/refill_mgmt.html', {
         'page'           : page,
@@ -565,23 +566,42 @@ def report_mgmt(request):
                 return redirect('admin_panel:report_mgmt')
             try:
                 with transaction.atomic():
+                    bk = Booking.objects.select_for_update().get(pk=bk_id)
+                    if bk.bk_report_resolved_date:
+                        messages.warning(request, f'รายงาน BK{bk.bk_id:05d} ถูกจัดการแล้ว')
+                        return redirect('admin_panel:report_mgmt')
+                    if bk.bk_status not in (1, 3):
+                        messages.warning(
+                            request,
+                            'สถานะของรายการเปลี่ยนแปลงแล้ว ไม่สามารถบันทึกผลการพิจารณาได้',
+                        )
+                        return redirect('admin_panel:report_mgmt')
+
                     total_credit = bk.bk_rate_per_person * bk.bk_stu_count
-                    bk.member.mb_locked_crd = max(0, bk.member.mb_locked_crd - total_credit)
-                    bk.member.save(update_fields=['mb_locked_crd'])
-                    tutor_member = bk.tutc_id.tut_id.tut_id
+                    student = Member.objects.select_for_update().get(pk=bk.member_id)
+                    student.mb_locked_crd = max(0, student.mb_locked_crd - total_credit)
+                    student.save(update_fields=['mb_locked_crd'])
+                    tutor_member_id = bk.tutc_id.tut_id.tut_id_id
+                    tutor_member = Member.objects.select_for_update().get(pk=tutor_member_id)
                     tutor_member.mb_income_crd += total_credit
                     tutor_member.save(update_fields=['mb_income_crd'])
                     from apps.bookings.models import JobCompletion
                     JobCompletion.objects.filter(bk_id=bk).update(jc_confirm_date=timezone.now())
                     bk.bk_status                = 4
-                    bk.bk_cmt                   = f'[แอดมิน] พิจารณาไม่คืนเครดิต: {note}'
+                    admin_decision = f'[แอดมิน] พิจารณาไม่คืนเครดิต: {note}'
+                    cancel_history = (bk.bk_cmt or '').strip()
+                    bk.bk_cmt = (
+                        f'{cancel_history}\n{admin_decision}'
+                        if cancel_history.startswith('[ไม่อนุมัติการยกเลิก]')
+                        else admin_decision
+                    )
                     bk.bk_report_resolved_date  = timezone.now()
                     bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
                     from apps.notifications.signals import _notif_member
-                    _notif_member(bk.member, 'booking_rejected',
-                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาไม่คืนเครดิต', '/bookings/my/?tab=6')
-                    _notif_member(tutor_member, 'booking_credited',
-                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: เครดิต {total_credit} เครดิตจากการจองนี้โอนเข้าบัญชีของคุณแล้ว', '/bookings/tutor/?tab=done')
+                    _notif_member(student, 'booking_report_resolved',
+                        f'ผลพิจารณารายงาน BK{bk.bk_id:05d}: ไม่คืนเครดิตแก่ผู้เรียน', '/bookings/my/?tab=reported')
+                    _notif_member(tutor_member, 'booking_report_resolved',
+                        f'ผลพิจารณารายงาน BK{bk.bk_id:05d}: เครดิต {total_credit} เครดิตโอนเข้าบัญชีของคุณแล้ว', '/bookings/tutor/?tab=reported')
                 messages.success(request, f'บันทึกผลการพิจารณา BK{bk.bk_id:05d} แล้ว: ไม่คืนเครดิต')
             except Exception as e:
                 messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
@@ -593,20 +613,39 @@ def report_mgmt(request):
                 return redirect('admin_panel:report_mgmt')
             try:
                 with transaction.atomic():
+                    bk = Booking.objects.select_for_update().get(pk=bk_id)
+                    if bk.bk_report_resolved_date:
+                        messages.warning(request, f'รายงาน BK{bk.bk_id:05d} ถูกจัดการแล้ว')
+                        return redirect('admin_panel:report_mgmt')
+                    if bk.bk_status not in (1, 3):
+                        messages.warning(
+                            request,
+                            'สถานะของรายการเปลี่ยนแปลงแล้ว ไม่สามารถบันทึกผลการพิจารณาได้',
+                        )
+                        return redirect('admin_panel:report_mgmt')
+
                     total_credit = bk.bk_rate_per_person * bk.bk_stu_count
-                    bk.member.mb_locked_crd  = max(0, bk.member.mb_locked_crd - total_credit)
-                    bk.member.mb_deposit_crd += total_credit
-                    bk.member.save(update_fields=['mb_locked_crd', 'mb_deposit_crd'])
-                    tutor_member = bk.tutc_id.tut_id.tut_id
+                    # ปลดล็อกเครดิต โดยไม่เพิ่มยอดนำฝากซ้ำเพราะยอดต้นทางยังไม่ถูกหัก
+                    student = Member.objects.select_for_update().get(pk=bk.member_id)
+                    student.mb_locked_crd = max(0, student.mb_locked_crd - total_credit)
+                    student.save(update_fields=['mb_locked_crd'])
+                    tutor_member_id = bk.tutc_id.tut_id.tut_id_id
+                    tutor_member = Member.objects.select_for_update().get(pk=tutor_member_id)
                     bk.bk_status                = 6
-                    bk.bk_cmt                   = f'[แอดมิน] พิจารณาให้คืนเครดิต: {note}'
+                    admin_decision = f'[แอดมิน] พิจารณาให้คืนเครดิต: {note}'
+                    cancel_history = (bk.bk_cmt or '').strip()
+                    bk.bk_cmt = (
+                        f'{cancel_history}\n{admin_decision}'
+                        if cancel_history.startswith('[ไม่อนุมัติการยกเลิก]')
+                        else admin_decision
+                    )
                     bk.bk_report_resolved_date  = timezone.now()
                     bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
                     from apps.notifications.signals import _notif_member
-                    _notif_member(bk.member, 'booking_rejected',
-                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาให้คืนเครดิต — เครดิต {total_credit} เครดิตได้รับคืนเข้าบัญชีแล้ว', '/bookings/my/?tab=6')
-                    _notif_member(tutor_member, 'booking_rejected',
-                        f'แจ้งผลการพิจารณารายงาน BK{bk.bk_id:05d}: พิจารณาให้คืนเครดิตแก่ผู้เรียน', '/bookings/tutor/?tab=rejected')
+                    _notif_member(student, 'booking_report_resolved',
+                        f'ผลพิจารณารายงาน BK{bk.bk_id:05d}: คืนเครดิต {total_credit} เครดิตให้คุณแล้ว', '/bookings/my/?tab=reported')
+                    _notif_member(tutor_member, 'booking_report_resolved',
+                        f'ผลพิจารณารายงาน BK{bk.bk_id:05d}: คืนเครดิตให้ผู้เรียน', '/bookings/tutor/?tab=reported')
                 messages.success(request, f'คืนเครดิต {total_credit} เครดิต และบันทึกผลการพิจารณา BK{bk.bk_id:05d} แล้ว')
             except Exception as e:
                 messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
@@ -643,6 +682,13 @@ def report_mgmt(request):
 
     paginator = Paginator(qs, 15)
     page      = paginator.get_page(page_number)
+
+    # แยกเหตุผลการขอยกเลิกเพื่อแสดงเป็นประวัติประกอบการพิจารณา
+    from apps.bookings.views import _parse_cancel_history
+    for booking in page.object_list:
+        booking.cancel_request_reason, booking.cancel_reject_reason = (
+            _parse_cancel_history(booking.bk_cmt)
+        )
 
     # Template เรียก previous_page_number/next_page_number แม้ปุ่ม disabled
     # จึงกันไม่ให้หน้าแรกสร้างเลข 0 หรือหน้าสุดท้ายสร้างเลขเกินจำนวนหน้า

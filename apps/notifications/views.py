@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from .models import Notification
 
@@ -33,12 +34,12 @@ def api_list(request):
         'unread_count': unread_count,
         'notifications': [
             {
-                'id':         n.pk,
+                'notif_id':   n.notif_id,
                 'type':       n.notif_type,
                 'text':       n.notif_text,
                 'url':        n.notif_url,
                 'is_read':    n.notif_is_read,
-                'created_at': n.notif_created_at.strftime('%d/%m/%Y %H:%M'),
+                'created_at': timezone.localtime(n.notif_created_at).strftime('%d/%m/%Y %H:%M'),
             }
             for n in notifications
         ],
@@ -48,16 +49,16 @@ def api_list(request):
 
 @login_required
 @require_POST
-def api_mark_read(request, pk):
-    """POST /notifications/api/<pk>/read/ — mark อ่านแล้ว"""
+def api_mark_read(request, notif_id):
+    """POST /notifications/api/<notif_id>/read/ — ทำเครื่องหมายว่าอ่านแล้ว"""
     user = request.user
 
     if hasattr(user, 'system'):
-        notif = get_object_or_404(Notification, pk=pk, admin_recipient=user)
+        notif = get_object_or_404(Notification, notif_id=notif_id, admin_recipient=user)
     else:
         try:
             member = user.member
-            notif  = get_object_or_404(Notification, pk=pk, recipient=member)
+            notif = get_object_or_404(Notification, notif_id=notif_id, recipient=member)
         except Exception:
             return JsonResponse({'success': False}, status=403)
 

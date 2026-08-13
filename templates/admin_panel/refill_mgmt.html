@@ -136,6 +136,7 @@
                       '{{ rf.rf_credit }}',
                       '{% if rf.rf_slip %}{{ rf.rf_slip.url }}{% endif %}',
                       '{{ rf.rf_date|date:"d M Y H:i:s" }}',
+                      '{{ rf.transfer_datetime|escapejs }}',
                       '{{ rf.extracted_bank|escapejs }}',
                       {{ rf.rf_status }},
                       '{{ rf.admin_note|escapejs }}'
@@ -218,42 +219,73 @@
               <i class="fas fa-external-link-alt me-1"></i>เปิดไฟล์เต็ม
             </a>
             {% endif %}
+
+            <div class="fw-semibold small mt-3 mb-2">วันเวลาที่แจ้งเติม</div>
+            <div class="rounded-3 bg-white px-3 py-2"
+                 style="border:1px dashed #CBD5E1;">
+              <div class="fw-semibold small" id="mdDate"></div>
+            </div>
+
           </div>
 
           <!-- Right: Info + Action -->
           <div class="col-md-7 p-4">
-            <div class="fw-semibold small text-muted mb-3">ข้อมูลธุรกรรม</div>
+            <!-- ส่วนที่ 1: ผู้ส่งคำขอ -->
+            <section class="mb-3">
+              <div class="fw-semibold small mb-2">
+                ผู้ส่งคำขอ
+              </div>
+              <div class="rounded-3 border px-3 py-2" style="background:#F8FAFC;">
+                <div class="d-flex justify-content-between align-items-center py-1">
+                  <span class="text-muted small">ชื่อสมาชิก</span>
+                  <span class="fw-semibold small text-end" id="mdName"></span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-1">
+                  <span class="text-muted small">รหัสสมาชิก</span>
+                  <span class="fw-semibold small" id="mdMbId"></span>
+                </div>
+              </div>
+            </section>
 
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">ชื่อ - นามสกุล</span>
-              <span class="fw-semibold small text-end" id="mdName"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">รหัสสมาชิก</span>
-              <span class="fw-semibold small" id="mdMbId"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">จำนวนเงิน</span>
-              <span class="fw-bold text-primary" id="mdMoney"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">จำนวนเครดิต</span>
-              <span class="fw-semibold small text-success" id="mdCredit"></span>
-            </div>
-            <div class="mb-2 d-flex justify-content-between border-bottom pb-2">
-              <span class="text-muted small">วันเวลาที่แจ้งเติม</span>
-              <span class="fw-semibold small" id="mdDate"></span>
-            </div>
-            <div class="mb-3 d-flex justify-content-between border-bottom pb-2 d-none" id="mdBankRow">
-              <span class="text-muted small">ธนาคารที่โอน</span>
-              <span class="fw-semibold small text-end" id="mdBank"></span>
-            </div>
+            <!-- ส่วนที่ 2: ยอดที่ขอเติม -->
+            <section class="mb-3">
+              <div class="fw-semibold small mb-2">
+                ยอดที่ขอเติม
+              </div>
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="rounded-3 border p-3 h-100" style="background:#EFF6FF;">
+                    <div class="text-muted small mb-1">ยอดเงินในสลิป</div>
+                    <div class="fw-bold text-primary fs-5" id="mdMoney"></div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="rounded-3 border p-3 h-100" style="background:#F0FDF4;">
+                    <div class="text-muted small mb-1">เครดิตที่จะได้รับ</div>
+                    <div class="fw-bold text-success fs-5" id="mdCredit"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="mb-3">
+              <div class="fw-semibold small mb-2">ข้อมูลการโอน</div>
+              <div class="rounded-3 border px-3 py-2">
+                <div class="d-flex justify-content-between align-items-start py-2 border-bottom d-none" id="mdBankRow">
+                  <span class="fw-semibold small">ธนาคารต้นทาง</span>
+                  <span class="fw-semibold small text-end ms-3" id="mdBank"></span>
+                </div>
+                <div class="d-flex justify-content-between align-items-start py-2 d-none" id="mdTransferDateRow">
+                  <span class="fw-semibold small">โอนเงินเมื่อ</span>
+                  <span class="fw-semibold small text-end ms-3" id="mdTransferDate"></span>
+                </div>
+              </div>
+            </section>
 
             <!-- Action section (เฉพาะรอดำเนินการ) -->
             <div id="mdActionSection">
               <div class="rounded-3 border p-3" style="background:#F8FAFC;">
                 <div class="fw-semibold small mb-2">การดำเนินการตรวจสอบ</div>
-                <div class="small text-muted mb-2">สถานะการอัปเดต</div>
                 <div class="d-flex gap-2 mb-3">
                   <button type="button" id="btnApprove"
                           class="btn btn-sm flex-fill fw-semibold"
@@ -376,7 +408,17 @@
 <script>
 let selectedAction = null;
 
-function openDetail(rfId, name, mbId, money, credit, slipUrl, date, bankName, status, adminNote) {
+function formatTransferDate(value) {
+  if (!value) return '';
+  const parsed = new Date(value.replace(' ', 'T'));
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString('th-TH', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function openDetail(rfId, name, mbId, money, credit, slipUrl, date, transferDate, bankName, status, adminNote) {
   selectedAction = null;
   document.getElementById('mdRfId').textContent   = 'RF' + String(rfId).padStart(5,'0');
   document.getElementById('mdName').textContent   = name;
@@ -384,6 +426,13 @@ function openDetail(rfId, name, mbId, money, credit, slipUrl, date, bankName, st
   document.getElementById('mdMoney').textContent  = '฿' + money;
   document.getElementById('mdCredit').textContent = '+' + credit + ' เครดิต';
   document.getElementById('mdDate').textContent   = date;
+  const transferDateRow = document.getElementById('mdTransferDateRow');
+  if (transferDate) {
+    document.getElementById('mdTransferDate').textContent = formatTransferDate(transferDate);
+    transferDateRow.classList.remove('d-none');
+  } else {
+    transferDateRow.classList.add('d-none');
+  }
   document.getElementById('mdFormRfId').value     = rfId;
   document.getElementById('mdSubmitBtn').disabled = true;
   document.getElementById('mdSubmitBtn').textContent = 'เลือกผลการตรวจสอบก่อน';

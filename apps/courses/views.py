@@ -96,7 +96,7 @@ def major_list(request):
     if q:
         from .models import Major as _M
         matched_ids = [m.mj_id for m in _M.objects.all() if q.lower() in f'mj{m.mj_id:03d}'.lower()]
-        qs = qs.filter(Q(mj_name__icontains=q) | Q(mj_abbr__icontains=q) | Q(mj_id__in=matched_ids))
+        qs = qs.filter(Q(mj_name__icontains=q) | Q(mj_id__in=matched_ids))
     if fac_filter:
         qs = qs.filter(fac_id=fac_filter)
     paginator = Paginator(qs, 10)
@@ -160,7 +160,6 @@ def major_json(request, pk):
     return JsonResponse({
         'mj_id'  : obj.mj_id,
         'mj_name': obj.mj_name,
-        'mj_abbr': obj.mj_abbr,
         'mj_desc': obj.mj_desc or '',
         'fac_id' : obj.fac_id_id,
     })

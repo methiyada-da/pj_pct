@@ -12,9 +12,9 @@ class FacultyAdmin(admin.ModelAdmin):
 
 @admin.register(Major)
 class MajorAdmin(admin.ModelAdmin):
-    list_display = ('mj_id', 'mj_name', 'mj_abbr', 'fac_id')
+    list_display = ('mj_id', 'mj_name', 'fac_id')
     list_filter = ('fac_id',)
-    search_fields = ('mj_name', 'mj_abbr', 'fac_id__fac_name')
+    search_fields = ('mj_name', 'fac_id__fac_name')
     ordering = ('fac_id__fac_name', 'mj_name')
 
 
