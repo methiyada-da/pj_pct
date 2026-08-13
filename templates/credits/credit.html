@@ -291,7 +291,7 @@
       {% if page_obj.object_list %}
         {% for tx in page_obj %}
           {% if tx.kind == 'topup' %}
-            <div class="credit-row" onclick="openRefillDetail('{{ tx.rf_id|stringformat:"05d" }}', '{{ tx.money|floatformat:"2" }}', '{{ tx.amount }}', '{{ tx.date|date:"j M Y - H:i" }}', {{ tx.status }}, '{{ tx.display_cmt|escapejs }}', '{{ tx.slip_url }}', '{{ tx.extracted_bank|escapejs }}')">
+            <div class="credit-row" onclick="openRefillDetail('{{ tx.rf_id|stringformat:"05d" }}', '{{ tx.money|floatformat:"2" }}', '{{ tx.amount }}', '{{ tx.date|date:"j M Y - H:i" }}', {{ tx.status }}, '{{ tx.display_cmt|escapejs }}', '{{ tx.slip_url }}', '{{ tx.extracted_bank|escapejs }}', '{% url 'credits:resubmit_topup' tx.rf_id %}')">
               <div class="tx-icon" style="background:#dcfce7;color:#16a34a;"><i class="fas fa-plus"></i></div>
               <div class="tx-meta">
                 <div class="tx-title">เติมเครดิต</div>
@@ -444,6 +444,9 @@
         </div>
       </div>
       <div class="modal-footer border-0 pt-0">
+        <a id="rdResubmitBtn" href="#" class="btn btn-primary btn-sm d-none">
+          <i class="fas fa-rotate me-1"></i>แก้ไขและส่งคำขอใหม่
+        </a>
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
       </div>
     </div>
@@ -609,7 +612,7 @@ function setBanner(el, tone, html) {
   el.innerHTML = html;
 }
 
-function openRefillDetail(rfId, money, credit, date, status, cmt, slipUrl, bank) {
+function openRefillDetail(rfId, money, credit, date, status, cmt, slipUrl, bank, resubmitUrl) {
   document.getElementById('rdRfId').textContent = 'RF' + rfId;
   document.getElementById('rdMoney').textContent = '฿' + money;
   document.getElementById('rdDate').textContent = date;
@@ -647,6 +650,15 @@ function openRefillDetail(rfId, money, credit, date, status, cmt, slipUrl, bank)
   } else {
     img.style.display = 'none';
     none.style.display = 'block';
+  }
+
+  const resubmitBtn = document.getElementById('rdResubmitBtn');
+  if (status === 2) {
+    resubmitBtn.href = resubmitUrl;
+    resubmitBtn.classList.remove('d-none');
+  } else {
+    resubmitBtn.href = '#';
+    resubmitBtn.classList.add('d-none');
   }
   new bootstrap.Modal(document.getElementById('refillDetailModal')).show();
 }
