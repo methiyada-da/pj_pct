@@ -5,6 +5,8 @@ from apps.accounts.models import Member
 
 
 class Notification(models.Model):
+    notif_id = models.BigAutoField(primary_key=True, verbose_name="รหัสการแจ้งเตือน")
+
     # ประเภทการแจ้งเตือน
     TYPE_CHOICES = [
         ('booking_new',       'มีการจองติวใหม่'),
@@ -14,6 +16,11 @@ class Notification(models.Model):
         ('booking_credited',  'งานเสร็จสิ้น ได้รับเครดิตแล้ว'),
         ('booking_reviewed',  'มีรีวิวใหม่'),
         ('booking_reported',  'มีการรายงานปัญหา'),
+        ('booking_cancel_requested', 'มีคำขอยกเลิกการเรียน'),
+        ('booking_cancel_rejected',  'คำขอยกเลิกไม่ได้รับการอนุมัติ'),
+        ('booking_cancelled',        'การจองหรือการเรียนถูกยกเลิก'),
+        ('booking_report_statement', 'มีคำชี้แจงเพิ่มเติมในรายงาน'),
+        ('booking_report_resolved',  'รายงานได้รับการพิจารณาแล้ว'),
         ('tutor_approved',    'ติวเตอร์ได้รับการอนุมัติ'),
         ('tutor_rejected',    'ติวเตอร์ถูกปฏิเสธ'),
         ('tutor_suspended',   'บัญชีติวเตอร์ถูกระงับ'),

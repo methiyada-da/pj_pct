@@ -256,14 +256,12 @@
         </td>
         <td style="font-size:13px;">
           {% if bk.bk_report_reason == '1' %}หลักฐานไม่ตรงความจริง
-          {% elif bk.bk_report_reason == '2' or bk.bk_report_reason == 't_no_show' %}ติวเตอร์ไม่เข้าสอน
+          {% elif bk.bk_report_reason == '2' %}ติวเตอร์ไม่เข้าสอน
           {% elif bk.bk_report_reason == '3' %}เนื้อหาไม่ตรง
-          {% elif bk.bk_report_reason == '4' %}กดยืนยันพลาด
-          {% elif bk.bk_report_reason == '5' or bk.bk_report_reason == 's_no_show' %}ผู้เรียนไม่เข้าเรียน
-          {% elif bk.bk_report_reason == '6' or bk.bk_report_reason == 'contact' or bk.bk_report_reason == 'cannot_contact' %}ติดต่อไม่ได้
-          {% elif bk.bk_report_reason == '7' or bk.bk_report_reason == 'agree' %}ไม่สามารถตกลงกันได้
-          {% elif bk.bk_report_reason == '8' or bk.bk_report_reason == 'other' %}อื่นๆ
-          {% elif bk.bk_report_reason == 'cancel' %}ข้อพิพาทการยกเลิกจากติวเตอร์
+          {% elif bk.bk_report_reason == '5' %}ผู้เรียนไม่เข้าเรียน
+          {% elif bk.bk_report_reason == '6' %}ติดต่อไม่ได้
+          {% elif bk.bk_report_reason == '7' %}ไม่สามารถตกลงกันได้
+          {% elif bk.bk_report_reason == '8' %}อื่น ๆ
           {% else %}—{% endif %}
         </td>
         <td style="max-width:200px;">
@@ -300,6 +298,8 @@
                     '{% if bk.tutoringactivity.ta_img2 %}{{ bk.tutoringactivity.ta_img2.url }}{% endif %}',
                     '{% if bk.tutoringactivity.ta_img3 %}{{ bk.tutoringactivity.ta_img3.url }}{% endif %}',
                     '{{ bk.tutoringactivity.ta_desc|default:""|escapejs }}',
+                    '{{ bk.cancel_request_reason|default:""|escapejs }}',
+                    '{{ bk.cancel_reject_reason|default:""|escapejs }}',
                     {% if bk.bk_report_resolved_date %}true{% else %}false{% endif %})"
                   title="ดูรายละเอียด">
             <i class="bi bi-eye"></i>
@@ -360,6 +360,20 @@
         <div class="mb-3">
           <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">รายละเอียดปัญหา</div>
           <div id="d-desc" class="p-3 rounded" style="background:#FEF2F2;font-size:14px;line-height:1.7;color:#374151;"></div>
+        </div>
+
+        <div id="d-cancel-history" class="mb-3 d-none">
+          <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">ประวัติคำขอยกเลิกก่อนเกิดปัญหา</div>
+          <div class="p-3 rounded" style="background:#F8FAFC;border:1px solid #E5E7EB;font-size:13px;line-height:1.7;color:#374151;">
+            <div id="d-cancel-student-wrap" class="mb-2 d-none">
+              <span class="fw-semibold">เหตุผลที่ผู้เรียนขอยกเลิก:</span>
+              <div id="d-cancel-student" class="text-muted"></div>
+            </div>
+            <div id="d-cancel-tutor-wrap" class="d-none">
+              <span class="fw-semibold">เหตุผลที่ติวเตอร์ไม่อนุมัติ:</span>
+              <div id="d-cancel-tutor" class="text-muted"></div>
+            </div>
+          </div>
         </div>
 
         <div id="d-statements-wrap" class="mb-3 d-none">
@@ -492,18 +506,10 @@ const REASON_MAP = {
   "1": "หลักฐานการสอนไม่ตรงความจริง",
   "2": "ติวเตอร์ไม่เข้าสอน",
   "3": "เนื้อหาไม่ตรงที่ตกลงไว้",
-  "4": "กดยืนยันพลาด แต่ยังไม่ได้เรียนจริง",
   "5": "ผู้เรียนไม่เข้าเรียน",
   "6": "ติดต่อไม่ได้",
   "7": "ไม่สามารถตกลงกันได้",
   "8": "อื่นๆ",
-  "cancel": "ข้อพิพาทการยกเลิกจากติวเตอร์",
-  "other": "อื่นๆ",
-  "t_no_show": "ติวเตอร์ไม่เข้าสอน",
-  "s_no_show": "ผู้เรียนไม่เข้าเรียน",
-  "contact": "ติดต่อไม่ได้",
-  "cannot_contact": "ติดต่อไม่ได้",
-  "agree": "ไม่สามารถตกลงกันได้",
 };
 
 function renderReportStatements(pk) {
@@ -535,7 +541,7 @@ function renderReportStatements(pk) {
   wrap.classList.remove('d-none');
 }
 
-function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tutorPk, reason, img1, img2, img3, taDesc, resolved) {
+function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tutorPk, reason, img1, img2, img3, taDesc, cancelStudentReason, cancelTutorReason, resolved) {
   document.getElementById('d-bkid').textContent    = bkId;
   document.getElementById('d-student').textContent = student;
   document.getElementById('d-tutor').textContent   = tutor;
@@ -545,6 +551,14 @@ function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tut
   document.getElementById('d-note').value          = '';
   document.getElementById('d-reason').textContent  = REASON_MAP[reason] || reason || '—';
   document.getElementById('note-error').classList.add('d-none');
+  const cancelHistory = document.getElementById('d-cancel-history');
+  const cancelStudentWrap = document.getElementById('d-cancel-student-wrap');
+  const cancelTutorWrap = document.getElementById('d-cancel-tutor-wrap');
+  cancelHistory.classList.toggle('d-none', !cancelStudentReason && !cancelTutorReason);
+  cancelStudentWrap.classList.toggle('d-none', !cancelStudentReason);
+  cancelTutorWrap.classList.toggle('d-none', !cancelTutorReason);
+  document.getElementById('d-cancel-student').textContent = cancelStudentReason || '';
+  document.getElementById('d-cancel-tutor').textContent = cancelTutorReason || '';
   renderReportStatements(pk);
   // set bk_id ในทุก form
   document.querySelectorAll('.modal-bk-id').forEach(el => el.value = pk);

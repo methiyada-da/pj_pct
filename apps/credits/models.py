@@ -15,6 +15,7 @@ class Refill(models.Model):
     rf_date         = models.DateTimeField(verbose_name="วันเวลาที่แจ้งเติม")
     rf_money        = models.DecimalField(max_digits=7, decimal_places=2, verbose_name="จำนวนเงินที่เติม")
     rf_credit       = models.IntegerField(verbose_name="จำนวนเครดิตที่ได้รับ")
+    rf_bank_from    = models.CharField(max_length=100, blank=True, null=True, verbose_name="ธนาคารต้นทาง")
     rf_slip         = models.ImageField(upload_to='Refill/', verbose_name="สลิปการโอนเงิน")
     rf_qr_payload   = models.CharField(max_length=255, blank=True, null=True, unique=True, verbose_name="ข้อมูล QR จากสลิป")
     rf_confirm_date = models.DateTimeField(blank=True, null=True, verbose_name="วันเวลาที่ยืนยันการเติม")

@@ -92,19 +92,23 @@ def credit_view(request):
     tx_list = []
 
     for r in Refill.objects.filter(member=member).order_by('-rf_date'):
-        extracted_bank = ''
+        extracted_bank = r.rf_bank_from or ''
         display_cmt    = ''
-        if r.rf_cmt and r.rf_cmt.startswith('โอนจาก:'):
+        if r.rf_cmt:
             parts = r.rf_cmt.split('|')
-            extracted_bank = parts[0].replace('โอนจาก:', '').strip()
-            for p in parts[2:]:
+            # รองรับข้อมูลเดิมที่ยังเก็บธนาคารไว้ในหมายเหตุ
+            if not extracted_bank and r.rf_cmt.startswith('โอนจาก:'):
+                extracted_bank = parts[0].replace('โอนจาก:', '').strip()
+            for p in parts:
                 p = p.strip()
                 if p.startswith('หมายเหตุ:'):
                     display_cmt = p.replace('หมายเหตุ:', '', 1).strip()
+            if r.rf_status == 2 and not display_cmt and not (
+                r.rf_cmt.startswith('โอนจาก:') or r.rf_cmt.startswith('วันที่:')
+            ):
+                display_cmt = r.rf_cmt
             if r.rf_status != 2:
                 display_cmt = ''
-        elif r.rf_cmt and r.rf_status == 2:
-            display_cmt = r.rf_cmt
 
         tx_list.append({
             'kind'          : 'topup',
@@ -278,6 +282,8 @@ def topup_view(request):
             try:
                 # 1. อ่านรูปภาพ
                 img_pil = Image.open(slip)
+                if img_pil.format not in ('PNG', 'JPEG'):
+                    raise ValueError('unsupported_slip_format')
                 
                 # 2. ตรวจสอบโหมดสี
                 if img_pil.mode != 'RGB':
@@ -311,7 +317,10 @@ def topup_view(request):
             except Exception as e:
                 # หากเกิด error ในการเปิดรูปภาพ
                 print(f"QR Scan Error: {traceback.format_exc()}")
-                errors.append('เกิดข้อผิดพลาดในการตรวจสอบไฟล์รูปภาพ กรุณาลองใหม่อีกครั้ง')
+                if str(e) == 'unsupported_slip_format':
+                    errors.append('รองรับสลิปเฉพาะไฟล์ PNG หรือ JPG เท่านั้น')
+                else:
+                    errors.append('เกิดข้อผิดพลาดในการตรวจสอบไฟล์รูปภาพ กรุณาลองใหม่อีกครั้ง')
 
             # ตรวจสอบการใช้งานซ้ำใน Database
             if qr_payload:
@@ -324,13 +333,14 @@ def topup_view(request):
 
         if not errors:
             rf_credit = round(rf_money_f / crd_val)
-            cmt = f'โอนจาก: {bank_from} | วันที่: {tx_date} {tx_time}'
+            cmt = f'วันที่: {tx_date} {tx_time}'
 
             # สร้าง Refill ก่อนเพื่อได้ rf_id
             refill = Refill.objects.create(
                 rf_date       = timezone.now(),
                 rf_money      = rf_money_f,
                 rf_credit     = rf_credit,
+                rf_bank_from  = bank_from,
                 rf_slip       = slip,
                 rf_qr_payload = qr_payload, # บันทึกข้อมูลที่แกะได้จาก QR
                 rf_status     = 0,
