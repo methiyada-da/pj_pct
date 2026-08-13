@@ -27,10 +27,12 @@ class Booking(models.Model):
     bk_cmt             = models.TextField(blank=True, null=True, verbose_name="หมายเหตุ")
     REPORT_REASON_CHOICES = [
         ('1', 'หลักฐานการสอนไม่ตรงความจริง'),
-        ('2', 'ไม่ได้สอนเลยแต่แจ้งจบงาน'),
+        ('2', 'ติวเตอร์ไม่เข้าสอน'),
         ('3', 'เนื้อหาไม่ตรงที่ตกลงไว้'),
-        ('4', 'ผู้เรียนกดยืนยันโดยไม่ตั้งใจ'),
-        ('other', 'อื่นๆ'),
+        ('5', 'ผู้เรียนไม่เข้าเรียน'),
+        ('6', 'ติดต่ออีกฝ่ายไม่ได้'),
+        ('7', 'ไม่สามารถตกลงกันได้'),
+        ('8', 'อื่น ๆ'),
     ]
     bk_report_reason   = models.CharField(max_length=10, blank=True, null=True, choices=REPORT_REASON_CHOICES, verbose_name="สาเหตุการรายงานปัญหา")
     bk_report_desc     = models.TextField(blank=True, null=True, verbose_name="รายละเอียดการรายงานปัญหา")

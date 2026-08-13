@@ -5,9 +5,9 @@ from .models import Refill, Withdrawals
 
 @admin.register(Refill)
 class RefillAdmin(admin.ModelAdmin):
-    list_display = ('rf_id', 'member', 'rf_credit', 'rf_money', 'rf_status', 'rf_date', 'rf_confirm_date')
+    list_display = ('rf_id', 'member', 'rf_bank_from', 'rf_credit', 'rf_money', 'rf_status', 'rf_date', 'rf_confirm_date')
     list_filter = ('rf_status', 'rf_date', 'rf_confirm_date')
-    search_fields = ('rf_id', 'member__mb_full_name', 'member__mb_email', 'rf_qr_payload', 'rf_cmt')
+    search_fields = ('rf_id', 'member__mb_full_name', 'member__mb_email', 'rf_bank_from', 'rf_qr_payload', 'rf_cmt')
     ordering = ('-rf_date',)
 
 

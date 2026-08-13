@@ -149,9 +149,9 @@
                   <div class="msg-meta">
                     <span class="msg-time">{{ msg.msg_sent_time|date:"H:i" }}</span>
                     {% if msg.sender == me %}
-                      <span class="msg-read {% if msg.msg_is_read == 1 %}msg-read--done{% endif %}"
-                            title="{% if msg.msg_is_read == 1 %}อ่านแล้ว{% else %}ยังไม่อ่าน{% endif %}">
-                        <i class="fas fa-check{% if msg.msg_is_read == 1 %}-double{% endif %}"></i>
+                      <span class="msg-read {% if msg.msg_is_read %}msg-read--done{% endif %}"
+                            title="{% if msg.msg_is_read %}อ่านแล้ว{% else %}ยังไม่อ่าน{% endif %}">
+                        <i class="fas fa-check{% if msg.msg_is_read %}-double{% endif %}"></i>
                       </span>
                     {% endif %}
                   </div>
@@ -346,7 +346,7 @@
     const md = document.createElement('div'); md.className = 'msg-meta';
     md.innerHTML = `<span class="msg-time">${fmtTime(msg.msg_sent_time)}</span>`;
     if (isMe) {
-      const read = String(msg.msg_is_read) === '1';
+      const read = msg.msg_is_read === true;
       const rs = document.createElement('span');
       rs.className = `msg-read${read ? ' msg-read--done' : ''}`;
       rs.title = read ? 'อ่านแล้ว' : 'ยังไม่อ่าน';
@@ -358,7 +358,7 @@
   }
   function updateReceipts(msgs) {
     msgs.forEach(msg => {
-      if (String(msg.msg_is_read) !== '1') return;
+      if (msg.msg_is_read !== true) return;
       const row = chatBody.querySelector(`[data-msg-id="${msg.msg_id}"]`);
       if (!row) return;
       const rs = row.querySelector('.msg-read');

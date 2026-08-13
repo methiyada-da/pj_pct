@@ -25,6 +25,9 @@ def _get_admin_user():
 
 def _notif_member(member, notif_type, text, url=''):
     """สร้าง Notification ให้ Member"""
+    valid_types = {value for value, _label in Notification.TYPE_CHOICES}
+    if notif_type not in valid_types:
+        raise ValueError(f'notif_type ไม่ถูกต้อง: {notif_type}')
     Notification.objects.create(
         recipient=member,
         notif_type=notif_type,
@@ -35,6 +38,9 @@ def _notif_member(member, notif_type, text, url=''):
 
 def _notif_admin(notif_type, text, url=''):
     """สร้าง Notification ให้ Admin"""
+    valid_types = {value for value, _label in Notification.TYPE_CHOICES}
+    if notif_type not in valid_types:
+        raise ValueError(f'notif_type ไม่ถูกต้อง: {notif_type}')
     admin = _get_admin_user()
     if not admin:
         return
@@ -94,21 +100,13 @@ def booking_post_save(sender, instance, created, **kwargs):
             # แจ้งจบงาน → แจ้ง Member ให้กดยืนยันจบงาน
             _notif_member(member, 'booking_completed', 'ติวเตอร์แจ้งจบงาน กรุณายืนยันการเรียน', f'/bookings/my/?tab=23')
 
-        elif new == 4:
+        elif new == 4 and not instance.bk_report_resolved_date:
             # ยืนยันจบงาน → แจ้ง Tutor
             _notif_member(tutor_member, 'booking_credited', 'งานเสร็จสิ้น คุณได้รับเครดิตจากการสอนแล้ว', f'/bookings/tutor/?tab=done')
 
         elif new == 5:
             # รีวิวแล้ว → แจ้ง Tutor
             _notif_member(tutor_member, 'booking_reviewed', 'มีรีวิวใหม่จากผู้เรียน', f'/bookings/tutor/?tab=done')
-
-        elif new == 6:
-            if instance.bk_cmt == 'ผู้เรียนยกเลิกการจอง':
-                # ผู้เรียนยกเลิกเอง → แจ้ง Tutor ว่าถูกยกเลิก
-                _notif_member(tutor_member, 'booking_cancelled', 'ผู้เรียนยกเลิกการจองของคุณ', f'/bookings/tutor/?tab=rejected')
-            else:
-                # ติวเตอร์ปฏิเสธ → แจ้ง Member
-                _notif_member(member, 'booking_rejected', 'ติวเตอร์ปฏิเสธการจองของคุณ', f'/bookings/my/?tab=6')
 
     # รายงานปัญหา → แจ้ง Admin เท่านั้น
     # แจ้งอีกฝ่ายให้เข้าชี้แจงถูกส่งจาก view รายงานปัญหา เพื่อไม่ให้ติวเตอร์ได้รับซ้ำ
@@ -152,7 +150,12 @@ def tutor_post_save(sender, instance, created, **kwargs):
 
     elif old != new:
         if new == 1:
-            _notif_member(member, 'tutor_approved', 'ยินดีด้วย! บัญชีติวเตอร์ของคุณได้รับการอนุมัติแล้ว', '/tutoring/manage/')
+            text = (
+                'บัญชีติวเตอร์ของคุณได้รับการปลดระงับแล้ว คุณสามารถกลับมาสอนได้ตามปกติ'
+                if old == 3
+                else 'ยินดีด้วย! บัญชีติวเตอร์ของคุณได้รับการอนุมัติแล้ว'
+            )
+            _notif_member(member, 'tutor_approved', text, '/tutoring/manage/')
         elif new == 2:
             _notif_member(member, 'tutor_rejected', 'บัญชีติวเตอร์ของคุณไม่ผ่านการอนุมัติ', '/tutoring/register/')
         elif new == 3:
