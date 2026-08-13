@@ -19,7 +19,6 @@ class Faculty(models.Model):
 class Major(models.Model):
     mj_id   = models.AutoField(primary_key=True, verbose_name="รหัสสาขา")
     mj_name = models.CharField(max_length=100, verbose_name="ชื่อสาขา")
-    mj_abbr = models.CharField(max_length=10,  verbose_name="ชื่อย่อสาขา")
     mj_desc = models.TextField(blank=True, null=True, verbose_name="รายละเอียด")
     fac_id  = models.ForeignKey(
         Faculty,

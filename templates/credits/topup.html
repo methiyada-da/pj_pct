@@ -125,10 +125,17 @@
     border: 1px solid #bfdbfe;
     border-radius: 8px;
     padding: 14px 16px;
+    height: 100%;
+  }
+  .credit-summary-box {
+    background: #f8fafc;
+    border: 1px solid #dbe2ea;
+    border-radius: 8px;
+    padding: 14px 16px;
+    height: 100%;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+    flex-direction: column;
+    justify-content: center;
   }
   .upload-zone {
     border: 2px dashed #cbd5e1;
@@ -207,11 +214,6 @@
 {% block content %}
 <div class="topup-page">
   <div class="topup-shell">
-    <div class="mb-3">
-      <a href="{% url 'credits:credit' %}" class="btn btn-light border topup-back">
-        <i class="fas fa-arrow-left me-1"></i> ย้อนกลับ
-      </a>
-    </div>
 
     <div class="topup-hero mb-3">
       <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
@@ -282,7 +284,7 @@
               </div>
               <div id="qrAmount" class="fw-bold text-primary fs-5">฿ 0.00</div>
               <div class="text-muted small mt-1">
-                {% if system %}{{ system.uni_name|default:"Puean Chuay Tu" }}{% else %}Puean Chuay Tu{% endif %}
+                {% if system %}{{ system.acc_name|default:"Puean Chuay Tu" }}{% else %}Puean Chuay Tu{% endif %}
               </div>
             </div>
           </div>
@@ -320,13 +322,18 @@
               </div>
             </div>
 
-            <div class="money-box mb-3">
-              <div>
-                <div class="text-primary small fw-bold">จำนวนเงินที่ต้องโอน</div>
-                <div class="fw-bold text-primary" style="font-size:28px;">฿<span id="moneyDisplay">0.00</span></div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <div class="money-box">
+                  <div class="text-primary small fw-bold">จำนวนเงินที่ต้องโอน</div>
+                  <div class="fw-bold text-primary" style="font-size:28px;">฿<span id="moneyDisplay">0.00</span></div>
+                </div>
               </div>
-              <div class="badge bg-primary-subtle text-primary px-3 py-2">
-                1 เครดิต = {{ crd_val|floatformat:"2" }} บาท
+              <div class="col-md-6">
+                <div class="credit-summary-box">
+                  <div class="text-muted small fw-semibold mb-1">จำนวนเครดิตที่จะได้รับ</div>
+                  <div class="fw-bold text-primary" style="font-size:22px;"><span id="creditDisplay">0</span> เครดิต</div>
+                </div>
               </div>
             </div>
 
@@ -348,11 +355,11 @@
             <div class="topup-field">
               <label class="form-label">สลิปการโอนเงิน</label>
               <div class="upload-zone" id="uploadZone">
-                <input type="file" name="rf_slip" id="slipFile" accept="image/*,.pdf" required>
+                <input type="file" name="rf_slip" id="slipFile" accept="image/png,image/jpeg" required>
                 <div id="uploadPlaceholder" style="pointer-events:none;">
                   <i class="fas fa-cloud-arrow-up mb-2 d-block text-secondary" style="font-size:34px;"></i>
                   <div class="fw-bold small mb-1">คลิกเพื่ออัปโหลด หรือลากไฟล์มาวาง</div>
-                  <div class="text-muted" style="font-size:12px;">รองรับ PNG, JPG หรือ PDF</div>
+                  <div class="text-muted" style="font-size:12px;">รองรับเฉพาะ PNG หรือ JPG</div>
                 </div>
                 <div id="slipPreviewInner" class="d-none w-100 text-center" style="pointer-events:none;">
                   <img id="slipPreviewImg" style="max-height:210px;max-width:100%;border-radius:8px;object-fit:contain;cursor:zoom-in;pointer-events:all;" alt="preview สลิป" onclick="openSlipModal(this.src)">
@@ -450,6 +457,7 @@
     const credits = parseInt(document.getElementById('rfCredits').value) || 0;
     const money = credits * crdVal;
     document.getElementById('moneyDisplay').textContent = money.toFixed(2);
+    document.getElementById('creditDisplay').textContent = credits;
     document.getElementById('rfMoney').value = money.toFixed(2);
 
     const qrAmount = document.getElementById('qrAmount');
