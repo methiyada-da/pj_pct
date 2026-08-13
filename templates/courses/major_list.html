@@ -30,7 +30,7 @@
     <form method="get" style="display:contents;">
       <div class="search-box">
         <i class="bi bi-search"></i>
-        <input type="text" name="q" value="{{ q }}" placeholder="ค้นหา ชื่อสาขา, ชื่อย่อ" />
+        <input type="text" name="q" value="{{ q }}" placeholder="ค้นหาชื่อสาขา" />
       </div>
       <select name="fac" class="filter-select" onchange="this.form.submit()">
         <option value="">— ทุกคณะ —</option>
@@ -51,7 +51,6 @@
         <tr>
           <th style="width:100px;">รหัสสาขา</th>
           <th>ชื่อสาขา</th>
-          <th style="width:100px;">ชื่อย่อ</th>
           <th>คณะ</th>
           <th style="width:100px;">การปฏิบัติ</th>
         </tr>
@@ -66,12 +65,11 @@
             <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">{{ obj.mj_desc|truncatechars:60 }}</div>
             {% endif %}
           </td>
-          <td><span class="badge-count" style="background:#F0FDF4;color:#16A34A;">{{ obj.mj_abbr }}</span></td>
           <td style="font-size:13px;color:#6B7280;">{{ obj.fac_id.fac_name }}</td>
           <td>
             <div style="display:flex;gap:6px;">
               <button class="btn-action btn-edit"
-                      onclick="openEditMajor({{ obj.mj_id }}, '{{ obj.mj_name|escapejs }}', '{{ obj.mj_abbr|escapejs }}', '{{ obj.mj_desc|default:''|escapejs }}', {{ obj.fac_id_id }})"
+                      onclick="openEditMajor({{ obj.mj_id }}, '{{ obj.mj_name|escapejs }}', '{{ obj.mj_desc|default:''|escapejs }}', {{ obj.fac_id_id }})"
                       title="แก้ไข">
                 <i class="bi bi-pencil"></i>
               </button>
@@ -85,7 +83,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="5">
+          <td colspan="4">
             <div class="empty-state">
               <i class="bi bi-diagram-3 d-block"></i>
               <p>ยังไม่มีข้อมูลสาขา{% if q %} ที่ตรงกับ "{{ q }}"{% endif %}</p>
@@ -137,11 +135,7 @@
             {{ form.mj_name }}
           </div>
           <div class="row g-2 mb-3">
-            <div class="col-6">
-              <label class="form-label">ชื่อย่อสาขา <span class="text-danger">*</span></label>
-              {{ form.mj_abbr }}
-            </div>
-            <div class="col-6">
+            <div class="col-12">
               <label class="form-label">คณะ <span class="text-danger">*</span></label>
               {{ form.fac_id }}
             </div>
@@ -178,11 +172,7 @@
             <input type="text" name="mj_name" id="edit_mj_name" class="form-control" required />
           </div>
           <div class="row g-2 mb-3">
-            <div class="col-6">
-              <label class="form-label">ชื่อย่อสาขา <span class="text-danger">*</span></label>
-              <input type="text" name="mj_abbr" id="edit_mj_abbr" class="form-control" required />
-            </div>
-            <div class="col-6">
+            <div class="col-12">
               <label class="form-label">คณะ <span class="text-danger">*</span></label>
               <select name="fac_id" id="edit_fac_id" class="form-select">
                 {% for fac in faculties %}
@@ -233,9 +223,8 @@
 
 {% block extra_js %}
 <script>
-function openEditMajor(pk, name, abbr, desc, facId) {
+function openEditMajor(pk, name, desc, facId) {
   document.getElementById('edit_mj_name').value = name;
-  document.getElementById('edit_mj_abbr').value = abbr;
   document.getElementById('edit_mj_desc').value  = desc;
   document.getElementById('edit_fac_id').value   = facId;
   document.getElementById('editForm').action = `/courses/major/${pk}/edit/`;
