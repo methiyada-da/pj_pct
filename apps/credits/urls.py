@@ -7,6 +7,7 @@ app_name = 'credits'
 urlpatterns = [
     path('',                         views.credit_view,            name='credit'),
     path('topup/',                   views.topup_view,             name='topup'),
+    path('topup/<int:rf_id>/resubmit/', views.resubmit_topup_view, name='resubmit_topup'),
     path('withdraw/',                views.withdraw_view,          name='withdraw'),
     path('withdraw/<int:wd_id>/cancel/', views.cancel_withdraw_view, name='cancel_withdraw'),
     path('qr/',                      views.promptpay_qr,           name='promptpay_qr'),

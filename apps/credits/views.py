@@ -8,6 +8,8 @@ from django.http import JsonResponse
 from django.db import transaction
 from django.views.decorators.http import require_POST
 import base64, io
+from pathlib import PurePath
+from uuid import uuid4
 
 from .models import Refill, Withdrawals
 from apps.admin_panel.models import System
@@ -17,7 +19,62 @@ from apps.bookings.models import Booking, JobCompletion
 import cv2
 import numpy as np
 from PIL import Image
-import traceback
+
+
+def _read_qr_from_slip(slip):
+    """อ่าน QR จากไฟล์สลิปและคืนค่า payload พร้อมข้อความผิดพลาด"""
+    try:
+        image = Image.open(slip)
+        if image.format not in ('PNG', 'JPEG'):
+            return None, 'รองรับสลิปเฉพาะไฟล์ PNG หรือ JPG เท่านั้น'
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+
+        image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+        payload, _, _ = cv2.QRCodeDetector().detectAndDecode(image_cv)
+        if not payload:
+            try:
+                results, _ = cv2.wechat_qrcode_WeChatQRCode().detectAndDecode(image_cv)
+                payload = results[0] if results else None
+            except Exception:
+                payload = None
+
+        if not payload:
+            return None, 'ไม่พบ QR Code กรุณาใช้รูปสลิปต้นฉบับจากแอปธนาคารที่เห็น QR Code ชัดเจน'
+        return payload, None
+    except Exception:
+        return None, 'เกิดข้อผิดพลาดในการตรวจสอบไฟล์รูปภาพ กรุณาลองใหม่อีกครั้ง'
+    finally:
+        slip.seek(0)
+
+
+def _standard_slip_name(refill_id, original_name):
+    """สร้างชื่อสลิปที่ผูกกับ RF และไม่ชนกับไฟล์เดิม"""
+    extension = PurePath(original_name or '').suffix.lower()
+    if extension not in ('.jpg', '.jpeg', '.png'):
+        extension = '.jpg'
+    return f'Refill/rf_id{refill_id}_{uuid4().hex[:8]}{extension}'
+
+
+def _standardize_saved_slip(refill):
+    """ย้ายสลิปที่บันทึกแล้วไปยังชื่อมาตรฐานผ่าน Django Storage API"""
+    old_name = refill.rf_slip.name
+    if not old_name:
+        return
+
+    storage = refill.rf_slip.storage
+    new_name = _standard_slip_name(refill.pk, old_name)
+    with storage.open(old_name, 'rb') as source:
+        saved_name = storage.save(new_name, source)
+
+    try:
+        Refill.objects.filter(pk=refill.pk).update(rf_slip=saved_name)
+        refill.rf_slip.name = saved_name
+    except Exception:
+        storage.delete(saved_name)
+        raise
+
+    transaction.on_commit(lambda: storage.delete(old_name))
 
 
 @login_required
@@ -278,86 +335,33 @@ def topup_view(request):
         if not slip:
             errors.append('กรุณาอัปโหลดสลิปการโอนเงิน')
         else:
-            # --- ตรวจสอบ QR Code จากสลิป ---
-            try:
-                # 1. อ่านรูปภาพ
-                img_pil = Image.open(slip)
-                if img_pil.format not in ('PNG', 'JPEG'):
-                    raise ValueError('unsupported_slip_format')
-                
-                # 2. ตรวจสอบโหมดสี
-                if img_pil.mode != 'RGB':
-                    img_pil = img_pil.convert('RGB')
-                    
-                # 3. แปลงเป็นอาร์เรย์สำหรับ OpenCV (RGB -> BGR)
-                img_cv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
-
-                # 4. สร้างตัวตรวจจับ (ใช้ QRCodeDetector แบบดั้งเดิมเป็น Fallback ก่อน)
-                detector = cv2.QRCodeDetector()
-                data, bbox, _ = detector.detectAndDecode(img_cv)
-
-                if data:
-                    qr_payload = data
-                else:
-                    # 5. ถ้าแบบธรรมดาไม่เจอ ให้ลองใช้ WeChatQRCode (แม่นยำสูงกว่ามาก)
-                    try:
-                        # สร้าง WeChatQRCode object
-                        wechat_detector = cv2.wechat_qrcode_WeChatQRCode()
-                        res, points = wechat_detector.detectAndDecode(img_cv)
-                        
-                        if res and len(res) > 0:
-                            qr_payload = res[0] # ได้ข้อมูลมาแล้ว!
-                        else:
-                            # ถ้าใช้ไม้ตายสุดท้ายแล้วยังหาไม่เจออีก
-                            errors.append('ไม่พบ QR Code หรือสแกนไม่ติด กรุณาใช้รูปสลิปต้นฉบับจากแอปธนาคารที่เห็น QR Code ชัดเจน')
-                    except Exception as wechat_e:
-                        print(f"WeChat QR Scan Error: {wechat_e}")
-                        errors.append('ไม่พบ QR Code หรือสแกนไม่ติด กรุณาตรวจสอบรูปภาพอีกครั้ง')
-
-            except Exception as e:
-                # หากเกิด error ในการเปิดรูปภาพ
-                print(f"QR Scan Error: {traceback.format_exc()}")
-                if str(e) == 'unsupported_slip_format':
-                    errors.append('รองรับสลิปเฉพาะไฟล์ PNG หรือ JPG เท่านั้น')
-                else:
-                    errors.append('เกิดข้อผิดพลาดในการตรวจสอบไฟล์รูปภาพ กรุณาลองใหม่อีกครั้ง')
+            qr_payload, slip_error = _read_qr_from_slip(slip)
+            if slip_error:
+                errors.append(slip_error)
 
             # ตรวจสอบการใช้งานซ้ำใน Database
             if qr_payload:
                 if Refill.objects.filter(rf_qr_payload=qr_payload).exists():
                     errors.append('สลิปนี้ถูกใช้งานเติมเครดิตในระบบไปแล้ว ไม่สามารถใช้ซ้ำได้')
 
-            # รีเซ็ต pointer ของไฟล์กลับมาที่ 0 เสมอ เพื่อให้ Django save รูปได้
-            slip.seek(0)
-            # ---------------------------
-
         if not errors:
             rf_credit = round(rf_money_f / crd_val)
             cmt = f'วันที่: {tx_date} {tx_time}'
 
-            # สร้าง Refill ก่อนเพื่อได้ rf_id
-            refill = Refill.objects.create(
-                rf_date       = timezone.now(),
-                rf_money      = rf_money_f,
-                rf_credit     = rf_credit,
-                rf_bank_from  = bank_from,
-                rf_slip       = slip,
-                rf_qr_payload = qr_payload, # บันทึกข้อมูลที่แกะได้จาก QR
-                rf_status     = 0,
-                rf_cmt        = cmt,
-                member        = member,
-            )
-
-            # rename ไฟล์สลิปเป็น rf_id{pk}.ext
-            if refill.rf_slip:
-                import os
-                old_path = refill.rf_slip.path
-                ext      = os.path.splitext(old_path)[1].lower() or '.jpg'
-                new_name = f'rf_id{refill.rf_id}{ext}'
-                new_path = os.path.join(os.path.dirname(old_path), new_name)
-                os.rename(old_path, new_path)
-                refill.rf_slip.name = f'Refill/{new_name}'
-                refill.save(update_fields=['rf_slip'])
+            with transaction.atomic():
+                # สร้างรายการก่อนเพื่อให้ได้ rf_id แล้วจัดชื่อไฟล์ผ่าน storage
+                refill = Refill.objects.create(
+                    rf_date       = timezone.now(),
+                    rf_money      = rf_money_f,
+                    rf_credit     = rf_credit,
+                    rf_bank_from  = bank_from,
+                    rf_slip       = slip,
+                    rf_qr_payload = qr_payload,
+                    rf_status     = 0,
+                    rf_cmt        = cmt,
+                    member        = member,
+                )
+                _standardize_saved_slip(refill)
 
             messages.success(request, 'ส่งคำขอเติมเครดิตเรียบร้อยแล้ว กรุณารอการตรวจสอบ 15-30 นาที')
             return redirect('credits:credit')
@@ -394,6 +398,135 @@ def topup_view(request):
         'promptpay_id': system.promptpay_id if system and system.promptpay_id else '',
         'available'   : available,
         'prev'        : {},
+    })
+
+
+@login_required
+def resubmit_topup_view(request, rf_id):
+    """แก้ไขและส่งคำขอเติมเครดิตที่ถูกปฏิเสธกลับเข้าคิวตรวจสอบ"""
+    member = request.user.member
+    system = _get_system()
+    crd_val = float(system.crd_val) if system and system.crd_val else 10.0
+    refill = get_object_or_404(Refill, pk=rf_id, member=member)
+
+    if refill.rf_status != 2:
+        messages.warning(request, 'ส่งคำขอใหม่ได้เฉพาะรายการเติมเครดิตที่ถูกปฏิเสธเท่านั้น')
+        return redirect('credits:credit')
+
+    tx_date = ''
+    tx_time = ''
+    if refill.rf_cmt:
+        import re
+        tx_match = re.search(r'(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})', refill.rf_cmt)
+        if tx_match:
+            tx_date, tx_time = tx_match.groups()
+
+    prev = {
+        'bank_from': refill.rf_bank_from or '',
+        'rfCredits': refill.rf_credit,
+        'tx_date': tx_date,
+        'tx_time': tx_time,
+    }
+
+    if request.method == 'POST':
+        rf_money = request.POST.get('rf_money', '0').strip()
+        bank_from = request.POST.get('bank_from', '').strip()
+        tx_date = request.POST.get('tx_date', '').strip()
+        tx_time = request.POST.get('tx_time', '').strip()
+        replacement_slip = request.FILES.get('rf_slip')
+        replacement_qr_payload = None
+        errors = []
+
+        try:
+            rf_money_f = float(rf_money)
+            if rf_money_f <= 0:
+                errors.append('กรุณากรอกจำนวนเครดิตที่ต้องการ')
+        except (TypeError, ValueError):
+            rf_money_f = 0
+            errors.append('จำนวนเงินไม่ถูกต้อง')
+
+        if not bank_from:
+            errors.append('กรุณาเลือกธนาคารที่โอน')
+        if not tx_date:
+            errors.append('กรุณากรอกวันที่โอน')
+        if not tx_time:
+            errors.append('กรุณากรอกเวลาโอน')
+
+        if replacement_slip:
+            replacement_qr_payload, slip_error = _read_qr_from_slip(replacement_slip)
+            if slip_error:
+                errors.append(slip_error)
+            elif Refill.objects.filter(
+                rf_qr_payload=replacement_qr_payload,
+            ).exclude(pk=refill.pk).exists():
+                errors.append('สลิปนี้ถูกใช้กับคำขอเติมเครดิตรายการอื่นแล้ว ไม่สามารถใช้ซ้ำได้')
+
+        if not errors:
+            with transaction.atomic():
+                locked_refill = get_object_or_404(
+                    Refill.objects.select_for_update(),
+                    pk=rf_id,
+                    member=member,
+                )
+                if locked_refill.rf_status != 2:
+                    messages.warning(request, 'สถานะรายการนี้เปลี่ยนแปลงแล้ว ไม่สามารถส่งคำขอซ้ำได้')
+                    return redirect('credits:credit')
+
+                locked_refill.rf_money = rf_money_f
+                locked_refill.rf_credit = round(rf_money_f / crd_val)
+                locked_refill.rf_bank_from = bank_from
+                locked_refill.rf_date = timezone.now()
+                locked_refill.rf_confirm_date = None
+                locked_refill.rf_status = 0
+                locked_refill.rf_cmt = f'วันที่: {tx_date} {tx_time}'
+                update_fields = [
+                    'rf_money', 'rf_credit', 'rf_bank_from', 'rf_date',
+                    'rf_confirm_date', 'rf_status', 'rf_cmt',
+                ]
+                if replacement_slip:
+                    old_slip_name = locked_refill.rf_slip.name
+                    storage = locked_refill.rf_slip.storage
+                    new_slip_name = storage.save(
+                        _standard_slip_name(locked_refill.pk, replacement_slip.name),
+                        replacement_slip,
+                    )
+                    locked_refill.rf_slip.name = new_slip_name
+                    locked_refill.rf_qr_payload = replacement_qr_payload
+                    update_fields.extend(['rf_slip', 'rf_qr_payload'])
+                try:
+                    locked_refill.save(update_fields=update_fields)
+                except Exception:
+                    if replacement_slip:
+                        storage.delete(new_slip_name)
+                    raise
+                if replacement_slip and old_slip_name != new_slip_name:
+                    transaction.on_commit(lambda: storage.delete(old_slip_name))
+
+            messages.success(
+                request,
+                f'ส่งคำขอเติมเครดิต RF{refill.rf_id:05d} ใหม่เรียบร้อยแล้ว กรุณารอแอดมินตรวจสอบ',
+            )
+            return redirect('credits:credit')
+
+        for error in errors:
+            messages.error(request, error)
+        prev = request.POST
+
+    qr_img = None
+    if system and system.promptpay_id:
+        qr_img = _generate_promptpay_qr(system.promptpay_id, amount=0)
+
+    available = member.mb_deposit_crd + member.mb_income_crd - member.mb_locked_crd
+    return render(request, 'credits/topup.html', {
+        'member': member,
+        'system': system,
+        'bank_choices': BANK_CHOICES,
+        'crd_val': crd_val,
+        'qr_img': qr_img,
+        'promptpay_id': system.promptpay_id if system and system.promptpay_id else '',
+        'available': available,
+        'prev': prev,
+        'resubmit_refill': refill,
     })
 
 

@@ -98,7 +98,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'pj_pct',
+        'NAME': 'pct_t',
         'USER': 'admin_pct',
         'PASSWORD': '200300Mew',
         'HOST': 'localhost',
@@ -181,4 +181,4 @@ MESSAGE_TAGS = {
  
 # ── Dev Mode: ข้ามการยืนยันอีเมล ────────────────────────────
 # ตั้งเป็น False เมื่อ deploy จริง
-SKIP_EMAIL_VERIFICATION = True
+SKIP_EMAIL_VERIFICATION = False

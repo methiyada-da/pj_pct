@@ -218,8 +218,14 @@
     <div class="topup-hero mb-3">
       <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
         <div>
-          <h1 class="topup-title">เติมเครดิต</h1>
-          <div class="text-muted small mt-2">โอนเงินตามยอดที่ระบบคำนวณ แล้วอัปโหลดสลิปเพื่อรอแอดมินตรวจสอบ</div>
+          <h1 class="topup-title">{% if resubmit_refill %}แก้ไขคำขอเติมเครดิต{% else %}เติมเครดิต{% endif %}</h1>
+          <div class="text-muted small mt-2">
+            {% if resubmit_refill %}
+              แก้ไขข้อมูลของ RF{{ resubmit_refill.rf_id|stringformat:"05d" }} แล้วส่งสลิปเดิมให้แอดมินตรวจสอบอีกครั้ง
+            {% else %}
+              โอนเงินตามยอดที่ระบบคำนวณ แล้วอัปโหลดสลิปเพื่อรอแอดมินตรวจสอบ
+            {% endif %}
+          </div>
         </div>
         <div class="text-end">
           <div class="text-muted small fw-semibold">อัตราเติมเครดิต</div>
@@ -354,6 +360,27 @@
 
             <div class="topup-field">
               <label class="form-label">สลิปการโอนเงิน</label>
+              {% if resubmit_refill %}
+                <div class="upload-zone done" id="uploadZone">
+                  <input type="file" name="rf_slip" id="slipFile" accept="image/png,image/jpeg">
+                  <div id="uploadPlaceholder" class="d-none" style="pointer-events:none;"></div>
+                  <div id="slipPreviewInner" class="w-100 text-center" style="pointer-events:none;">
+                    <img id="slipPreviewImg" src="{{ resubmit_refill.rf_slip.url }}" style="max-height:210px;max-width:100%;border-radius:8px;object-fit:contain;cursor:zoom-in;pointer-events:all;" alt="สลิปเดิม" onclick="openSlipModal(this.src)">
+                    <div class="mt-2 text-success fw-bold" style="font-size:12px;">
+                      <i class="fas fa-check-circle me-1"></i><span id="slipFileName">ใช้สลิปเดิมของ RF{{ resubmit_refill.rf_id|stringformat:"05d" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-center gap-2 mt-2" style="pointer-events:all;">
+                      <button type="button" class="btn btn-sm btn-outline-primary px-3" onclick="openSlipModal(document.getElementById('slipPreviewImg').src)">
+                        <i class="fas fa-magnifying-glass-plus me-1"></i>ดูรูป
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary px-3" onclick="chooseSlipAgain()">
+                        <i class="fas fa-rotate me-1"></i>เปลี่ยนไฟล์
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="text-muted small mt-2">หากไม่เลือกไฟล์ใหม่ ระบบจะใช้สลิปเดิม</div>
+              {% else %}
               <div class="upload-zone" id="uploadZone">
                 <input type="file" name="rf_slip" id="slipFile" accept="image/png,image/jpeg" required>
                 <div id="uploadPlaceholder" style="pointer-events:none;">
@@ -376,10 +403,11 @@
                   </div>
                 </div>
               </div>
+              {% endif %}
             </div>
 
             <button type="button" class="btn btn-primary w-100 fw-bold py-2" onclick="openTopupConfirm()">
-             ส่งคำขอเติมเครดิต
+             {% if resubmit_refill %}ส่งคำขอใหม่{% else %}ส่งคำขอเติมเครดิต{% endif %}
             </button>
             <div class="soft-note mt-3">
               <i class="fas fa-circle-info me-1 text-primary"></i>
@@ -538,22 +566,24 @@
     });
   }
 
-  uploadZone.addEventListener('dragover', e => {
-    e.preventDefault();
-    uploadZone.classList.add('drag-over');
-  });
-  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-  uploadZone.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadZone.classList.remove('drag-over');
-    if (e.dataTransfer.files[0]) {
-      slipFile.files = e.dataTransfer.files;
-      showPreview(e.dataTransfer.files[0]);
-    }
-  });
-  slipFile.addEventListener('change', function () {
-    if (this.files[0]) showPreview(this.files[0]);
-  });
+  if (uploadZone && slipFile) {
+    uploadZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) {
+        slipFile.files = e.dataTransfer.files;
+        showPreview(e.dataTransfer.files[0]);
+      }
+    });
+    slipFile.addEventListener('change', function () {
+      if (this.files[0]) showPreview(this.files[0]);
+    });
+  }
 
   function showPreview(file) {
     const placeholder = document.getElementById('uploadPlaceholder');
