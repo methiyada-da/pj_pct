@@ -18,16 +18,14 @@ class FacultyForm(forms.ModelForm):
 class MajorForm(forms.ModelForm):
     class Meta:
         model = Major
-        fields = ['mj_name', 'mj_abbr', 'mj_desc', 'fac_id']
+        fields = ['mj_name', 'mj_desc', 'fac_id']
         widgets = {
             'mj_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ชื่อสาขา'}),
-            'mj_abbr': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ชื่อย่อ'}),
             'mj_desc': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'fac_id' : forms.Select(attrs={'class': 'form-select'}),
         }
         labels = {
             'mj_name': 'ชื่อสาขา',
-            'mj_abbr': 'ชื่อย่อสาขา',
             'mj_desc': 'รายละเอียด',
             'fac_id' : 'คณะ',
         }

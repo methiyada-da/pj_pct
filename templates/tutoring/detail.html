@@ -13,13 +13,6 @@
 
 <div class="detail-body">
   <div class="container">
-    <div class="pt-2 pb-3">
-      <a href="{% url 'tutoring:search_tutors' %}"
-         class="btn btn-light border d-inline-flex align-items-center gap-2 shadow-sm"
-         style="border-radius:10px;font-weight:600;font-size:13.5px;padding:8px 16px;">
-        <i class="fas fa-arrow-left" style="font-size:12px;"></i> ย้อนกลับ
-      </a>
-    </div>
     <div class="row g-3">
 
       <!-- ════ COL LEFT: ข้อมูลติวเตอร์ ════ -->
@@ -86,9 +79,6 @@
           <div class="tutor-info-row">
             <i class="fas fa-book tutor-info-icon"></i>
             <span>{{ member.mj_id.mj_name }}</span>
-            {% if member.mj_id.mj_abbr %}
-              <span class="mj-abbr">({{ member.mj_id.mj_abbr }})</span>
-            {% endif %}
           </div>
           {% endif %}
 
@@ -151,12 +141,14 @@
                 <span class="course-meta-value"><strong>{{ tc.tutc_max_stu }}</strong> คน/ครั้ง</span>
               </div>
               <div class="course-meta-item">
-                <span class="course-meta-label">คะแนนรีวิวคอร์ส</span>
+                <span class="course-meta-label" title="คะแนนคำนวณโดยพิจารณาทั้งคะแนนรีวิวและจำนวนผู้รีวิว">
+                  คะแนนคอร์ส <i class="fas fa-circle-info text-muted" style="font-size:.7rem;"></i>
+                </span>
                 <span class="course-meta-value">
-                  {% if tc.tutc_rating %}
+                  {% if tc.review_count %}
                     <i class="fas fa-star" style="color:#F59E0B;"></i>
-                    <strong>{{ tc.tutc_rating|floatformat:1 }}</strong>
-                    <span class="text-muted small">({{ course_review_count }} รีวิว)</span>
+                    <strong>{{ tc.bayesian_rating|floatformat:1 }}</strong>
+                    <span class="text-muted small">· {{ course_review_count }} รีวิว</span>
                   {% else %}
                     ยังไม่มีรีวิวคอร์สนี้
                   {% endif %}
