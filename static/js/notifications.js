@@ -9,6 +9,12 @@ const NOTIF_ICONS_FA = {
   booking_completed:'fa-flag text-warning',
   booking_credited: 'fa-coins text-success',
   booking_reviewed: 'fa-star text-warning',
+  booking_reported: 'fa-exclamation-triangle text-danger',
+  booking_cancel_requested: 'fa-hourglass-half text-warning',
+  booking_cancel_rejected: 'fa-ban text-danger',
+  booking_cancelled: 'fa-calendar-xmark text-danger',
+  booking_report_statement: 'fa-comment-dots text-primary',
+  booking_report_resolved: 'fa-gavel text-success',
   tutor_approved:   'fa-user-check text-success',
   tutor_rejected:   'fa-user-times text-danger',
   tutor_suspended:  'fa-user-lock text-danger',
@@ -29,10 +35,6 @@ const NOTIF_ICONS_BI = {
 };
 
 function _getNotifIcon(n, iconSet, iconPrefix) {
-  const text = n.text || '';
-  if (n.type === 'booking_rejected' && text.includes('เครดิตได้รับคืนเข้าบัญชี')) {
-    return iconPrefix === 'fas' ? 'fa-coins text-success' : 'bi-coin text-success';
-  }
   return iconSet[n.type] || (iconPrefix === 'fas' ? 'fa-bell text-secondary' : 'bi-bell text-secondary');
 }
 
@@ -43,10 +45,10 @@ function _buildItem(n, iconSet, iconPrefix) {
   const bg = n.is_read ? '' : 'style="background:#EFF6FF;"';
   return `
     <a href="${n.url || '#'}"
-       id="notif-item-${n.id}"
+       id="notif-item-${n.notif_id}"
        class="d-flex gap-2 align-items-start px-3 py-2 border-bottom text-decoration-none text-dark notif-item-link"
        ${bg}
-       onclick="handleNotifClick(event, ${n.id}, '${n.url || ''}')">
+       onclick="handleNotifClick(event, ${n.notif_id}, '${n.url || ''}')">
       <i class="${iconPrefix} ${iconKey} mt-1 flex-shrink-0" style="font-size:1rem;"></i>
       <div class="flex-grow-1" style="min-width:0;">
         <div style="font-size:13px;line-height:1.4;white-space:normal;">${n.text}</div>
@@ -93,15 +95,15 @@ function fetchNotifications() {
     .catch(() => {});
 }
 
-function handleNotifClick(event, id, url) {
+function handleNotifClick(event, notifId, url) {
   event.preventDefault();
   // mark read แล้ว navigate
-  fetch(`/notifications/api/${id}/read/`, {
+  fetch(`/notifications/api/${notifId}/read/`, {
     method: 'POST',
     headers: { 'X-CSRFToken': window.NOTIF_CSRF },
   }).finally(() => {
     // เปลี่ยน background เป็นขาว
-    const el = document.getElementById(`notif-item-${id}`);
+    const el = document.getElementById(`notif-item-${notifId}`);
     if (el) el.style.background = '';
     // อัพเดต badge แล้ว navigate
     fetchNotifications();

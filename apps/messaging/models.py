@@ -33,7 +33,7 @@ class Inbox(models.Model):
 
     def unread_count_for(self, me):
         """จำนวนข้อความที่ me ยังไม่ได้อ่าน"""
-        return self.message_set.filter(msg_is_read=0).exclude(sender=me).count()
+        return self.message_set.filter(msg_is_read=False).exclude(sender=me).count()
 
     def last_message(self):
         """ข้อความล่าสุดใน inbox นี้"""
@@ -51,7 +51,7 @@ class Message(models.Model):
         null=True,
         verbose_name="รูปภาพในข้อความ"
     )
-    msg_is_read   = models.IntegerField(default=0, verbose_name="สถานะการอ่าน (0=ยังไม่อ่าน, 1=อ่านแล้ว)")
+    msg_is_read   = models.BooleanField(default=False, verbose_name="อ่านแล้ว")
     sender        = models.ForeignKey(
         Member,
         on_delete=models.CASCADE,
