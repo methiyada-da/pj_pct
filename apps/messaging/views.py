@@ -132,7 +132,7 @@ def chat_with(request, mb_id):
         form = MessageForm()
 
     # mark as read
-    inbox.message_set.filter(msg_is_read=0).exclude(sender=me).update(msg_is_read=1)
+    inbox.message_set.filter(msg_is_read=False).exclude(sender=me).update(msg_is_read=True)
 
     # เพิ่ม flag show_date_sep — ขึ้น date separator เฉพาะเมื่อวันเปลี่ยน
     raw_msgs = list(inbox.message_set.select_related("sender").order_by("msg_sent_time"))
@@ -175,7 +175,7 @@ def poll_messages(request, ib_id):
         return JsonResponse({'error': 'forbidden'}, status=403)
 
     # mark as read
-    inbox.message_set.filter(msg_is_read=0).exclude(sender=me).update(msg_is_read=1)
+    inbox.message_set.filter(msg_is_read=False).exclude(sender=me).update(msg_is_read=True)
 
     after_id = int(request.GET.get('after', 0))
     msgs_qs  = inbox.message_set.select_related('sender').order_by('msg_sent_time')
@@ -193,7 +193,7 @@ def poll_messages(request, ib_id):
             'sender_img':    m.sender.mb_img.url if m.sender.mb_img else None,
         })
 
-    filtered = [m for m in result if m['msg_id'] > after_id or m['msg_is_read'] == 1]
+    filtered = [m for m in result if m['msg_id'] > after_id or m['msg_is_read']]
     return JsonResponse({'messages': filtered})
 
 @login_required

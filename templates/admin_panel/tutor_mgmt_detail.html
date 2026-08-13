@@ -158,14 +158,12 @@
             <td style="white-space:nowrap;">{{ bk.bk_report_date|date:"d M Y H:i" }}</td>
             <td>
               {% if bk.bk_report_reason == '1' %}หลักฐานการสอนไม่ตรงความจริง
-              {% elif bk.bk_report_reason == '2' or bk.bk_report_reason == 't_no_show' %}ติวเตอร์ไม่เข้าสอน
+              {% elif bk.bk_report_reason == '2' %}ติวเตอร์ไม่เข้าสอน
               {% elif bk.bk_report_reason == '3' %}เนื้อหาไม่ตรงที่ตกลงไว้
-              {% elif bk.bk_report_reason == '4' %}กดยืนยันพลาด แต่ยังไม่ได้เรียนจริง
-              {% elif bk.bk_report_reason == '5' or bk.bk_report_reason == 's_no_show' %}ผู้เรียนไม่เข้าเรียน
-              {% elif bk.bk_report_reason == '6' or bk.bk_report_reason == 'contact' or bk.bk_report_reason == 'cannot_contact' %}ติดต่อไม่ได้
-              {% elif bk.bk_report_reason == '7' or bk.bk_report_reason == 'agree' %}ไม่สามารถตกลงกันได้
-              {% elif bk.bk_report_reason == '8' or bk.bk_report_reason == 'other' %}อื่นๆ
-              {% elif bk.bk_report_reason == 'cancel' %}ข้อพิพาทการยกเลิกจากติวเตอร์
+              {% elif bk.bk_report_reason == '5' %}ผู้เรียนไม่เข้าเรียน
+              {% elif bk.bk_report_reason == '6' %}ติดต่อไม่ได้
+              {% elif bk.bk_report_reason == '7' %}ไม่สามารถตกลงกันได้
+              {% elif bk.bk_report_reason == '8' %}อื่น ๆ
               {% else %}—{% endif %}
             </td>
             <td class="report-text">
