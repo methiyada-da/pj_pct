@@ -335,6 +335,11 @@ def booking_reject(request, bk_id):
     if request.method != 'POST':
         return redirect('bookings:tutor_requests')
 
+    reject_reason = request.POST.get('reject_reason', '').strip()
+    if not reject_reason:
+        messages.error(request, 'กรุณาระบุเหตุผลที่ปฏิเสธงาน')
+        return redirect('/bookings/tutor/?tab=pending')
+
     try:
         tutor = request.user.member.tutor
     except Exception:
@@ -363,7 +368,7 @@ def booking_reject(request, bk_id):
                 time_slot.save(update_fields=['ts_status'])
 
             bk.bk_status = 6
-            bk.bk_cmt    = request.POST.get('reject_reason', '').strip() or None
+            bk.bk_cmt    = reject_reason
             bk.save()
 
         _notify_member(

@@ -258,7 +258,7 @@
   </div>
 </div>
 
-<div class="pay-table-card">
+<div class="pay-table-card admin-record-card">
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-4 py-3 border-bottom">
     <div class="fw-bold">คำขอถอนเงิน</div>
     <form method="get" class="d-flex gap-2 align-items-center">
@@ -288,7 +288,7 @@
           <th>ธนาคาร / เลขบัญชี</th>
           <th>สถานะการจ่าย</th>
           <th>หมายเหตุ</th>
-          <th class="text-center">การจัดการ</th>
+          <th class="text-center">รายละเอียด</th>
         </tr>
       </thead>
       <tbody>
@@ -319,7 +319,7 @@
           <td class="text-muted small">{{ wd.wd_cmt|default:"-" }}</td>
           <td class="text-center">
             {% if wd.wd_status == 0 %}
-              <button class="btn btn-sm btn-primary fw-semibold px-3"
+              <button class="admin-detail-action"
                       onclick="openPayDetail(
                         '{{ wd.wd_id }}',
                         '{{ wd.member.mb_full_name|escapejs }}',
@@ -335,10 +335,10 @@
                         '{{ wd.qr_code|default:""|escapejs }}',
                         '{{ wd.wd_req_date|date:"d M Y H:i" }}'
                       )">
-                ดูรายละเอียด
+                <i class="bi bi-eye"></i><span>ดูรายละเอียด</span>
               </button>
             {% else %}
-              <button class="btn btn-sm btn-outline-secondary px-3"
+              <button class="admin-detail-action"
                       onclick="openViewDetail(
                         '{{ wd.wd_id }}',
                         '{{ wd.member.mb_full_name|escapejs }}',
@@ -356,7 +356,7 @@
                         {{ wd.wd_status }},
                         '{{ wd.wd_cmt|default:""|escapejs }}'
                       )">
-                ดูรายละเอียด
+                <i class="bi bi-eye"></i><span>ดูรายละเอียด</span>
               </button>
             {% endif %}
           </td>
@@ -392,7 +392,7 @@
   {% endif %}
 </div>
 
-<div class="modal fade pay-detail-modal" id="payDetailModal" tabindex="-1">
+<div class="modal fade pay-detail-modal admin-detail-modal" id="payDetailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="pay-detail-head">

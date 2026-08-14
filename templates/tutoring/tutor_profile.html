@@ -140,25 +140,6 @@
 
 <div class="tp-wrap">
 
-  <!-- ── ปุ่มย้อนกลับ + หัวข้อ ── -->
-  <div style="max-width:1280px;margin:0 auto 1rem;display:flex;align-items:center;gap:.75rem;">
-    <a id="back-btn" href="javascript:history.back()"
-       class="btn btn-light border shadow-sm d-inline-flex align-items-center justify-content-center"
-       style="border-radius:10px;width:36px;height:36px;padding:0;flex-shrink:0;">
-      <i class="fas fa-arrow-left" style="font-size:12px;"></i>
-    </a>
-    <h5 style="margin:0;font-weight:700;color:var(--ons);font-size:1.05rem;">โปรไฟล์ติวเตอร์</h5>
-  </div>
-  <script>
-    // ถ้าหน้าก่อนหน้าเป็นหน้าแก้ไขโปรไฟล์ → ไปที่ tutor_manage แทน
-    (function() {
-      var ref = document.referrer || '';
-      if (ref.indexOf('/tutoring/profile/edit') !== -1) {
-        document.getElementById('back-btn').href = "{% url 'tutoring:tutor_manage' %}";
-      }
-    })();
-  </script>
-
 <div class="tp-grid">
 
   <!-- ═══════════════════════════
