@@ -49,7 +49,7 @@
     <div class="row g-4">
       {% for tutor in featured_tutors %}
       {% with member=tutor.tut_id %}
-      <div class="col-md-6 col-xl-4">
+      <div class="col-6 col-lg-4">
         <a href="{% url 'tutoring:tutor_profile' member.pk %}" class="home-tutor-card">
           <div class="home-tutor-card-top">
             {% if member.mb_img %}
@@ -99,7 +99,7 @@
     <div class="row g-4">
       {% for tc in featured_courses %}
       {% with member=tc.tut_id.tut_id %}
-      <div class="col-md-6 col-xl-4">
+      <div class="col-6 col-lg-4">
         <a href="{% url 'tutoring:course_detail' tc.tutc_id %}" class="home-course-card">
           <div class="home-course-img">
             {% if tc.tutc_img %}
