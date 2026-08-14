@@ -1520,6 +1520,199 @@ div[style*="background:#2563EB"] {
 .activity-status.is-success { color: var(--success); background: var(--success-soft); }
 .activity-status.is-danger { color: var(--coral); background: var(--coral-soft); }
 .activity-status.is-warning { color: var(--warning); background: var(--warning-soft); }
+
+/* =============================================================
+   รูปแบบกลางสำหรับหน้าจัดการข้อมูลและหน้าต่างรายละเอียด
+   ============================================================= */
+.admin-record-card {
+  overflow: hidden;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.admin-filter-surface {
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.admin-filter-surface .card-body {
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  padding: 14px 16px !important;
+}
+
+.admin-filter-surface form {
+  width: 100%;
+}
+
+.admin-record-card .table-responsive,
+.admin-record-card .table-responsive-wrap {
+  margin: 0;
+}
+
+.admin-record-card .table,
+.admin-record-card .data-table {
+  width: 100%;
+  margin-bottom: 0 !important;
+  border-collapse: collapse;
+}
+
+.admin-record-card .table thead th,
+.admin-record-card .data-table th {
+  height: 54px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--surface-soft) !important;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: none;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.admin-record-card .table tbody td,
+.admin-record-card .data-table td {
+  min-height: 64px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #E8EDF4;
+  color: var(--text-main);
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.admin-record-card .table tbody tr:last-child td,
+.admin-record-card .data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-record-card .table tbody tr:hover td,
+.admin-record-card .data-table tbody tr:hover td {
+  background: #F8FBFF;
+}
+
+.admin-detail-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 112px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #BFDBFE;
+  border-radius: 9px;
+  color: var(--primary) !important;
+  background: var(--primary-soft);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none !important;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.admin-detail-action:hover {
+  border-color: #93C5FD;
+  color: var(--primary-dark) !important;
+  background: #DBEAFE;
+  transform: translateY(-1px);
+}
+
+.modal.admin-detail-modal .modal-content {
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 16px !important;
+  background: #FFFFFF;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .2) !important;
+}
+
+.admin-detail-modal .modal-header,
+.admin-detail-modal .pay-detail-head {
+  min-height: 68px;
+  padding: 16px 22px !important;
+  border-bottom: 0 !important;
+  color: #FFFFFF;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary)) !important;
+}
+
+.admin-detail-modal .modal-title,
+.admin-detail-modal .modal-title i,
+.admin-detail-modal .pay-detail-head .text-primary {
+  color: #FFFFFF !important;
+}
+
+.admin-detail-modal .modal-body {
+  padding: 22px !important;
+  background: #F8FAFC;
+}
+
+.admin-detail-modal .modal-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: #FFFFFF;
+}
+
+.admin-detail-modal .modal-body > table,
+.admin-detail-modal .pay-detail-main,
+.admin-detail-modal #modalBody .card,
+.admin-detail-modal .modal-body > .row {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #FFFFFF;
+}
+
+.admin-detail-modal .modal-body > table {
+  padding: 10px 14px;
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+
+.admin-detail-modal .modal-body > table td {
+  padding: 8px 6px !important;
+  border-bottom: 1px solid #EEF2F7;
+}
+
+.admin-detail-modal .modal-body > table tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-detail-modal .pay-info-row,
+.admin-detail-modal .modal-detail-row {
+  min-height: 42px;
+  padding: 9px 0;
+  border-bottom: 1px solid #EEF2F7;
+}
+
+.admin-detail-modal .pay-info-row:last-child,
+.admin-detail-modal .modal-detail-row:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 767.98px) {
+  .admin-record-card .table thead th,
+  .admin-record-card .data-table th,
+  .admin-record-card .table tbody td,
+  .admin-record-card .data-table td {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .admin-detail-modal .modal-dialog {
+    margin: .75rem;
+  }
+
+  .admin-detail-modal .modal-body {
+    padding: 14px !important;
+  }
+}
 .empty-state {
   margin: 0;
   padding: 24px 10px;
