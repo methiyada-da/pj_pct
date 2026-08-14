@@ -10,7 +10,7 @@
 </div>
 
 <!-- ── Toolbar ── -->
-<div class="card-panel mb-4">
+<div class="card-panel mb-4 admin-record-card">
   <div class="card-toolbar">
     <form method="get" class="d-flex align-items-center gap-2 flex-wrap flex-grow-1">
       <div class="search-box flex-grow-1" style="max-width:400px;">
@@ -46,7 +46,7 @@
         <th>ชื่อ-นามสกุล</th>
         <th>ชื่อคณะ</th>
         <th>สถานะ</th>
-        <th>การปฏิบัติ</th>
+        <th>รายละเอียด</th>
       </tr>
     </thead>
     <tbody>
@@ -89,9 +89,8 @@
         </td>
         <td>
           <a href="{% url 'admin_panel:tutor_mgmt_detail' tutor.pk %}"
-             class="d-inline-flex align-items-center gap-1"
-             style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none;">
-            รายละเอียด <i class="bi bi-eye"></i>
+             class="admin-detail-action">
+            <i class="bi bi-eye"></i><span>ดูรายละเอียด</span>
           </a>
         </td>
       </tr>

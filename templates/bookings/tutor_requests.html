@@ -84,7 +84,60 @@
     width: 100%;
     white-space: nowrap;
   }
+
+  /* การ์ดคำขอรอยืนยันแบบกะทัดรัด */
+  .pending-booking-row {
+    display: grid;
+    grid-template-columns: 108px minmax(0, 1fr);
+    min-height: 238px;
+  }
+  .pending-booking-row .course-thumb {
+    width: 108px;
+    min-height: 238px;
+  }
+  .pending-booking-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 168px;
+    align-items: start;
+    gap: 18px;
+    padding: 18px 20px;
+  }
+  .pending-booking-main { min-width: 0; }
+  .pending-booking-actions {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .pending-booking-actions .earnings-box {
+    padding: 10px 12px;
+    margin-bottom: 10px !important;
+  }
+  .pending-booking-actions .btn {
+    min-height: 40px;
+  }
+
   @media (max-width: 768px) {
+    .pending-booking-row {
+      grid-template-columns: 88px minmax(0, 1fr);
+      min-height: 0;
+    }
+    .pending-booking-row .course-thumb {
+      width: 88px;
+      min-height: 220px;
+    }
+    .pending-booking-content {
+      grid-template-columns: minmax(0, 1fr) 150px;
+      gap: 12px;
+      padding: 14px;
+    }
+    .pending-booking-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .pending-booking-actions .btn { margin-bottom: 0 !important; }
+    .pending-booking-actions form { display: none; }
+
     .accepted-booking-row {
       grid-template-columns: 112px minmax(0, 1fr);
     }
@@ -104,6 +157,27 @@
     }
     .accepted-actions {
       min-width: 0;
+    }
+  }
+
+  @media (max-width: 575px) {
+    .pending-booking-row {
+      grid-template-columns: 72px minmax(0, 1fr);
+    }
+    .pending-booking-row .course-thumb {
+      width: 72px;
+      min-height: 190px;
+    }
+    .pending-booking-content {
+      grid-template-columns: 1fr;
+      padding: 12px;
+    }
+    .pending-booking-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .pending-booking-actions .earnings-box {
+      grid-column: 1 / -1;
     }
   }
 
@@ -208,7 +282,7 @@
       {% if pending %}
         {% for bk in pending %}
         <div class="bk-card pending mb-3">
-          <div class="d-flex align-items-stretch">
+          <div class="pending-booking-row">
             <!-- รูปปกคอร์ส -->
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -219,8 +293,8 @@
               <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
             </div>
             <!-- รายละเอียด -->
-            <div class="flex-fill p-4 d-flex align-items-start justify-content-between gap-3 flex-wrap">
-            <div class="flex-fill">
+            <div class="pending-booking-content">
+            <div class="pending-booking-main">
               <div class="d-flex align-items-center gap-2 mb-2">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
                 <span class="badge bg-warning text-dark">รอยืนยัน</span>
@@ -247,7 +321,7 @@
               </div>
               {% endif %}
             </div>
-            <div style="min-width:180px;">
+            <div class="pending-booking-actions">
               <div class="earnings-box text-center mb-3">
                 <div class="text-muted small mb-1">เครดิตที่จะได้รับ</div>
                 <div class="fw-bold text-success" style="font-size:22px;">{{ bk.bk_rate_per_person }} <span style="font-size:13px;font-weight:500;">× {{ bk.bk_stu_count }}</span></div>
@@ -257,7 +331,7 @@
                 {% csrf_token %}
               </form>
               <button class="btn btn-success w-100 mb-2 fw-bold"
-                      onclick="openAccept({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', '{{ bk.tutc_id.tutc_name|escapejs }}', {{ bk.total_credit }})"
+                      onclick="openAccept({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', '{{ bk.tutc_id.tutc_name|escapejs }}', {{ bk.total_credit }})">
                 <i class="fas fa-check me-1"></i>รับงาน
               </button>
               <button class="btn btn-outline-danger w-100 fw-semibold"
@@ -265,8 +339,8 @@
                 ปฏิเสธ
               </button>
             </div>
-            </div>{# /flex-fill p-4 #}
-          </div>{# /d-flex align-items-stretch #}
+            </div>{# /pending-booking-content #}
+          </div>{# /pending-booking-row #}
         </div>
         {% endfor %}
       {% else %}
@@ -900,16 +974,20 @@ document.querySelectorAll('.tab-pill').forEach(btn => {
   if (empty) empty.style.display = cnt === 0 ? '' : 'none';
 })();
 
-function openReject(bkId, studentName) {
-  Swal.fire({
+async function openReject(bkId, studentName, savedReason = '') {
+  const inputResult = await Swal.fire({
     title: 'ปฏิเสธงาน?',
-    html: `ปฏิเสธคำขอจองจาก <strong>${studentName}</strong><br><span class="text-muted small">เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียนทันที</span>`,
+    html: `ปฏิเสธคำขอจองจาก <strong>${studentName}</strong><br><span class="text-muted small d-block text-start mt-2">เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียน<br>และช่วงเวลาจองจะกลับมาเป็นเวลาว่างทันที</span>`,
     icon: 'error',
     input: 'textarea',
-    inputPlaceholder: 'ระบุเหตุผลที่ปฏิเสธ... (ไม่บังคับ)',
+    inputValue: savedReason,
+    inputPlaceholder: 'ระบุเหตุผลที่ปฏิเสธ... (จำเป็น)',
     inputAttributes: { rows: 3 },
+    inputValidator: value => {
+      if (!value || !value.trim()) return 'กรุณาระบุเหตุผลที่ปฏิเสธ';
+    },
     showCancelButton: true,
-    confirmButtonText: '<i class="fas fa-times me-1"></i> ยืนยันการปฏิเสธ',
+    confirmButtonText: ' ยืนยัน',
     cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#EF4444',
     cancelButtonColor: '#6B7280',
@@ -920,14 +998,59 @@ function openReject(bkId, studentName) {
         confirmButton: 'rounded-3 px-4 fw-bold',
         cancelButton:  'rounded-3 px-4 fw-semibold',
       },
-  }).then(result => {
-    if (result.isConfirmed) {
-      const form = document.getElementById('rejectForm');
-      form.action = `/bookings/tutor/${bkId}/reject/`;
-      document.getElementById('rejectReason').value = result.value || '';
-      form.submit();
-    }
   });
+
+  if (!inputResult.isConfirmed) return;
+
+  const reason = (inputResult.value || '').trim();
+  const safeStudentName = escapeHtml(studentName);
+  const safeReason = reason ? escapeHtml(reason) : '<span class="text-muted">ไม่ได้ระบุหมายเหตุ</span>';
+
+  const confirmResult = await Swal.fire({
+    title: 'ตรวจสอบข้อมูลอีกครั้ง',
+    html: `
+      <div class="text-start" style="font-size:.92rem;">
+        <div class="p-3 rounded-3 mb-3" style="background:#F8FAFC;border:1px solid #E5E7EB;">
+          <div class="d-flex justify-content-between gap-3 mb-2">
+            <span class="text-muted">ผู้เรียน</span>
+            <strong class="text-end">${safeStudentName}</strong>
+          </div>
+          <div>
+            <div class="text-muted fw-bold mb-1">หมายเหตุการปฏิเสธ</div>
+            <div style="white-space:pre-wrap;line-height:1.6;word-break:break-word;">${safeReason}</div>
+          </div>
+        </div>
+        <div class="text-danger small text-start d-flex align-items-start gap-1">
+          <i class="fas fa-exclamation-triangle mt-1"></i>
+          <div>
+            <div>เมื่อยืนยัน เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียน</div>
+            <div>และช่วงเวลาจองจะกลับมาเป็นเวลาว่างทันที</div>
+          </div>
+        </div>
+      </div>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: ' ยืนยันปฏิเสธงาน',
+    cancelButtonText: 'แก้ไข',
+    confirmButtonColor: '#EF4444',
+    cancelButtonColor: '#6B7280',
+    reverseButtons: true,
+    customClass: {
+      popup:         'rounded-4 shadow',
+      actions:       'gap-2',
+      confirmButton: 'rounded-3 px-4 fw-bold',
+      cancelButton:  'rounded-3 px-4 fw-semibold',
+    },
+  });
+
+  if (confirmResult.isConfirmed) {
+    const form = document.getElementById('rejectForm');
+    form.action = `/bookings/tutor/${bkId}/reject/`;
+    document.getElementById('rejectReason').value = reason;
+    form.submit();
+  } else if (confirmResult.dismiss === Swal.DismissReason.cancel) {
+    openReject(bkId, studentName, reason);
+  }
 }
 
 function submitCancelDecision(actionUrl, rejectReason = '') {

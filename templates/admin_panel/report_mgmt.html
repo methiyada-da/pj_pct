@@ -220,7 +220,7 @@
 </div>
 
 <!-- Table -->
-<div class="card-panel">
+<div class="card-panel admin-record-card">
   <!-- Filter -->
   <div class="card-toolbar">
     <div class="d-flex gap-2 flex-wrap">
@@ -242,7 +242,7 @@
         <th>รายละเอียดปัญหา</th>
         <th>สถานะ</th>
         <th>วันที่รายงาน</th>
-        <th>จัดการ</th>
+        <th>รายละเอียด</th>
       </tr>
     </thead>
     <tbody>
@@ -283,7 +283,7 @@
           {% endif %}
         </td>
         <td>
-          <button class="btn-action btn-edit"
+          <button class="admin-detail-action"
                   onclick="openDetail({{ bk.bk_id }},
                     'BK{{ bk.bk_id|stringformat:"05d" }}',
                     '{{ bk.member.mb_full_name|escapejs }}',
@@ -302,7 +302,7 @@
                     '{{ bk.cancel_reject_reason|default:""|escapejs }}',
                     {% if bk.bk_report_resolved_date %}true{% else %}false{% endif %})"
                   title="ดูรายละเอียด">
-            <i class="bi bi-eye"></i>
+            <i class="bi bi-eye"></i><span>ดูรายละเอียด</span>
           </button>
         </td>
       </tr>
@@ -340,7 +340,7 @@
 </div>
 
 <!-- Modal รายละเอียด -->
-<div class="modal fade" id="detailModal" tabindex="-1">
+<div class="modal fade admin-detail-modal" id="detailModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
