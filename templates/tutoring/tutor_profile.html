@@ -1,5 +1,5 @@
 {% extends 'main/base.html' %}
-{% load static %}
+{% load static course_covers %}
 
 {% block title %}โปรไฟล์ติวเตอร์ — {{ member.mb_full_name }}{% endblock %}
 
@@ -352,9 +352,7 @@
             {% if item.course.tutc_img %}
               <img src="{{ item.course.tutc_img.url }}" alt="{{ item.course.tutc_name }}">
             {% else %}
-              <div class="tp-ccard-img-ph">
-                <span class="ph-text">{{ item.course.tutc_name|slice:":2" }}</span>
-              </div>
+              <img src="{% static item.course|course_cover_path %}" alt="รูปปก {{ item.course.tutc_name }}">
             {% endif %}
 
             <!-- badge ใหม่ -->
