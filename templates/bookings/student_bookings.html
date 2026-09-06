@@ -1,5 +1,5 @@
 {% extends 'main/base.html' %}
-{% load static %}
+{% load static course_covers %}
 
 {% block title %}การจองเรียนของฉัน — Puean Chuay Tu{% endblock %}
 
@@ -162,7 +162,7 @@
             {% if bk.tutc_id.tutc_img %}
               <img src="{{ bk.tutc_id.tutc_img.url }}" alt="">
             {% else %}
-              <div class="thumb-fallback"><i class="fas fa-book-open text-white" style="font-size:22px;opacity:.6;"></i></div>
+              <img src="{% static bk.tutc_id|course_cover_path %}" alt="รูปปก {{ bk.tutc_id.tutc_name }}">
             {% endif %}
             <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
           </div>

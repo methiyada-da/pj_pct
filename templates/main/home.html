@@ -1,5 +1,5 @@
 {% extends 'main/base.html' %}
-{% load static %}
+{% load static course_covers %}
 
 {% block title %}หน้าแรก — Puean Chuay Tu{% endblock %}
 
@@ -105,7 +105,7 @@
             {% if tc.tutc_img %}
               <img src="{{ tc.tutc_img.url }}" alt="{{ tc.tutc_name }}">
             {% else %}
-              <div class="home-course-placeholder"><i class="fas fa-book-open"></i></div>
+              <img src="{% static tc|course_cover_path %}" alt="รูปปก {{ tc.tutc_name }}">
             {% endif %}
           </div>
           <div class="home-course-body">

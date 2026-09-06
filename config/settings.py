@@ -77,6 +77,10 @@ TEMPLATES = [
         'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
+            # ลงทะเบียนไลบรารีรูปปกคอร์สให้เทมเพลตเรียกใช้ได้แน่นอน
+            'libraries': {
+                'course_covers': 'apps.tutoring.templatetags.course_covers',
+            },
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
@@ -98,7 +102,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'pct_t',
+        'NAME': 'pct_test',
         'USER': '***REMOVED***',
         'PASSWORD': '***REMOVED***',
         'HOST': 'localhost',
