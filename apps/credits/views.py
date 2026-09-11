@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.db import transaction
 from django.views.decorators.http import require_POST
 import base64, io
+from datetime import datetime
 from pathlib import PurePath
 from uuid import uuid4
 
@@ -331,6 +332,16 @@ def topup_view(request):
             errors.append('กรุณากรอกวันที่โอน')
         if not tx_time:
             errors.append('กรุณากรอกเวลาโอน')
+
+        if tx_date and tx_time:
+            try:
+                transfer_datetime = timezone.make_aware(
+                    datetime.strptime(f'{tx_date} {tx_time}', '%Y-%m-%d %H:%M')
+                )
+                if transfer_datetime > timezone.now():
+                    errors.append('วันที่และเวลาโอนต้องไม่เกินเวลาปัจจุบัน')
+            except ValueError:
+                errors.append('วันที่หรือเวลาโอนไม่ถูกต้อง')
             
         if not slip:
             errors.append('กรุณาอัปโหลดสลิปการโอนเงิน')
