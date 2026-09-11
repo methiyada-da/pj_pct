@@ -1369,6 +1369,9 @@ div[style*="background:#2563EB"] {
 }
 .status-pill-calm { color: var(--primary-dark); background: var(--primary-soft); }
 .chart-frame { height: 306px; }
+.chart-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chart-controls select { min-height: 32px; padding: 4px 28px 4px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--primary-dark); background: var(--primary-soft); font-size: 12px; font-weight: 800; }
+.panel-card-large .panel-header h2:nth-of-type(2) { display: none; }
 
 .action-panel { display: grid; align-content: start; gap: 10px; }
 .queue-item {

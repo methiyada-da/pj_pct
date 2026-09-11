@@ -20,6 +20,10 @@
         <i class="bi bi-receipt"></i>
         ตรวจสลิป
       </a>
+      <a href="{% url 'admin_reports' %}" class="btn-admin btn-admin-light">
+        <i class="bi bi-file-earmark-bar-graph"></i>
+        รายงาน
+      </a>
     </div>
   </section>
 
@@ -59,13 +63,36 @@
         <span class="metric-note">รายได้ระบบจากการถอน</span>
       </div>
     </article>
+
+    <article class="metric-card">
+      <div class="metric-icon"><i class="bi bi-calendar2-check"></i></div>
+      <div>
+        <span class="metric-label">การสมัครเรียนทั้งหมด</span>
+        <strong class="metric-value">{{ total_bookings }}</strong>
+        <span class="metric-note">กำลังดำเนินการ {{ active_bookings }} งาน</span>
+      </div>
+    </article>
+
+    <article class="metric-card metric-card-primary">
+      <div class="metric-icon"><i class="bi bi-star-fill"></i></div>
+      <div>
+        <span class="metric-label">คะแนนรีวิวเฉลี่ย</span>
+        <strong class="metric-value">{{ average_review|floatformat:2 }}</strong>
+        <span class="metric-note">งานยืนยันจบแล้ว {{ completed_bookings }} งาน</span>
+      </div>
+    </article>
   </section>
 
   <section class="dashboard-layout">
     <div class="panel-card panel-card-large">
       <div class="panel-header">
         <div>
-          <span class="panel-kicker">Growth</span>
+          <span class="panel-kicker">Analytics</span>
+          <h2>{{ chart_metric_label }}ตามช่วงเวลา</h2>
+          <div class="chart-controls">
+            <select id="chartMetric" aria-label="เลือกข้อมูลกราฟ"><option value="members" {% if chart_metric == 'members' %}selected{% endif %}>สมาชิกใหม่</option><option value="bookings" {% if chart_metric == 'bookings' %}selected{% endif %}>การสมัครเรียน</option><option value="topups" {% if chart_metric == 'topups' %}selected{% endif %}>ยอดเติมเครดิต</option><option value="reviews" {% if chart_metric == 'reviews' %}selected{% endif %}>รีวิวที่ได้รับ</option></select>
+            <select id="chartRange" aria-label="เลือกช่วงเวลาของกราฟ"><option value="7d" {% if chart_range == '7d' %}selected{% endif %}>7 วัน</option><option value="30d" {% if chart_range == '30d' %}selected{% endif %}>30 วัน</option><option value="6m" {% if chart_range == '6m' %}selected{% endif %}>6 เดือน</option><option value="year" {% if chart_range == 'year' %}selected{% endif %}>ปีนี้</option></select>
+          </div>
           <h2>สมาชิกใหม่ 7 เดือนล่าสุด</h2>
         </div>
         <span class="status-pill status-pill-calm">รายเดือน</span>
@@ -216,6 +243,66 @@
       </div>
     </div>
   </section>
+
+  <section class="insight-grid">
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <span class="panel-kicker">Bookings</span>
+          <h2>การสมัครเรียนล่าสุด</h2>
+        </div>
+        <a href="{% url 'admin_reports' %}?report_type=bookings" class="panel-link">ดูรายงาน</a>
+      </div>
+      <div class="activity-list">
+        {% for booking in recent_bookings %}
+        <div class="activity-item">
+          <div class="activity-status is-warning"><i class="bi bi-calendar-check"></i></div>
+          <div class="activity-copy">
+            <strong>{{ booking.member.mb_full_name }}</strong>
+            <small>{{ booking.tutc_id.tutc_name }} · {{ booking.tutc_id.tut_id.tut_id.mb_full_name }}</small>
+          </div>
+          <time>{{ booking.bk_date|date:"d M" }}</time>
+        </div>
+        {% empty %}<p class="empty-state">ยังไม่มีรายการสมัครเรียน</p>{% endfor %}
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <span class="panel-kicker">Completion</span>
+          <h2>งานที่แจ้งจบล่าสุด</h2>
+        </div>
+        <span class="status-pill status-pill-calm">รอยืนยัน {{ pending_completions }}</span>
+      </div>
+      <div class="activity-list">
+        {% for completion in recent_completions %}
+        <div class="activity-item">
+          <div class="activity-status is-success"><i class="bi bi-check2-circle"></i></div>
+          <div class="activity-copy">
+            <strong>{{ completion.bk_id.tutc_id.tutc_name }}</strong>
+            <small>{{ completion.bk_id.member.mb_full_name }} · {{ completion.bk_id.tutc_id.tut_id.tut_id.mb_full_name }}</small>
+          </div>
+          <time>{{ completion.jc_complete_date|date:"d M" }}</time>
+        </div>
+        {% empty %}<p class="empty-state">ยังไม่มีงานที่แจ้งจบ</p>{% endfor %}
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <span class="panel-kicker">Reports</span>
+          <h2>รายงานที่ใช้งานบ่อย</h2>
+        </div>
+      </div>
+      <div class="activity-list">
+        <a class="queue-item" href="{% url 'admin_reports' %}?report_type=tutors"><span class="queue-icon queue-icon-blue"><i class="bi bi-mortarboard"></i></span><span class="queue-copy"><strong>รายงานติวเตอร์</strong><small>ข้อมูลและผลงานติวเตอร์</small></span></a>
+        <a class="queue-item" href="{% url 'admin_reports' %}?report_type=bookings"><span class="queue-icon queue-icon-green"><i class="bi bi-calendar-check"></i></span><span class="queue-copy"><strong>รายงานการสมัครเรียน</strong><small>รายการจองและสถานะงาน</small></span></a>
+        <a class="queue-item" href="{% url 'admin_reports' %}?report_type=refills"><span class="queue-icon queue-icon-amber"><i class="bi bi-wallet2"></i></span><span class="queue-copy"><strong>รายงานการเติมเครดิต</strong><small>ประวัติและสถานะการเติม</small></span></a>
+      </div>
+    </div>
+  </section>
 </div>
 {% endblock %}
 
@@ -273,6 +360,14 @@
           }
         }
       }
+    });
+  });
+  document.querySelectorAll('#chartMetric, #chartRange').forEach(function (control) {
+    control.addEventListener('change', function () {
+      const url = new URL(window.location.href);
+      url.searchParams.set('chart_metric', document.getElementById('chartMetric').value);
+      url.searchParams.set('chart_range', document.getElementById('chartRange').value);
+      window.location.href = url.toString();
     });
   });
 </script>

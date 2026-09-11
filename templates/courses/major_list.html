@@ -40,7 +40,11 @@
         </option>
         {% endfor %}
       </select>
-      {% if q or fac_filter %}
+      <select name="order" class="filter-select" onchange="this.form.submit()">
+        <option value="oldest" {% if order == 'oldest' %}selected{% endif %}>เก่าสุด</option>
+        <option value="latest" {% if order == 'latest' %}selected{% endif %}>ล่าสุด</option>
+      </select>
+      {% if q or fac_filter or order != 'oldest' %}
       <a href="{% url 'courses:major_list' %}" class="btn btn-sm btn-outline-secondary">ล้างการค้นหา</a>
       {% endif %}
     </form>
@@ -100,17 +104,17 @@
     </div>
     <ul class="pagination">
       <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
-        <a class="page-link" href="{% if page_obj.has_previous %}?page={{ page_obj.previous_page_number }}&q={{ q }}&fac={{ fac_filter }}{% else %}#{% endif %}">
+        <a class="page-link" href="{% if page_obj.has_previous %}?page={{ page_obj.previous_page_number }}&q={{ q }}&fac={{ fac_filter }}&order={{ order }}{% else %}#{% endif %}">
           <i class="bi bi-chevron-left"></i>
         </a>
       </li>
       {% for num in page_obj.paginator.page_range %}
       <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-        <a class="page-link" href="?page={{ num }}&q={{ q }}&fac={{ fac_filter }}">{{ num }}</a>
+        <a class="page-link" href="?page={{ num }}&q={{ q }}&fac={{ fac_filter }}&order={{ order }}">{{ num }}</a>
       </li>
       {% endfor %}
       <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
-        <a class="page-link" href="{% if page_obj.has_next %}?page={{ page_obj.next_page_number }}&q={{ q }}&fac={{ fac_filter }}{% else %}#{% endif %}">
+        <a class="page-link" href="{% if page_obj.has_next %}?page={{ page_obj.next_page_number }}&q={{ q }}&fac={{ fac_filter }}&order={{ order }}{% else %}#{% endif %}">
           <i class="bi bi-chevron-right"></i>
         </a>
       </li>
