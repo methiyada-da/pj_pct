@@ -8,7 +8,7 @@ from django.db import transaction
 from django.urls import reverse
 
 from django.utils import timezone
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Avg
 
 from .models import System
 from .forms  import SystemForm, AdminUserForm
@@ -38,8 +38,9 @@ def member_user_queryset():
 @user_passes_test(is_admin)
 def dashboard(request):
     from apps.courses.models import Faculty, Major, CourseGroup, Course
-    from apps.bookings.models import Booking
+    from apps.bookings.models import Booking, JobCompletion, Review
     import json
+    from datetime import datetime, date, time, timedelta
 
     # ── Summary stats ──
     member_users = member_user_queryset()
@@ -57,6 +58,11 @@ def dashboard(request):
     total_faculties   = Faculty.objects.count()
     total_majors      = Major.objects.count()
     total_courses     = Course.objects.count()
+    total_bookings    = Booking.objects.count()
+    active_bookings   = Booking.objects.filter(bk_status__in=[0, 1, 2, 3]).count()
+    completed_bookings = Booking.objects.filter(bk_status__in=[4, 5]).count()
+    pending_completions = JobCompletion.objects.filter(jc_confirm_date__isnull=True).count()
+    average_review = Review.objects.aggregate(avg=Avg('rv_satisfaction'))['avg'] or 0
     
     # System revenue (fees)
     system = System.objects.first()
@@ -64,23 +70,66 @@ def dashboard(request):
 
     # ── Monthly new members (last 7 months) ──
     today = timezone.now()
-    months_labels = []
-    months_data   = []
+    chart_metric = request.GET.get('chart_metric', 'members')
+    chart_range = request.GET.get('chart_range', '6m')
+    metric_config = {
+        'members': ('สมาชิกใหม่', Member, 'user__date_joined', 'count'),
+        'bookings': ('การสมัครเรียน', Booking, 'bk_date', 'count'),
+        'topups': ('ยอดเติมเครดิต', Refill, 'rf_date', 'sum'),
+        'reviews': ('รีวิวที่ได้รับ', Review, 'rv_date', 'count'),
+    }
+    if chart_metric not in metric_config:
+        chart_metric = 'members'
+    if chart_range not in {'7d', '30d', '6m', 'year'}:
+        chart_range = '6m'
+    metric_label, metric_model, metric_field, metric_operation = metric_config[chart_metric]
+    chart_labels, chart_data, periods = [], [], []
+    if chart_range in {'7d', '30d'}:
+        day_count = 7 if chart_range == '7d' else 30
+        first_day = today.date() - timedelta(days=day_count - 1)
+        for offset in range(day_count):
+            current_day = first_day + timedelta(days=offset)
+            periods.append((current_day, current_day + timedelta(days=1)))
+            chart_labels.append(current_day.strftime('%d/%m'))
+    else:
+        month_count = 6 if chart_range == '6m' else 12
+        for offset in range(month_count - 1, -1, -1):
+            year = today.year
+            month = today.month - offset
+            while month <= 0:
+                month += 12
+                year -= 1
+            current_month = date(year, month, 1)
+            next_month = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+            periods.append((current_month, next_month))
+            chart_labels.append(f'{month:02d}/{str(year)[-2:]}')
+    for period_start, period_end in periods:
+        start_datetime = timezone.make_aware(datetime.combine(period_start, time.min), timezone.get_current_timezone())
+        end_datetime = timezone.make_aware(datetime.combine(period_end, time.min), timezone.get_current_timezone())
+        period_qs = metric_model.objects.filter(**{f'{metric_field}__gte': start_datetime, f'{metric_field}__lt': end_datetime})
+        if metric_operation == 'sum':
+            value = period_qs.filter(rf_status=1).aggregate(total=Sum('rf_money'))['total'] or 0
+            chart_data.append(float(value))
+        else:
+            chart_data.append(period_qs.count())
     MONTH_TH = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
                 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
     for i in range(6, -1, -1):
-        # Calculate first day of the month i months ago
-        d = today.replace(day=1) - timezone.timedelta(days=i * 30) # approximation
-        # More accurate month calculation:
         year = today.year
         month = today.month - i
         while month <= 0:
             month += 12
             year -= 1
-        
-        cnt = member_users.filter(user__date_joined__year=year, user__date_joined__month=month).count()
-        months_labels.append(MONTH_TH[month])
-        months_data.append(cnt)
+
+        # กรองช่วงวันเวลาโดยตรง เพื่อไม่พึ่ง CONVERT_TZ ของ MySQL
+        # ซึ่งอาจคืนค่า NULL หากฐานข้อมูลไม่มีตาราง Time Zone
+        month_start = timezone.make_aware(datetime(year, month, 1), timezone.get_current_timezone())
+        if month == 12:
+            next_month_start = timezone.make_aware(datetime(year + 1, 1, 1), timezone.get_current_timezone())
+        else:
+            next_month_start = timezone.make_aware(datetime(year, month + 1, 1), timezone.get_current_timezone())
+
+        # การนับสมาชิกถูกย้ายไปใช้ชุดข้อมูลกราฟที่เลือกด้านบนแล้ว
 
     # ── Top course groups by course count ──
     top_groups = (CourseGroup.objects
@@ -92,6 +141,12 @@ def dashboard(request):
     recent_members  = member_users.select_related('user').order_by('-user__date_joined')[:5]
     recent_refills  = Refill.objects.select_related('member').order_by('-rf_date')[:5]
     recent_withdraw = Withdrawals.objects.select_related('member').order_by('-wd_req_date')[:3]
+    recent_bookings = (Booking.objects
+                       .select_related('member', 'tutc_id__tut_id__tut_id')
+                       .order_by('-bk_date')[:5])
+    recent_completions = (JobCompletion.objects
+                          .select_related('bk_id__member', 'bk_id__tutc_id__tut_id__tut_id')
+                          .order_by('-jc_complete_date')[:5])
 
     return render(request, 'admin_panel/dashboard.html', {
         'active_menu'       : 'dashboard',
@@ -108,10 +163,18 @@ def dashboard(request):
         'total_faculties'   : total_faculties,
         'total_majors'      : total_majors,
         'total_courses'     : total_courses,
+        'total_bookings'    : total_bookings,
+        'active_bookings'   : active_bookings,
+        'completed_bookings': completed_bookings,
+        'pending_completions': pending_completions,
+        'average_review'    : average_review,
         'total_fees'        : total_fees,
         # chart
-        'chart_labels'      : json.dumps(months_labels, ensure_ascii=False),
-        'chart_data'        : json.dumps(months_data),
+        'chart_labels'      : json.dumps(chart_labels, ensure_ascii=False),
+        'chart_data'        : json.dumps(chart_data),
+        'chart_metric'      : chart_metric,
+        'chart_range'       : chart_range,
+        'chart_metric_label': metric_label,
         # top groups
         'top_groups'        : top_groups,
         'max_crs'           : max_crs,
@@ -119,6 +182,167 @@ def dashboard(request):
         'recent_members'    : recent_members,
         'recent_refills'    : recent_refills,
         'recent_withdraw'   : recent_withdraw,
+        'recent_bookings'   : recent_bookings,
+        'recent_completions': recent_completions,
+    })
+
+
+# ─── ศูนย์ออกรายงาน ───────────────────────────────────────────────────────
+
+@login_required
+@user_passes_test(is_admin)
+def report_center(request):
+    """แสดงตัวอย่างรายงานตามประเภทและตัวกรองที่ผู้ดูแลเลือก"""
+    from apps.bookings.models import Booking, Review
+    from apps.courses.models import Course, CourseGroup
+
+    report_type = request.GET.get('report_type', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    status = request.GET.get('status', 'all')
+    order = request.GET.get('order', 'latest')
+    course_group = request.GET.get('course_group', '')
+
+    report_titles = {
+        'members': 'รายงานสมาชิก', 'tutors': 'รายงานติวเตอร์',
+        'courses': 'รายงานรายวิชา', 'bookings': 'รายงานการสมัครเรียน',
+        'tutor_income': 'รายงานรายได้ติวเตอร์', 'refills': 'รายงานการเติมเครดิต',
+        'summary': 'รายงานสรุปภาพรวมระบบ',
+    }
+    if not report_type:
+        return render(request, 'admin_panel/report_center.html', {
+            'active_menu': 'dashboard', 'topbar_breadcrumb': 'ออกรายงาน',
+            'report_selected': False,
+        })
+    if report_type not in report_titles:
+        report_type = 'members'
+
+    filter_configs = {
+        'members': {
+            'date_label': 'วันที่สมัครสมาชิก',
+            'status_label': 'สถานะบัญชี',
+            'status_options': [('all', 'ทั้งหมด'), ('0', 'ปิดการใช้งาน'), ('1', 'ใช้งานปกติ'), ('2', 'ระงับชั่วคราว')],
+        },
+        'tutors': {
+            'date_label': 'วันที่สมัครเป็นติวเตอร์',
+            'status_label': 'สถานะติวเตอร์',
+            'status_options': [('all', 'ทั้งหมด'), ('0', 'รอการตรวจสอบ'), ('1', 'อนุมัติแล้ว'), ('2', 'ปฏิเสธ'), ('3', 'ระงับการสอน')],
+        },
+        'courses': {
+            'date_label': '', 'status_label': '', 'status_options': [],
+        },
+        'bookings': {
+            'date_label': 'วันที่สมัครเรียน',
+            'status_label': 'สถานะการสมัครเรียน',
+            'status_options': [('all', 'ทั้งหมด'), ('0', 'จอง'), ('1', 'รับงานแล้ว'), ('2', 'เรียนแล้ว'), ('3', 'แจ้งจบงาน'), ('4', 'ยืนยันการจบงาน'), ('5', 'รีวิวแล้ว'), ('6', 'ปฏิเสธ')],
+        },
+        'tutor_income': {
+            'date_label': 'วันที่รับงาน',
+            'status_label': 'สถานะงาน',
+            'status_options': [('all', 'ทั้งหมด'), ('0', 'จอง'), ('1', 'รับงานแล้ว'), ('2', 'เรียนแล้ว'), ('3', 'แจ้งจบงาน'), ('4', 'ยืนยันการจบงาน'), ('5', 'รีวิวแล้ว'), ('6', 'ปฏิเสธ')],
+        },
+        'refills': {
+            'date_label': 'วันที่เติมเครดิต',
+            'status_label': 'สถานะการเติมเครดิต',
+            'status_options': [('all', 'ทั้งหมด'), ('0', 'รอตรวจสอบ'), ('1', 'ผ่านการตรวจสอบ'), ('2', 'ไม่ผ่านการตรวจสอบ')],
+        },
+        'summary': {
+            'date_label': '', 'status_label': '', 'status_options': [],
+        },
+    }
+    filter_config = filter_configs[report_type]
+    if report_type == 'courses':
+        filter_config['course_groups'] = CourseGroup.objects.order_by('cg_name')
+
+    def apply_date_filter(queryset, field_name):
+        # เปรียบเทียบช่วงวันเวลาโดยตรง เพราะฐานข้อมูล MySQL อาจไม่มีตาราง Time Zone
+        # ซึ่งทำให้การใช้ lookup __date คืนค่า NULL และกรองข้อมูลไม่พบ
+        from datetime import datetime, time
+        from django.utils.dateparse import parse_date
+
+        start = parse_date(start_date) if start_date else None
+        end = parse_date(end_date) if end_date else None
+        timezone_info = timezone.get_current_timezone()
+        if start:
+            start_datetime = timezone.make_aware(datetime.combine(start, time.min), timezone_info)
+            queryset = queryset.filter(**{f'{field_name}__gte': start_datetime})
+        if end:
+            end_datetime = timezone.make_aware(datetime.combine(end, time.max), timezone_info)
+            queryset = queryset.filter(**{f'{field_name}__lte': end_datetime})
+        return queryset
+
+    headers, rows, summary_items = [], [], []
+    if report_type == 'members':
+        queryset = apply_date_filter(member_user_queryset().select_related('user'), 'user__date_joined')
+        if status != 'all' and status in {'0', '1', '2'}:
+            queryset = queryset.filter(mb_status=int(status))
+        queryset = queryset.order_by('user__date_joined' if order == 'oldest' else '-user__date_joined')
+        headers = ['ชื่อสมาชิก', 'ประเภท', 'วันที่สมัคร', 'สถานะ', 'เครดิตคงเหลือ']
+        tutor_member_ids = set(Tutor.objects.values_list('tut_id_id', flat=True))
+        rows = [[m.mb_full_name, 'ติวเตอร์' if m.pk in tutor_member_ids else 'ผู้เรียน', m.user.date_joined, m.get_mb_status_display(), m.mb_deposit_crd + m.mb_income_crd] for m in queryset]
+        summary_items = [('สมาชิกทั้งหมด', len(rows)), ('ติวเตอร์', sum(1 for row in rows if row[1] == 'ติวเตอร์')), ('ผู้เรียน', sum(1 for row in rows if row[1] == 'ผู้เรียน'))]
+    elif report_type == 'tutors':
+        queryset = apply_date_filter(Tutor.objects.select_related('tut_id__user').annotate(course_count=Count('tutorcourse')), 'tut_id__user__date_joined')
+        if status != 'all' and status in {'0', '1', '2', '3'}:
+            queryset = queryset.filter(tut_status=int(status))
+        queryset = queryset.order_by('tut_id__user__date_joined' if order == 'oldest' else '-tut_id__user__date_joined')
+        headers = ['ชื่อติวเตอร์', 'รายวิชาที่เปิดสอน', 'คะแนนรีวิว', 'สถานะ', 'วันที่สมัคร']
+        rows = [[t.tut_id.mb_full_name, t.course_count, t.tut_rating, t.get_tut_status_display(), t.tut_id.user.date_joined] for t in queryset]
+        summary_items = [('ติวเตอร์ทั้งหมด', len(rows)), ('คะแนนรีวิวเฉลี่ย', round(sum(float(row[2]) for row in rows) / len(rows), 2) if rows else 0), ('รายวิชาที่เปิดสอนรวม', sum(row[1] for row in rows))]
+    elif report_type == 'courses':
+        queryset = Course.objects.select_related('cg_id').annotate(tutor_count=Count('tutorcourse'))
+        if course_group:
+            queryset = queryset.filter(cg_id_id=course_group)
+        # Course ไม่มีวันที่สร้าง จึงใช้รหัสรายวิชาแทนลำดับล่าสุด/เก่าสุด
+        queryset = queryset.order_by('crs_id' if order == 'oldest' else '-crs_id')
+        headers = ['รหัสรายวิชา', 'ชื่อรายวิชา', 'กลุ่มรายวิชา', 'ติวเตอร์ที่เปิดสอน']
+        rows = [[c.crs_id, c.crs_name, c.cg_id.cg_name, c.tutor_count] for c in queryset]
+        summary_items = [('รายวิชาทั้งหมด', len(rows)), ('ติวเตอร์ที่เปิดสอนรวม', sum(row[3] for row in rows))]
+    elif report_type in {'bookings', 'tutor_income'}:
+        queryset = apply_date_filter(Booking.objects.select_related('member', 'tutc_id__tut_id__tut_id'), 'bk_date')
+        if status != 'all' and status in {'0', '1', '2', '3', '4', '5', '6'}:
+            queryset = queryset.filter(bk_status=int(status))
+        queryset = queryset.order_by('bk_date' if order == 'oldest' else '-bk_date')
+        if report_type == 'bookings':
+            headers = ['รหัสการจอง', 'ผู้เรียน', 'ติวเตอร์', 'รายวิชา', 'วันที่สมัครเรียน', 'สถานะ']
+            rows = [[f'BK{b.bk_id:05d}', b.member.mb_full_name, b.tutc_id.tut_id.tut_id.mb_full_name, b.tutc_id.tutc_name, b.bk_date, b.get_bk_status_display()] for b in queryset]
+            summary_items = [('การสมัครเรียนทั้งหมด', len(rows)), ('เรียนสำเร็จ', sum(1 for row in rows if row[5] in {'ยืนยันการจบงาน', 'รีวิวแล้ว'}))]
+        else:
+            headers = ['ติวเตอร์', 'รหัสการจอง', 'รายวิชา', 'เครดิตที่ได้รับ', 'สถานะ', 'วันที่สมัครเรียน']
+            rows = [[b.tutc_id.tut_id.tut_id.mb_full_name, f'BK{b.bk_id:05d}', b.tutc_id.tutc_name, b.total_credit, b.get_bk_status_display(), b.bk_date] for b in queryset]
+            summary_items = [('งานที่รับทั้งหมด', len(rows)), ('เครดิตค่าติวรวม', sum(row[3] for row in rows))]
+    elif report_type == 'refills':
+        queryset = apply_date_filter(Refill.objects.select_related('member'), 'rf_date')
+        if status != 'all' and status in {'0', '1', '2'}:
+            queryset = queryset.filter(rf_status=int(status))
+        queryset = queryset.order_by('rf_date' if order == 'oldest' else '-rf_date')
+        headers = ['รหัสรายการ', 'สมาชิก', 'จำนวนเงิน', 'เครดิต', 'วันที่แจ้งเติม', 'สถานะ']
+        rows = [[f'RF{r.rf_id:05d}', r.member.mb_full_name, r.rf_money, r.rf_credit, r.rf_date, r.get_rf_status_display()] for r in queryset]
+        summary_items = [('รายการเติมเครดิต', len(rows)), ('ยอดเงินรวม', sum(row[2] for row in rows)), ('เครดิตรวม', sum(row[3] for row in rows))]
+    else:
+        members = member_user_queryset()
+        total_credit = members.aggregate(total=Sum('mb_deposit_crd') + Sum('mb_income_crd'))['total'] or 0
+        average_rating = Review.objects.aggregate(avg=Avg('rv_satisfaction'))['avg'] or 0
+        system = System.objects.first()
+        headers = ['จำนวนสมาชิก', 'ผู้เรียน', 'ติวเตอร์', 'รายวิชา', 'การสมัครเรียน', 'รายได้ระบบ', 'เครดิตคงเหลือ', 'คะแนนรีวิวเฉลี่ย']
+        rows = [[members.count(), members.exclude(tutor__isnull=False).count(), Tutor.objects.filter(tut_status=1).count(), Course.objects.count(), Booking.objects.count(), system.total_accumulated_fee if system else 0, total_credit, average_rating]]
+        summary_items = list(zip(headers, rows[0]))
+
+    total_rows = len(rows)
+    report_context = {
+        'report_type': report_type, 'report_title': report_titles[report_type],
+        'headers': headers, 'rows': rows, 'total_rows': total_rows,
+        'start_date': start_date, 'end_date': end_date, 'status': status, 'order': order, 'course_group': course_group,
+        'summary_items': summary_items, 'generated_at': timezone.now(),
+        'reporter_name': request.user.get_full_name() or request.user.username,
+        'report_selected': True, 'filter_config': filter_config,
+    }
+    if request.GET.get('print') == '1':
+        return render(request, 'admin_panel/report_pdf.html', report_context)
+
+    return render(request, 'admin_panel/report_center.html', {
+        'active_menu': 'dashboard', 'topbar_breadcrumb': 'ออกรายงาน',
+        **report_context, 'rows': rows[:200],
     })
 
 

@@ -1,0 +1,58 @@
+{% extends "admin_panel/base_admin.html" %}
+
+{% block title %}ออกรายงานระบบ{% endblock %}
+
+{% block extra_head %}
+<style>
+  .report-center { display: grid; gap: 24px; }
+  .report-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:28px; border-radius:20px; color:#fff; background:linear-gradient(135deg,#183b63,#276494); }
+  .report-hero .eyebrow { color:#a9d6f5; font-size:12px; font-weight:700; letter-spacing:.1em; }
+  .report-hero h1 { margin:7px 0; font-size:28px; }
+  .report-hero p { margin:0; color:#d9ebf7; }
+  .report-card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; }
+  .report-type { display:block; text-decoration:none; color:#263746; min-height:132px; padding:20px; border:1px solid #dfe7ef; border-radius:16px; background:#fff; transition:.2s; }
+  .report-type:hover, .report-type.active { color:#0d5b95; border-color:#1680c4; box-shadow:0 8px 20px rgba(20,101,155,.12); }
+  .report-type i { display:block; margin-bottom:18px; font-size:24px; color:#1780c4; }
+  .report-type strong, .report-type span { display:block; } .report-type span { margin-top:5px; color:#6c7b88; font-size:13px; }
+  .report-filter, .report-preview { padding:24px; border-radius:16px; background:#fff; border:1px solid #e0e8ee; }
+  .report-filter h2, .preview-title h2 { margin:0; font-size:19px; }
+  .filter-grid { display:grid; grid-template-columns:repeat(4,minmax(130px,1fr)); gap:16px; margin-top:20px; align-items:end; }
+  .filter-grid label { display:grid; gap:6px; color:#526273; font-size:13px; font-weight:700; }
+  .filter-grid input, .filter-grid select { padding:10px 11px; border:1px solid #ccd8e2; border-radius:9px; background:#fff; color:#263746; }
+  .filter-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+  .preview-title { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; } .preview-title span { color:#687888; }
+  .table-wrap { overflow:auto; } .report-table { width:100%; border-collapse:collapse; min-width:680px; } .report-table th { text-align:left; background:#f3f7fa; color:#425466; } .report-table th,.report-table td { padding:13px 14px; border-bottom:1px solid #e6edf2; font-size:14px; white-space:nowrap; } .report-table tbody tr:hover { background:#f8fbfd; }
+  .report-footer { display:flex; justify-content:flex-end; margin-top:20px; } .empty { padding:30px; text-align:center; color:#778694; }
+  @media print { .sidebar, .topbar, .report-hero a, .report-card-grid, .report-filter, .report-footer { display:none !important; } .admin-main { margin:0 !important; } .report-preview { border:0; } }
+  @media (max-width:700px) { .report-hero,.preview-title { align-items:flex-start; flex-direction:column; } .filter-grid { grid-template-columns:1fr 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="report-center">
+  <section class="report-hero">
+    <div><span class="eyebrow">REPORT CENTER</span><h1>รายงานระบบ</h1><p>เลือกข้อมูลและช่วงเวลาที่ต้องการเพื่อจัดทำรายงาน PDF</p></div>
+    <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> ย้อนกลับ</a>
+  </section>
+  <section><h2 class="mb-3">ประเภทรายงาน</h2><div class="report-card-grid">
+    <a class="report-type {% if report_type == 'members' %}active{% endif %}" href="?report_type=members"><i class="bi bi-people"></i><strong>สมาชิก</strong><span>ข้อมูลสมาชิก</span></a>
+    <a class="report-type {% if report_type == 'tutors' %}active{% endif %}" href="?report_type=tutors"><i class="bi bi-mortarboard"></i><strong>ติวเตอร์</strong><span>ข้อมูลและผลงาน</span></a>
+    <a class="report-type {% if report_type == 'courses' %}active{% endif %}" href="?report_type=courses"><i class="bi bi-journal-bookmark"></i><strong>รายวิชา</strong><span>ข้อมูลรายวิชา</span></a>
+    <a class="report-type {% if report_type == 'bookings' %}active{% endif %}" href="?report_type=bookings"><i class="bi bi-calendar-check"></i><strong>การสมัครเรียน</strong><span>ประวัติสมัคร</span></a>
+    <a class="report-type {% if report_type == 'tutor_income' %}active{% endif %}" href="?report_type=tutor_income"><i class="bi bi-cash-stack"></i><strong>รายได้ติวเตอร์</strong><span>รายได้และรับงาน</span></a>
+    <a class="report-type {% if report_type == 'refills' %}active{% endif %}" href="?report_type=refills"><i class="bi bi-wallet2"></i><strong>การเติมเครดิต</strong><span>ประวัติเติมเงิน</span></a>
+    <a class="report-type {% if report_type == 'summary' %}active{% endif %}" href="?report_type=summary"><i class="bi bi-bar-chart-line"></i><strong>สรุปภาพรวมระบบ</strong><span>รายงานทั้งหมด</span></a>
+  </div></section>
+  {% if report_selected %}
+  <section class="report-filter"><h2>ตัวกรอง: {{ report_title }}</h2><form method="get"><input type="hidden" name="report_type" value="{{ report_type }}"><div class="filter-grid">
+    {% if filter_config.date_label %}<label>{{ filter_config.date_label }} (เริ่มต้น)<input type="date" name="start_date" value="{{ start_date }}"></label><label>{{ filter_config.date_label }} (สิ้นสุด)<input type="date" name="end_date" value="{{ end_date }}"></label>{% endif %}
+    {% if filter_config.course_groups %}<label>กลุ่มรายวิชา<select name="course_group"><option value="">ทั้งหมด</option>{% for group in filter_config.course_groups %}<option value="{{ group.pk }}" {% if course_group == group.pk|stringformat:"s" %}selected{% endif %}>{{ group.cg_name }}</option>{% endfor %}</select></label>{% endif %}
+    {% if filter_config.status_options %}<label>{{ filter_config.status_label }}<select name="status">{% for value, label in filter_config.status_options %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>{% endif %}
+    <label>เรียงข้อมูล<select name="order"><option value="latest" {% if order == 'latest' %}selected{% endif %}>ล่าสุดก่อน</option><option value="oldest" {% if order == 'oldest' %}selected{% endif %}>เก่าสุดก่อน</option></select></label>
+  </div><div class="filter-actions"><a href="?report_type={{ report_type }}" class="btn btn-outline-secondary">ล้างตัวกรอง</a><button class="btn btn-primary" type="submit"><i class="bi bi-eye"></i> ดูตัวอย่าง</button></div></form></section>
+  <section class="report-preview"><div class="preview-title"><div><span>ตัวอย่างรายงาน</span><h2>{{ report_title }}</h2></div><span>พบข้อมูล {{ total_rows }} รายการ</span></div><div class="table-wrap"><table class="report-table"><thead><tr><th>ลำดับ</th>{% for header in headers %}<th>{{ header }}</th>{% endfor %}</tr></thead><tbody>{% for row in rows %}<tr><td>{{ forloop.counter }}</td>{% for value in row %}<td>{% if value|date:"Y-m-d" %}{{ value|date:"d/m/Y H:i" }}{% else %}{{ value|default:"—" }}{% endif %}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="20" class="empty">ไม่พบข้อมูลตามตัวกรองที่เลือก</td></tr>{% endfor %}</tbody></table></div><div class="report-footer"><a class="btn btn-primary" target="_blank" href="?report_type={{ report_type }}&amp;start_date={{ start_date }}&amp;end_date={{ end_date }}&amp;status={{ status }}&amp;course_group={{ course_group }}&amp;order={{ order }}&amp;print=1"><i class="bi bi-file-earmark-pdf"></i> ส่งออกเป็น PDF</a></div></section>
+  {% else %}
+  <div class="empty">กรุณาเลือกประเภทรายงานด้านบน เพื่อแสดงตัวกรองและตัวอย่างรายงาน</div>
+  {% endif %}
+</main>
+{% endblock %}
