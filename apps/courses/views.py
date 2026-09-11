@@ -90,7 +90,10 @@ def faculty_json(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def major_list(request):
-    qs = Major.objects.select_related('fac_id').order_by('mj_id')
+    order = request.GET.get('order', 'oldest')
+    if order not in {'latest', 'oldest'}:
+        order = 'oldest'
+    qs = Major.objects.select_related('fac_id').order_by('-mj_id' if order == 'latest' else 'mj_id')
     q          = request.GET.get('q',   '').strip()
     fac_filter = request.GET.get('fac', '')
     if q:
@@ -109,6 +112,7 @@ def major_list(request):
         'q'                 : q,
         'faculties'         : faculties,
         'fac_filter'        : fac_filter,
+        'order'             : order,
         'total'             : qs.count(),
         'active_menu'       : 'major',
         'topbar_breadcrumb' : 'การจัดการข้อมูลพื้นฐาน › สาขา',
@@ -170,7 +174,10 @@ def major_json(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def course_group_list(request):
-    qs = CourseGroup.objects.annotate(course_count=Count('course')).order_by('cg_id')
+    order = request.GET.get('order', 'oldest')
+    if order not in {'latest', 'oldest'}:
+        order = 'oldest'
+    qs = CourseGroup.objects.annotate(course_count=Count('course')).order_by('-cg_id' if order == 'latest' else 'cg_id')
     q  = request.GET.get('q', '').strip()
     if q:
         from .models import CourseGroup as _CG
@@ -183,6 +190,7 @@ def course_group_list(request):
         'page_obj'          : page,
         'form'              : form,
         'q'                 : q,
+        'order'             : order,
         'total'             : qs.count(),
         'active_menu'       : 'course_group',
         'topbar_breadcrumb' : 'การจัดการข้อมูลพื้นฐาน › กลุ่มรายวิชา',
@@ -242,9 +250,12 @@ def course_group_json(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def course_list(request):
+    order = request.GET.get('order', 'oldest')
+    if order not in {'latest', 'oldest'}:
+        order = 'latest'
     qs = Course.objects.select_related('cg_id').annotate(
     tutorcourse_count=Count('tutorcourse')
-    ).order_by('crs_id')
+    ).order_by('-crs_id' if order == 'latest' else 'crs_id')
     q         = request.GET.get('q',  '').strip()
     cg_filter = request.GET.get('cg', '')
     if q:
@@ -261,6 +272,7 @@ def course_list(request):
         'q'                 : q,
         'course_groups'     : course_groups,
         'cg_filter'         : cg_filter,
+        'order'             : order,
         'total'             : qs.count(),
         'active_menu'       : 'course',
         'topbar_breadcrumb' : 'การจัดการข้อมูลพื้นฐาน › รายวิชา',
