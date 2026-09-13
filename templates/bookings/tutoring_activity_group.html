@@ -1,0 +1,93 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}บันทึกผลรอบเรียน — Puean Chuay Tu{% endblock %}
+
+{% block content %}
+<div class="bg-light min-vh-100 py-4 px-2 px-md-3">
+  <div class="container" style="max-width:850px;">
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a href="{% url 'bookings:tutor_requests' %}">การจอง</a></li>
+        <li class="breadcrumb-item active">บันทึกผลรอบเรียน</li>
+      </ol>
+    </nav>
+
+    <div class="card border-0 rounded-4 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <span class="badge bg-primary mb-2">รอบเรียน</span>
+        <h4 class="fw-bold mb-2">{{ slot.sd_id.tutc_id.tutc_name }}</h4>
+        <div class="text-muted">
+          <i class="fas fa-calendar me-1"></i>{{ slot.sd_id.sd_date|date:"d M Y" }}
+          เวลา {{ slot.ts_start_time|time:"H:i" }}–{{ slot.ts_end_time|time:"H:i" }} น.
+        </div>
+        {% if slot.ts_meeting_detail %}
+        <div class="alert alert-light border mt-3 mb-0">
+          <div class="small fw-semibold mb-1">รายละเอียดนัดหมาย</div>
+          <div style="white-space:pre-line;">{{ slot.ts_meeting_detail }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="card border-0 rounded-4 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-1"><i class="fas fa-user-check text-primary me-2"></i>บันทึกการเข้าเรียน</h5>
+          <p class="small text-muted mb-3">เลือกรายการให้ครบทุกคน ผู้เรียนหนึ่งบัญชีอาจจองมากกว่าหนึ่งที่นั่ง</p>
+          {% for bk in bookings %}
+          <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap py-3{% if not forloop.last %} border-bottom{% endif %}">
+            <div>
+              <div class="fw-semibold">BK{{ bk.bk_id|stringformat:"05d" }} · {{ bk.member.mb_full_name }}</div>
+              <div class="small text-muted">{{ bk.bk_stu_count }} ที่นั่ง · {{ bk.total_credit }} เครดิต</div>
+            </div>
+            <div class="btn-group" role="group" aria-label="สถานะเข้าเรียน">
+              <input type="radio" class="btn-check" name="attendance_{{ bk.bk_id }}"
+                     id="attended-{{ bk.bk_id }}" value="attended" required>
+              <label class="btn btn-outline-success" for="attended-{{ bk.bk_id }}">เข้าเรียน</label>
+              <input type="radio" class="btn-check" name="attendance_{{ bk.bk_id }}"
+                     id="absent-{{ bk.bk_id }}" value="absent" required>
+              <label class="btn btn-outline-danger" for="absent-{{ bk.bk_id }}">ไม่เข้าเรียน</label>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card border-0 rounded-4 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-1"><i class="fas fa-images text-primary me-2"></i>หลักฐานร่วมของรอบเรียน</h5>
+          <p class="small text-muted">ใช้รูปและสรุปชุดเดียวกันกับทุกรายการที่ระบุว่าเข้าเรียน</p>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4"><input type="file" name="ta_img1" class="form-control" accept="image/*"></div>
+            <div class="col-md-4"><input type="file" name="ta_img2" class="form-control" accept="image/*"></div>
+            <div class="col-md-4"><input type="file" name="ta_img3" class="form-control" accept="image/*"></div>
+          </div>
+          <label class="form-label fw-semibold" for="ta-desc">สรุปเนื้อหาการสอน</label>
+          <textarea class="form-control" name="ta_desc" id="ta-desc" rows="5"
+                    maxlength="1000" placeholder="สรุปหัวข้อที่สอนในรอบนี้">{{ request.POST.ta_desc }}</textarea>
+        </div>
+      </div>
+
+      <div class="card border-0 rounded-4 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-1"><i class="fas fa-user-times text-danger me-2"></i>กรณีไม่เข้าเรียน</h5>
+          <p class="small text-muted">ถ้ามีผู้เรียนไม่มา ให้ระบุข้อเท็จจริงที่ใช้ประกอบการพิจารณา เครดิตของรายการนั้นจะยังไม่ถูกคืนหรือโอนอัตโนมัติ</p>
+          <textarea class="form-control" name="absent_desc" rows="4"
+                    placeholder="เช่น ช่องทางและเวลาที่พยายามติดต่อผู้เรียน">{{ request.POST.absent_desc }}</textarea>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between gap-3">
+        <a href="/bookings/tutor/?tab=accepted" class="btn btn-outline-secondary rounded-pill px-4">กลับ</a>
+        <button type="submit" class="btn btn-primary fw-bold rounded-pill px-5"
+                onclick="return confirm('ยืนยันผลการเข้าเรียนและส่งหลักฐานของรอบนี้?')">
+          <i class="fas fa-paper-plane me-1"></i>บันทึกและแจ้งจบงาน
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

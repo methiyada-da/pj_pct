@@ -279,6 +279,8 @@
 
     <!-- ── TAB: รอยืนยัน ── -->
     <div id="tab-pending">
+      {% include 'bookings/_tutor_pending_groups.html' %}
+      <div class="d-none" aria-hidden="true">
       {% if pending %}
         {% for bk in pending %}
         <div class="bk-card pending mb-3">
@@ -350,10 +352,13 @@
           <div class="small">เมื่อมีผู้เรียนส่งคำขอ จะปรากฏที่นี่</div>
         </div>
       {% endif %}
+      </div>
     </div>
 
     <!-- ── TAB: รับงานแล้ว ── -->
     <div id="tab-accepted" class="d-none">
+      {% include 'bookings/_tutor_accepted_groups.html' %}
+      <div class="d-none" aria-hidden="true">
       {% if accepted %}
         {% for bk in accepted %}
         <div class="bk-card mb-3" style="border-left:4px solid #10B981;">
@@ -394,7 +399,7 @@
               <div class="text-muted small"><i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y H:i" }} น.</div>
               {% if bk.cancel_request_pending %}
               <div class="accepted-note mt-2 p-2 rounded-3 small" style="background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;">
-                ผู้เรียนขอยกเลิกการเรียน หากอนุมัติ ระบบจะคืนเครดิตให้ผู้เรียนและเปิดช่วงเวลาเรียนนี้อีกครั้ง หากไม่อนุมัติ การจองยังมีผลตามเวลาเรียนเดิม
+                ผู้เรียนขอยกเลิกการเรียน หากอนุมัติ ระบบจะปลดล็อกเครดิตและคืนจำนวนที่นั่งของรายการนี้ หากไม่อนุมัติ การจองยังมีผลตามเวลาเรียนเดิม
               </div>
               {% elif bk.cancel_request_rejected %}
               <div class="accepted-note mt-2 p-2 rounded-3 small" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#374151;">
@@ -471,6 +476,7 @@
           <div class="small">งานที่คุณยืนยันรับจะปรากฏที่นี่</div>
         </div>
       {% endif %}
+      </div>
     </div>
 
     <!-- ── TAB: รอแจ้งจบงาน (เรียนแล้ว) ── -->
@@ -627,15 +633,7 @@
           <div>
               <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
-                {% if bk.bk_cmt == 'ผู้เรียนยกเลิกการจอง' %}
-                  <span class="badge" style="background:#F97316;">ยกเลิกโดยผู้เรียน</span>
-                {% elif bk.bk_cmt == 'ติวเตอร์อนุมัติการยกเลิกตามคำขอผู้เรียน' %}
-                  <span class="badge" style="background:#0EA5E9;">ยกเลิกตามคำขอ</span>
-                {% elif bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียน' or bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียนตามคำขอผู้เรียน' %}
-                  <span class="badge" style="background:#0EA5E9;">ยกเลิกโดยติวเตอร์</span>
-                {% else %}
-                  <span class="badge bg-danger">ติวเตอร์ปฏิเสธ</span>
-                {% endif %}
+                <span class="badge {% if bk.rejection_label == 'ติวเตอร์ปฏิเสธ' %}bg-danger{% else %}bg-secondary{% endif %}">{{ bk.rejection_label }}</span>
               </div>
               <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
               <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
@@ -793,8 +791,10 @@ const bookingData = {
     cmt:      "{{ bk.bk_cmt|default:''|escapejs }}",
     {% if bk.ts_id %}
     slot:     "{{ bk.ts_id.ts_start_time|time:'H:i' }} – {{ bk.ts_id.ts_end_time|time:'H:i' }}",
+    meeting:  "{{ bk.ts_id.ts_meeting_detail|default:bk.tutc_id.tutc_meeting_detail|default:''|escapejs }}",
     {% else %}
     slot:     "",
+    meeting:  "{{ bk.tutc_id.tutc_meeting_detail|default:''|escapejs }}",
     {% endif %}
     {% if bk.bk_status >= 3 %}
       {% with act=bk.tutoringactivity %}
@@ -827,6 +827,136 @@ const STATUS_LABELS_TH = {
   3:'แจ้งจบงานแล้ว', 4:'เสร็จสิ้น', 5:'รีวิวแล้ว', 6:'ติวเตอร์ปฏิเสธ'
 };
 const STATUS_COLORS = {0:'warning',1:'success',2:'info',3:'primary',4:'secondary',5:'success',6:'danger'};
+
+// คัดลอกรายละเอียดนัดหมายจากส่วนของรอบไปยังฟอร์มที่เลือกกดรับ
+function submitMeetingAccept(formId, meetingId, confirmId, promptText) {
+  const form = document.getElementById(formId);
+  const meeting = document.getElementById(meetingId);
+  const confirmed = document.getElementById(confirmId);
+  if (!form || !meeting || !confirmed) return;
+  if (!meeting.value.trim()) {
+    Swal.fire('กรุณาระบุรายละเอียดนัดหมาย', 'ต้องมีข้อมูลที่ผู้เรียนใช้เดินทางหรือเข้าเรียนได้', 'warning');
+    return;
+  }
+  if (!confirmed.checked) {
+    Swal.fire('กรุณาตรวจสอบรายละเอียด', 'โปรดยืนยันว่ารายละเอียดนัดหมายชัดเจนแล้ว', 'warning');
+    return;
+  }
+  Swal.fire({
+    title: promptText,
+    text: 'ระบบจะแจ้งรายละเอียดนัดหมายนี้แก่ผู้เรียนที่ได้รับการตอบรับ',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'ยืนยันรับงาน',
+    cancelButtonText: 'กลับไปตรวจสอบ',
+    confirmButtonColor: '#10B981'
+  }).then(result => {
+    if (!result.isConfirmed) return;
+    form.querySelector('[name="meeting_detail"]').value = meeting.value.trim();
+    form.querySelector('[name="meeting_confirmed"]').value = '1';
+    form.submit();
+  });
+}
+
+// ตรวจสอบข้อมูลรอบซ้ำก่อนเลือกรับทั้งหมดหรือรับทั้งหมดพร้อมปิดรอบ
+function reviewGroupAcceptance(formId, meetingId, confirmId, courseName, scheduleText, bookingCount, seatCount, totalCredit) {
+  const form = document.getElementById(formId);
+  const meeting = document.getElementById(meetingId);
+  const confirmed = document.getElementById(confirmId);
+  if (!form || !meeting || !confirmed) return;
+
+  const meetingDetail = meeting.value.trim();
+  if (!meetingDetail) {
+    meeting.classList.add('is-invalid');
+    meeting.focus();
+    return;
+  }
+  meeting.classList.remove('is-invalid');
+  if (!confirmed.checked) {
+    confirmed.classList.add('is-invalid');
+    confirmed.focus();
+    return;
+  }
+  confirmed.classList.remove('is-invalid');
+
+  const parentModal = meeting.closest('.modal');
+  const parentModalInstance = parentModal
+    ? bootstrap.Modal.getOrCreateInstance(parentModal)
+    : null;
+
+  const showReviewPopup = () => {
+    let selectedAction = null;
+    Swal.fire({
+    title: 'ตรวจสอบข้อมูลก่อนยืนยัน',
+    html: `
+      <div class="text-start" style="font-size:14px;">
+        <div class="border rounded-3 overflow-hidden mb-3">
+          <div class="d-flex justify-content-between gap-3 p-2 border-bottom"><strong>ชื่อคอร์ส</strong><span class="text-end">${escapeHtml(courseName)}</span></div>
+          <div class="d-flex justify-content-between gap-3 p-2 border-bottom"><strong>วันและเวลาเรียน</strong><span class="text-end">${escapeHtml(scheduleText)}</span></div>
+          <div class="d-flex justify-content-between gap-3 p-2 border-bottom"><strong>รายการที่จะยืนยัน</strong><span>${bookingCount} รายการ</span></div>
+          <div class="d-flex justify-content-between gap-3 p-2 border-bottom"><strong>จำนวนที่นั่ง</strong><span>${seatCount} ที่นั่ง</span></div>
+          <div class="d-flex justify-content-between gap-3 p-2"><strong>เครดิตรวม</strong><span class="fw-bold text-success">${totalCredit} เครดิต</span></div>
+        </div>
+        <div class="p-3 rounded-3 mb-3" style="background:#EFF6FF;border:1px solid #BFDBFE;">
+          <div class="fw-bold mb-1">รายละเอียดนัดหมาย</div>
+          <div style="white-space:pre-wrap;">${escapeHtml(meetingDetail)}</div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <div class="p-3 rounded-3 h-100 d-flex flex-column" style="background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;">
+              <div class="fw-bold mb-1">ยืนยันการจองทั้งหมด</div>
+              <div class="mb-3">รับรายการปัจจุบันทั้งหมด และยังเปิดช่วงเวลาให้ผู้เรียนคนอื่นจองเพิ่มได้จนเต็มหรือถึงเวลาปิดรับ</div>
+              <button type="button" class="btn btn-success fw-bold w-100 mt-auto" data-group-action="keep-open">ยืนยันการจองทั้งหมด</button>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 rounded-3 h-100 d-flex flex-column" style="background:#FFF7ED;border:1px solid #FED7AA;color:#9A3412;">
+              <div class="fw-bold mb-1">ยืนยันทั้งหมดและปิดรับรอบ</div>
+              <div class="mb-3">รับรายการปัจจุบันทั้งหมด แล้วปิดช่วงเวลาทันที ผู้เรียนใหม่จะไม่สามารถจองรอบนี้เพิ่มได้</div>
+              <button type="button" class="btn fw-bold text-white w-100 mt-auto" style="background:#EA580C;" data-group-action="close-slot">ยืนยันทั้งหมดและปิดรับรอบ</button>
+            </div>
+          </div>
+        </div>
+        <div class="text-center mt-4">
+          <button type="button" class="btn btn-secondary fw-semibold px-4" data-group-action="back">กลับไปแก้ไข</button>
+        </div>
+      </div>`,
+    icon: 'question',
+    width: 720,
+    showConfirmButton: false,
+    showCancelButton: false,
+    showDenyButton: false,
+    customClass: {
+      popup: 'rounded-4 shadow',
+      htmlContainer: 'text-start'
+    },
+    didOpen: popup => {
+      popup.querySelectorAll('[data-group-action]').forEach(button => {
+        button.addEventListener('click', () => {
+          selectedAction = button.dataset.groupAction;
+          Swal.close();
+        });
+      });
+    }
+  }).then(() => {
+    if (selectedAction !== 'keep-open' && selectedAction !== 'close-slot') {
+      if (parentModalInstance) parentModalInstance.show();
+      return;
+    }
+    form.querySelector('[name="meeting_detail"]').value = meetingDetail;
+    form.querySelector('[name="meeting_confirmed"]').value = '1';
+    form.querySelector('[name="close_slot"]').value = selectedAction === 'close-slot' ? '1' : '0';
+    form.submit();
+  });
+  };
+
+  if (parentModal && parentModal.classList.contains('show')) {
+    parentModal.addEventListener('hidden.bs.modal', showReviewPopup, { once: true });
+    parentModalInstance.hide();
+  } else {
+    showReviewPopup();
+  }
+}
 
 // เสร็จสิ้นการสอน → submit แล้วไปหน้า activity
 function submitAndGo(bkId) {
@@ -974,10 +1104,19 @@ document.querySelectorAll('.tab-pill').forEach(btn => {
   if (empty) empty.style.display = cnt === 0 ? '' : 'none';
 })();
 
-async function openReject(bkId, studentName, savedReason = '') {
+async function openReject(bkId, studentName, savedReason = '', sourceElement = null, parentModal = null) {
+  // ปิดหน้าต่างรายละเอียดก่อน เพื่อไม่ให้ Bootstrap แย่งโฟกัสจากช่องพิมพ์ของ SweetAlert
+  parentModal = parentModal || sourceElement?.closest('.modal.show');
+  if (parentModal?.classList.contains('show')) {
+    await new Promise(resolve => {
+      parentModal.addEventListener('hidden.bs.modal', resolve, { once: true });
+      bootstrap.Modal.getOrCreateInstance(parentModal).hide();
+    });
+  }
+
   const inputResult = await Swal.fire({
     title: 'ปฏิเสธงาน?',
-    html: `ปฏิเสธคำขอจองจาก <strong>${studentName}</strong><br><span class="text-muted small d-block text-start mt-2">เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียน<br>และช่วงเวลาจองจะกลับมาเป็นเวลาว่างทันที</span>`,
+    html: `ปฏิเสธคำขอจองจาก <strong>${escapeHtml(studentName)}</strong><br><span class="text-muted small d-block text-start mt-2">เครดิตที่ล็อกไว้จะถูกปลดล็อกให้ผู้เรียน<br>และที่นั่งของรายการนี้จะกลับมาให้จองได้</span>`,
     icon: 'error',
     input: 'textarea',
     inputValue: savedReason,
@@ -1000,7 +1139,10 @@ async function openReject(bkId, studentName, savedReason = '') {
       },
   });
 
-  if (!inputResult.isConfirmed) return;
+  if (!inputResult.isConfirmed) {
+    if (parentModal) bootstrap.Modal.getOrCreateInstance(parentModal).show();
+    return;
+  }
 
   const reason = (inputResult.value || '').trim();
   const safeStudentName = escapeHtml(studentName);
@@ -1023,8 +1165,7 @@ async function openReject(bkId, studentName, savedReason = '') {
         <div class="text-danger small text-start d-flex align-items-start gap-1">
           <i class="fas fa-exclamation-triangle mt-1"></i>
           <div>
-            <div>เมื่อยืนยัน เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียน</div>
-            <div>และช่วงเวลาจองจะกลับมาเป็นเวลาว่างทันที</div>
+            <div>เมื่อยืนยัน เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียนและที่นั่งของรายการนี้จะกลับมาให้จองได้</div>
           </div>
         </div>
       </div>`,
@@ -1049,7 +1190,9 @@ async function openReject(bkId, studentName, savedReason = '') {
     document.getElementById('rejectReason').value = reason;
     form.submit();
   } else if (confirmResult.dismiss === Swal.DismissReason.cancel) {
-    openReject(bkId, studentName, reason);
+    openReject(bkId, studentName, reason, null, parentModal);
+  } else if (parentModal) {
+    bootstrap.Modal.getOrCreateInstance(parentModal).show();
   }
 }
 
@@ -1067,7 +1210,7 @@ function openApproveCancel(bkId, studentName, totalCredit) {
       <div class="text-start small">
         <div class="mb-2">อนุมัติคำขอยกเลิกของ <strong>${studentName}</strong></div>
         <div class="p-3 rounded-3" style="background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;">
-          ระบบจะคืนเครดิต <strong>${totalCredit} เครดิต</strong> ให้ผู้เรียน และเปิดช่วงเวลาเรียนนี้ให้จองได้อีกครั้ง
+          ระบบจะปลดล็อกเครดิต <strong>${totalCredit} เครดิต</strong> ให้ผู้เรียน และคืนจำนวนที่นั่งของรายการนี้
         </div>
         <div class="mt-2 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#4B5563;">
           เมื่อยืนยันแล้ว รายการนี้จะย้ายไปที่แท็บสถานะปฏิเสธ 
@@ -1140,18 +1283,18 @@ function openTutorCancelForStudent(bkId, studentName, totalCredit) {
       <div class="text-start small">
         <div class="mb-2">กรุณาพูดคุยหรือแจ้ง <strong>ผู้เรียน</strong> ให้ทราบก่อนยกเลิกการเรียน</div>
         <div class="p-3 rounded-3 mb-2" style="background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;">
-          <div class="fw-semibold mb-2">ปุ่มนี้ใช้สำหรับการยกเลิก 2 กรณี</div>
+          <div class="fw-semibold mb-2">เงื่อนไขการยกเลิกโดยติวเตอร์</div>
           <div class="p-2 rounded-2 mb-2" style="background:#FFFFFF;border:1px solid #FDE68A;">
-            <div class="fw-semibold mb-1">กรณีที่ 1: ผู้เรียนต้องการยกเลิก</div>
-            <div>เมื่อเหลือเวลาน้อยกว่า 24 ชั่วโมง ผู้เรียนจะส่งคำขอยกเลิกผ่านระบบไม่ได้ จึงต้องติดต่อขอให้ติวเตอร์ช่วยกดยกเลิกให้</div>
+            <div class="fw-semibold mb-1">ยกเลิกได้ก่อนเวลาเรียนอย่างน้อย 3 ชั่วโมง</div>
+            <div>ระบบจะยกเลิกรายการนี้ ปลดล็อกเครดิต และคืนจำนวนที่นั่งให้รอบเรียน</div>
           </div>
           <div class="p-2 rounded-2" style="background:#FFFFFF;border:1px solid #FDE68A;">
-            <div class="fw-semibold mb-1">กรณีที่ 2: ติวเตอร์ต้องการยกเลิก</div>
-            <div>เมื่อติวเตอร์ไม่สะดวกสอนและจำเป็นต้องยกเลิก ต้องแจ้งให้ผู้เรียนทราบก่อน แล้วจึงกดยกเลิกการเรียน</div>
+            <div class="fw-semibold mb-1">เมื่อเหลือน้อยกว่า 3 ชั่วโมง</div>
+            <div>ไม่สามารถยกเลิกตามปกติได้ หากเกิดเหตุจำเป็นให้ใช้เมนูรายงานปัญหาและแจ้งผู้เรียนโดยตรง</div>
           </div>
         </div>
         <div class="p-3 rounded-3" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;">
-          ระบบจะคืนเครดิต <strong>${totalCredit} เครดิต</strong> ให้ผู้เรียน และเปิดช่วงเวลาเรียนนี้ให้จองได้อีกครั้ง
+          ระบบจะปลดล็อกเครดิต <strong>${totalCredit} เครดิต</strong> ให้ผู้เรียน และคืนจำนวนที่นั่งของรายการนี้
         </div>
         <div class="mt-2 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#4B5563;">
           หากเป็นกรณีข้อพิพาทที่ต้องให้แอดมินพิจารณา กรุณาใช้เมนูรายงานปัญหา
@@ -1538,6 +1681,7 @@ function openDetail(bkId) {
       <div class="col-md-6">
         <div class="modal-detail-row"><span class="text-muted">วันเวลานัดเรียน</span><span>${bk.datetime}</span></div>
         ${bk.slot ? `<div class="modal-detail-row"><span class="text-muted">ช่วงเวลา</span><span>${bk.slot}</span></div>` : ''}
+        ${bk.meeting && bk.status >= 1 && bk.status !== 6 ? `<div class="modal-detail-row"><span class="text-muted">รายละเอียดนัดหมาย</span><span style="white-space:pre-wrap;">${escapeHtml(bk.meeting)}</span></div>` : ''}
         <div class="modal-detail-row"><span class="text-muted">อัตราค่าเรียน</span><span>${bk.rate} เครดิต/คน</span></div>
         <div class="modal-detail-row"><span class="text-muted">รวมรายได้</span><span class="fw-bold text-success">${total} เครดิต</span></div>
       </div>
@@ -1573,7 +1717,7 @@ function openDetail(bkId) {
           <div class="row g-2">
             <div class="col-md-6">
               <div class="p-2 rounded-3" style="background:#F0FDF4;border:1px solid #BBF7D0;font-size:13px;color:#166534;">
-                <i class="fas fa-check-circle me-1"></i>อนุมัติ: คืนเครดิตให้ผู้เรียน และเปิดช่วงเวลาเรียนอีกครั้ง
+                <i class="fas fa-check-circle me-1"></i>อนุมัติ: ปลดล็อกเครดิตและคืนจำนวนที่นั่งของรายการนี้
               </div>
             </div>
             <div class="col-md-6">

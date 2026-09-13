@@ -14,6 +14,11 @@ class TutorCourse(models.Model):
     tutc_id      = models.CharField(max_length=13, primary_key=True, verbose_name="รหัสรายวิชาที่รับสอน")
     tutc_name    = models.CharField(max_length=150, verbose_name="ชื่อรายวิชาเพื่อโฆษณา")
     tutc_desc    = models.TextField(blank=True, null=True, verbose_name="รายละเอียดเนื้อหา")
+    tutc_meeting_detail = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="รายละเอียดนัดหมายเริ่มต้น",
+    )
     tutc_img     = models.ImageField(upload_to='tutoring/tutor_img_course/', blank=True, null=True, verbose_name="รูปปก")
     tutc_max_stu = models.IntegerField(verbose_name="จำนวนรับสูงสุด (คน)")
     tutc_status  = models.IntegerField(choices=STATUS_CHOICES, default=1, verbose_name="สถานะการเปิดสอน")
@@ -80,12 +85,12 @@ class ScheduleDate(models.Model):
 
 
 # 4.3.1.11 ตารางข้อมูลช่วงเวลาที่เปิดสอน
-# *** เพิ่ม ts_status เพื่อล็อก slot เมื่อติวเตอร์รับงานแล้ว ***
-# ล็อกระดับ slot ไม่ใช่ระดับวัน → 1 วันมีได้หลาย slot, ล็อกแค่ slot ที่จองแล้ว
+# ts_status ใช้ปิดรอบทั้งรอบเท่านั้น การจองแต่ละคนเก็บสถานะใน Booking
 class TimeSlot(models.Model):
     STATUS_CHOICES = [
-        (0, 'ว่าง'),      # จองได้ปกติ
-        (1, 'ล็อกแล้ว'),  # ติวเตอร์รับงานแล้ว — ห้ามจองซ้ำ
+        (0, 'เปิดใช้งาน'),
+        (1, 'สถานะเดิมจากระบบจองแบบหนึ่งรายการ'),
+        (2, 'ปิดรอบ'),
     ]
 
     ts_id         = models.AutoField(primary_key=True, verbose_name="รหัสช่วงเวลา")
@@ -95,6 +100,11 @@ class TimeSlot(models.Model):
         choices=STATUS_CHOICES,
         default=0,
         verbose_name="สถานะช่วงเวลา"
+    )
+    ts_meeting_detail = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="รายละเอียดนัดหมายของรอบเรียน",
     )
     sd_id         = models.ForeignKey(
         ScheduleDate,
@@ -109,5 +119,5 @@ class TimeSlot(models.Model):
         verbose_name = "ข้อมูลช่วงเวลาที่เปิดสอน"
 
     def __str__(self):
-        status_label = '🔒' if self.ts_status == 1 else '✓'
+        status_label = 'ปิด' if self.ts_status == 2 else 'เปิด'
         return f"{self.sd_id.sd_date} | {self.ts_start_time} - {self.ts_end_time} {status_label}"

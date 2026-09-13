@@ -1,0 +1,77 @@
+{% for group in accepted_groups %}
+<section class="bk-card mb-4" style="border-left:4px solid #10B981;overflow:hidden;">
+  <div class="p-3 p-md-4" style="background:#F0FDF4;border-bottom:1px solid #BBF7D0;">
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+          <span class="badge bg-success">รับงานแล้ว</span>
+          {% if group.slot.ts_status == 2 %}<span class="badge bg-secondary">ปิดรับรอบแล้ว</span>{% endif %}
+          <strong>{{ group.course.tutc_name }}</strong>
+        </div>
+        <div class="small text-muted">
+          <i class="fas fa-calendar me-1"></i>{{ group.lesson_datetime|date:"d M Y" }}
+          {% if group.slot %}
+            เวลา {{ group.slot.ts_start_time|time:"H:i" }}–{{ group.slot.ts_end_time|time:"H:i" }} น.
+          {% else %}
+            เวลา {{ group.lesson_datetime|date:"H:i" }} น.
+          {% endif %}
+        </div>
+      </div>
+      <div class="text-md-end">
+        <div class="fw-bold text-success">รับแล้ว {{ group.accepted_seats }} ที่นั่ง</div>
+        {% if group.pending %}<div class="small text-warning">ยังรอยืนยันอีก {{ group.pending|length }} รายการ</div>{% endif %}
+        {% if group.slot %}
+        <a href="{% url 'bookings:tutoring_activity_group' group.slot.ts_id %}"
+           class="btn btn-info text-white btn-sm fw-semibold mt-2">
+          <i class="fas fa-graduation-cap me-1"></i>บันทึกผลทั้งรอบ
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% if group.meeting_detail %}
+    <div class="mt-3 p-3 bg-white rounded-3 border small">
+      <div class="fw-semibold mb-1"><i class="fas fa-map-marker-alt text-danger me-1"></i>รายละเอียดนัดหมายของรอบ</div>
+      <div style="white-space:pre-line;">{{ group.meeting_detail }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="p-3 p-md-4">
+    {% for bk in group.accepted %}
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap py-3{% if not forloop.last %} border-bottom{% endif %}">
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="fw-semibold">BK{{ bk.bk_id|stringformat:"05d" }} · {{ bk.member.mb_full_name }}</span>
+          {% if bk.cancel_request_pending %}<span class="badge bg-warning text-dark">รอพิจารณายกเลิก</span>{% endif %}
+          {% if bk.cancel_request_rejected %}<span class="badge bg-secondary">ไม่อนุมัติการยกเลิก</span>{% endif %}
+        </div>
+        <div class="small text-muted">{{ bk.bk_stu_count }} ที่นั่ง · {{ bk.bk_rate_per_person }} เครดิต/ที่นั่ง · รวม {{ bk.total_credit }} เครดิต</div>
+        {% if bk.cancel_request_pending %}<div class="small text-warning mt-1">เหตุผล: {{ bk.cancel_request_reason }}</div>{% endif %}
+      </div>
+      <div class="d-flex gap-2 flex-wrap justify-content-end">
+        {% if bk.cancel_request_pending %}
+        <button type="button" class="btn btn-success btn-sm"
+                onclick="openApproveCancel({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', {{ bk.total_credit }})">อนุมัติยกเลิก</button>
+        <button type="button" class="btn btn-outline-danger btn-sm"
+                onclick="openRejectCancel({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">ไม่อนุมัติ</button>
+        {% elif bk.tutor_cancel_for_student_available %}
+        <button type="button" class="btn btn-outline-danger btn-sm"
+                onclick="openTutorCancelForStudent({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', {{ bk.total_credit }})">ยกเลิกรายการนี้</button>
+        {% endif %}
+        {% if bk.tutor_can_escalate_after_start %}
+        <button type="button" class="btn btn-warning btn-sm"
+                onclick="openEscalateCancelDispute({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">รายงานปัญหา</button>
+        {% endif %}
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openDetail({{ bk.bk_id }})">รายละเอียด</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% empty %}
+<div class="empty-state text-center text-muted">
+  <div class="mb-3" style="font-size:3rem;opacity:.25;"><i class="fas fa-clipboard-check"></i></div>
+  <div class="fw-semibold mb-1">ยังไม่มีงานที่รับแล้ว</div>
+  <div class="small">งานที่ยืนยันรับจะถูกรวมตามรอบเรียนที่นี่</div>
+</div>
+{% endfor %}

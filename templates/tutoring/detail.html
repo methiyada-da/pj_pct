@@ -85,27 +85,24 @@
         </div>
 
         <!-- อัตราค่าบริการ ใต้โปรไฟล์ติวเตอร์ -->
-        {% if rates %}
+        {% if fixed_rate %}
         <div class="rates-card mt-2">
-          <p class="rates-card-title"><i class="fas fa-coins me-1"></i> อัตรา (เครดิต/คน)</p>
-          <p class="rates-card-note">ราคาต่อคน ขึ้นอยู่กับจำนวนผู้เรียนในการจองครั้งนั้น</p>
-          {% for rate in rates %}
-          <div class="rate-row {% if forloop.first and rates|length == 1 %}rate-row-only{% endif %}">
+          <p class="rates-card-title"><i class="fas fa-coins me-1"></i> ราคาเดียวต่อที่นั่ง</p>
+          <p class="rates-card-note">คิดตามจำนวนที่นั่งที่จองในแต่ละรายการ</p>
+          <div class="rate-row rate-row-only">
             <span class="rate-count">
-              <i class="fas fa-users me-1"></i>
-              {% if rate.is_single %}
-                {{ rate.start }} คน
-              {% else %}
-                {{ rate.start }}–{{ rate.end }} คน
-              {% endif %}
+              <i class="fas fa-user me-1"></i>ต่อ 1 ที่นั่ง
             </span>
-            <span class="rate-price-val">{{ rate.price }} <span class="rate-unit">เครดิต/คน</span></span>
+            <span class="rate-price-val">{{ fixed_rate.tut_rate_per_person }} <span class="rate-unit">เครดิต</span></span>
           </div>
-          {% endfor %}
           <p class="rates-card-example">
             <i class="fas fa-info-circle me-1"></i>
-            ยิ่งมีผู้เรียนมาก อัตราต่อคนอาจถูกลง 
+            ยอดรวมคำนวณจากราคาต่อที่นั่งคูณจำนวนที่จอง
           </p>
+        </div>
+        {% else %}
+        <div class="alert alert-warning mt-2 small mb-0">
+          คอร์สนี้ยังใช้ราคาแบบเดิม ติวเตอร์ต้องกำหนดราคาเดียวก่อนจึงจะเปิดรับการจองได้
         </div>
         {% endif %}
 
@@ -161,6 +158,13 @@
               <p class="course-desc-lg">{{ tc.tutc_desc }}</p>
             </div>
             {% endif %}
+            {% if tc.tutc_meeting_detail %}
+            <div class="course-desc-block mt-3">
+              <p class="course-desc-label">ข้อมูลนัดหมายเบื้องต้น</p>
+              <p class="course-desc-lg" style="white-space:pre-line;">{{ tc.tutc_meeting_detail }}</p>
+              <p class="small text-muted mb-0">ติวเตอร์จะยืนยันรายละเอียดที่ชัดเจนอีกครั้งเมื่อตอบรับการจอง</p>
+            </div>
+            {% endif %}
           </div>
         </div>
 
@@ -171,7 +175,7 @@
           </h2>
           <div class="booking-card-body">
 
-          {% if available_dates %}
+          {% if available_dates and fixed_rate %}
           <form method="post" action="{% url 'tutoring:booking_create' tc.tutc_id %}" id="booking-form">
             {% csrf_token %}
 
@@ -207,10 +211,8 @@
             const slotData = {
               {% for sd in available_dates %}
               "{{ sd.sd_id }}": [
-                {% for slot in sd.time_slots.all %}
-                  {% if slot.ts_status == 0 %}
-                  {ts_id: {{ slot.ts_id }}, start: "{{ slot.ts_start_time|time:'H:i' }}", end: "{{ slot.ts_end_time|time:'H:i' }}"},
-                  {% endif %}
+                {% for slot in sd.available_slots %}
+                  {ts_id: {{ slot.ts_id }}, start: "{{ slot.ts_start_time|time:'H:i' }}", end: "{{ slot.ts_end_time|time:'H:i' }}", remaining: {{ slot.remaining_seats }}, capacity: {{ tc.tutc_max_stu }}},
                 {% endfor %}
               ],
               {% endfor %}
@@ -224,7 +226,7 @@
                 <input type="number" name="stu_count" id="stu_count"
                        class="stu-count-input" value="1" min="1" max="{{ tc.tutc_max_stu }}"
                        oninput="updateSummary()">
-                <span class="stu-max-hint">รับสูงสุด {{ tc.tutc_max_stu }} คน</span>
+                <span class="stu-max-hint" id="stu-max-hint">เลือกช่วงเวลาเพื่อดูที่นั่งคงเหลือ</span>
               </div>
             </div>
 
@@ -234,10 +236,6 @@
               <textarea name="bk_desc" class="bk-textarea"
                         placeholder="บอกติวเตอร์ว่าคุณต้องการเน้นเรื่องอะไร..."></textarea>
             </div>
-
-            <script id="rate-data" type="application/json">
-            [{% for rate in rates %}{"start": {{ rate.start }}, "end": {{ rate.end }}, "price": {{ rate.price }}}{% if not forloop.last %},{% endif %}{% endfor %}]
-            </script>
 
           </form>
 
@@ -306,7 +304,7 @@
           </div>
 
           {% if user.is_authenticated %}
-            {% if available_dates %}
+            {% if available_dates and fixed_rate %}
             <button type="button" class="btn-book" id="btn-book" disabled
                     onclick="openBookingConfirm()">
               <i class="fas fa-check-circle me-1"></i>ยืนยันการจอง
@@ -323,8 +321,8 @@
 
           <div class="pending-note">
             <i class="fas fa-clock me-1"></i>
-            ติวเตอร์จะยืนยันคำขอจองให้ <strong>โดยเร็ว</strong>
-            เครดิตจะถูกล็อกไว้ และตัดจริงเมื่อจบคอร์สเรียนแล้ว
+            ปิดรับการจองก่อนเรียน 4 ชั่วโมง และติวเตอร์ต้องตอบรับภายใน 3 ชั่วโมงก่อนเรียน
+            เครดิตจะถูกล็อกไว้และตัดจริงเมื่อจบการเรียนแล้ว
           </div><!-- /pending-note -->
           </div><!-- /summary-body -->
         </div>
@@ -355,7 +353,7 @@
 </div>
 
 <!-- Mobile: sticky bottom bar -->
-{% if user.is_authenticated and available_dates %}
+{% if user.is_authenticated and available_dates and fixed_rate %}
 <div class="mobile-book-bar d-lg-none">
   <div>
     <div class="mobile-book-label">ทั้งหมด</div>
@@ -374,12 +372,7 @@
 {% block extra_js %}
 <script>
 (function () {
-  // ── parse data ──
-  // slotData ถูกสร้างจาก template แล้ว ไม่ต้อง parse
-  let rateData = [];
-  try { rateData = JSON.parse(document.getElementById('rate-data').textContent); } catch(e){}
-
-  const maxStu = {{ tc.tutc_max_stu }};
+  const fixedRate = {% if fixed_rate %}{{ fixed_rate.tut_rate_per_person }}{% else %}null{% endif %};
   let selectedDate = null;
   let selectedSlot = null;
 
@@ -398,25 +391,13 @@
   function renderSlots(sdId) {
     const area  = document.getElementById('slot-area');
 
-    // หาวันของ sdId นี้จาก data-date ของปุ่มที่ถูกกด
-    const activeBtn = document.querySelector('.date-btn.active');
-    const btnDateStr = activeBtn ? activeBtn.dataset.date : null; // YYYY-MM-DD
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-    // กรอง + dedup + กรองเวลาผ่านแล้วเฉพาะวันนี้
+    // กรองข้อมูลซ้ำ โดยฝั่งเซิร์ฟเวอร์ตรวจเวลาปิดรับไว้แล้ว
     const _seen = new Set();
     const slots = (slotData[sdId] || []).filter(s => {
       if (!s || !s.ts_id || !s.start || !s.end) return false;
       const key = s.start + '-' + s.end;
       if (_seen.has(key)) return false;
       _seen.add(key);
-      // ถ้าเป็นวันนี้ ให้กรองสล็อตที่เวลาเริ่มต้นผ่านไปแล้ว
-      if (btnDateStr === todayStr) {
-        const [h, m] = s.start.split(':').map(Number);
-        if (h * 60 + m <= nowMinutes) return false;
-      }
       return true;
     }).sort((a, b) => {
       // เรียงตามเวลาเริ่มต้น HH:MM
@@ -433,7 +414,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'slot-btn';
-      btn.textContent = slot.start + ' - ' + slot.end + ' น.';
+      btn.textContent = slot.start + ' - ' + slot.end + ' น. · เหลือ ' + slot.remaining + ' ที่นั่ง';
       btn.onclick = () => selectSlot(btn, slot);
       grid.appendChild(btn);
     });
@@ -447,36 +428,34 @@
     btn.classList.add('active');
     selectedSlot = slot;
     document.getElementById('ts_id_input').value = slot.ts_id;
+    const countInput = document.getElementById('stu_count');
+    if (countInput) {
+      countInput.max = slot.remaining;
+      if (parseInt(countInput.value) > slot.remaining) countInput.value = slot.remaining;
+    }
+    setText('stu-max-hint', 'เหลือ ' + slot.remaining + ' จาก ' + slot.capacity + ' ที่นั่ง');
     updateSummary();
   };
-
-  // ── หา rate ตามจำนวนคน (ใช้ช่วง start–end) ──
-  function getRate(count) {
-    if (!rateData.length) return null;
-    // หา rate ที่ count อยู่ในช่วง start–end
-    const match = rateData.find(r => count >= r.start && count <= r.end);
-    return match || rateData[rateData.length - 1];
-  }
 
   // ── อัปเดต summary ──
   window.updateSummary = function() {
     const raw = parseInt(document.getElementById('stu_count')?.value) || 1;
-    const stu = Math.min(Math.max(raw, 1), maxStu);
-    const rate  = getRate(stu);
-    const total = rate ? rate.price * stu : null;
-    const ready = selectedDate && selectedSlot && rate;
+    const currentMax = selectedSlot ? selectedSlot.remaining : {{ tc.tutc_max_stu }};
+    const stu = Math.min(Math.max(raw, 1), currentMax);
+    const total = fixedRate !== null ? fixedRate * stu : null;
+    const ready = selectedDate && selectedSlot && fixedRate !== null && stu <= selectedSlot.remaining;
 
     setText('sum-date',     selectedDate ? selectedDate.display : '—');
     setText('sum-time',     selectedSlot ? selectedSlot.start + ' - ' + selectedSlot.end + ' น.' : '—');
     setText('sum-count',    stu + ' คน');
-    setText('sum-rate',     rate ? rate.price + ' เครดิต/คน' : '—');
+    setText('sum-rate',     fixedRate !== null ? fixedRate + ' เครดิต/ที่นั่ง' : '—');
     setText('sum-total',    total !== null ? total + ' เครดิต' : '—');
     setText('sum-total-mobile', total !== null ? total + ' เครดิต' : '— เครดิต');
 
     // แสดงสูตรคำนวณ เช่น 2 × 6
     const formulaEl = document.getElementById('sum-formula');
     if (formulaEl) {
-      formulaEl.textContent = (total !== null && stu > 0 && rate) ? stu + ' × ' + rate.price + ' =' : '';
+      formulaEl.textContent = (total !== null && stu > 0) ? stu + ' × ' + fixedRate + ' =' : '';
     }
 
     if (selectedSlot) {
