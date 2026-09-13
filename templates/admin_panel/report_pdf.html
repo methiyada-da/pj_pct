@@ -1,0 +1,43 @@
+{% load static %}
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>{{ report_title }}</title>
+  <style>
+    @page { size: A4 landscape; margin: 11mm 12mm 13mm; }
+    * { box-sizing: border-box; }
+    body { margin:0; color:#102a4c; font-family:"TH Sarabun New", Tahoma, Arial, sans-serif; font-size:13px; }
+    .document { width:100%; }
+    .document-header { display:flex; align-items:center; justify-content:space-between; padding-bottom:13px; border-bottom:2px solid #0b58ab; }
+    .brand { display:flex; align-items:center; gap:10px; color:#063d7d; }
+    .brand-mark { width:44px; height:44px; display:grid; place-items:center; border-radius:8px; overflow:hidden; background:#0a67d1; }
+    .brand-mark img { display:block; width:100%; height:100%; object-fit:cover; }
+    .brand strong { display:block; font-size:23px; line-height:1; } .brand span { display:block; margin-top:4px; font-size:11px; }
+    .system-name { text-align:right; } .system-name strong { display:block; color:#084d9b; font-size:22px; } .system-name span { display:block; font-size:12px; color:#526d8c; }
+    .title { margin:26px 0 22px; text-align:center; } .title h1 { margin:0; font-size:28px; color:#0b315f; } .title p { margin:4px 0 0; color:#59708c; font-size:14px; }
+    .meta { display:grid; grid-template-columns:1fr 1fr; gap:4px 55px; margin-bottom:20px; font-size:13px; } .meta div { display:grid; grid-template-columns:125px 18px 1fr; } .meta b { color:#142f50; }
+    table { width:100%; border-collapse:separate; border-spacing:0; border:1px solid #c8d7e5; border-radius:7px; overflow:hidden; }
+    thead { display:table-header-group; } th { padding:9px 7px; background:#e4f2ff; color:#102c50; font-size:13px; border-right:1px solid #c7daed; text-align:center; } th:last-child { border-right:0; }
+    td { padding:8px 7px; border-top:1px solid #d8e2eb; border-right:1px solid #d8e2eb; color:#172a40; text-align:center; vertical-align:middle; } td:last-child { border-right:0; } tbody tr:nth-child(even) { background:#fbfdff; }
+    .empty { padding:24px; color:#6d7e91; }
+    .badge { display:inline-block; padding:3px 12px; border-radius:999px; background:#d9f6e6; color:#157044; white-space:nowrap; }
+    .summary { display:flex; align-items:center; gap:18px; margin-top:18px; padding:14px 18px; background:#f2f8ff; border:1px solid #cce3fa; border-radius:8px; break-inside:avoid; page-break-inside:avoid; } .summary-icon { color:#0960b7; font-size:27px; } .summary h2 { margin:0 0 5px; font-size:16px; color:#075baa; } .summary-items { display:flex; flex-wrap:wrap; gap:0; color:#344c69; } .summary-items span { padding:0 11px; border-right:1px solid #8ca8c5; } .summary-items span:first-child { padding-left:0; } .summary-items span:last-child { border:0; } .summary-items b { margin-left:5px; color:#153a68; }
+    .signature { display:grid; grid-template-columns:1fr 1fr; gap:120px; margin-top:44px; text-align:center; color:#203d61; break-inside:avoid; page-break-inside:avoid; } .signature-line { padding-top:4px; border-top:1px dotted #1d4a7a; } .signature p { margin:7px 0 0; }
+    .footer { display:flex; justify-content:space-between; margin-top:18px; padding-top:6px; border-top:1px solid #1762ae; color:#58708d; font-size:10px; break-inside:avoid; page-break-inside:avoid; }
+    @media screen { body { background:#eef3f8; padding:25px; } .document { max-width:1120px; min-height:760px; margin:auto; padding:36px 42px 52px; background:#fff; box-shadow:0 3px 18px #b5c1cd; } }
+  </style>
+</head>
+<body>
+  <main class="document">
+    <header class="document-header"><div class="brand"><div class="brand-mark"><img src="{% static 'images/report-logo.png' %}" alt="โลโก้เพื่อนช่วยติว"></div><div><strong>เพื่อนช่วยติว</strong><span>เรียนง่าย ได้เพื่อน ได้ความรู้</span></div></div><div class="system-name"><strong>รายงานระบบ</strong><span>ระบบเพื่อนช่วยติว<br>Peer Tutor System</span></div></header>
+    <section class="title"><h1>{{ report_title }}</h1><p>ข้อมูลตามตัวกรองที่ผู้ดูแลระบบเลือก</p></section>
+    <section class="meta"><div><b>ช่วงวันที่</b><span>:</span><span>{% if start_date %}{{ start_date }}{% else %}ทั้งหมด{% endif %} - {% if end_date %}{{ end_date }}{% else %}ปัจจุบัน{% endif %}</span></div><div><b>ประเภทผู้ใช้</b><span>:</span><span>{% if report_type == 'tutors' %}ติวเตอร์{% elif report_type == 'members' %}สมาชิกทั้งหมด{% else %}ทั้งหมด{% endif %}</span></div><div><b>วันที่ออกรายงาน</b><span>:</span><span>{{ generated_at|date:"d/m/Y H:i" }}</span></div><div><b>สถานะ</b><span>:</span><span>{% if status == 'all' %}ทั้งหมด{% else %}ตามที่เลือก{% endif %}</span></div><div><b>ผู้จัดทำ</b><span>:</span><span>{{ reporter_name }}</span></div><div><b>จำนวนข้อมูล</b><span>:</span><span>{{ total_rows }} รายการ</span></div></section>
+    <table><thead><tr><th>ลำดับ</th>{% for header in headers %}<th>{{ header }}</th>{% endfor %}</tr></thead><tbody>{% for row in rows %}<tr><td>{{ forloop.counter }}</td>{% for value in row %}<td>{% if value|date:"Y-m-d" %}{{ value|date:"d/m/Y H:i" }}{% elif value == 'อนุมัติแล้ว' or value == 'ใช้งานปกติ' or value == 'ผ่านการตรวจสอบ' %}<span class="badge">{{ value }}</span>{% else %}{{ value|default:"—" }}{% endif %}</td>{% endfor %}</tr>{% empty %}<tr><td class="empty" colspan="20">ไม่พบข้อมูลตามตัวกรองที่เลือก</td></tr>{% endfor %}</tbody></table>
+    <section class="summary"><div class="summary-icon">▥</div><div><h2>สรุปข้อมูล</h2><div class="summary-items">{% for label, value in summary_items %}<span>{{ label }} <b>{{ value }}</b></span>{% endfor %}</div></div></section>
+    <section class="signature"><div><div class="signature-line">ผู้จัดทำรายงาน</div><p>({{ reporter_name }})</p></div></section>
+    <footer class="footer"><span>ระบบเพื่อนช่วยติว (Peer Tutor System)</span><span>เอกสารรายงานระบบ</span></footer>
+  </main>
+  <script>window.addEventListener('load', function () { window.print(); });</script>
+</body>
+</html>

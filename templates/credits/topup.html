@@ -347,7 +347,7 @@
               <div class="col-md-6">
                 <div class="topup-field">
                   <label class="form-label">วันที่โอน</label>
-                  <input type="date" name="tx_date" class="form-control" required value="{{ prev.tx_date|default:'' }}">
+                  <input type="date" name="tx_date" class="form-control" required max="{% now 'Y-m-d' %}" value="{{ prev.tx_date|default:'' }}">
                 </div>
               </div>
               <div class="col-md-6">
@@ -550,6 +550,22 @@
   const timeInp = document.querySelector('input[name="tx_time"]');
   const slipFile = document.getElementById('slipFile');
   const uploadZone = document.getElementById('uploadZone');
+
+  function limitTransferTime() {
+    if (!dateInp || !timeInp) return;
+
+    const now = new Date();
+    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+    timeInp.max = dateInp.value === today
+      ? String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')
+      : '';
+  }
+
+  if (dateInp && timeInp) {
+    limitTransferTime();
+    dateInp.addEventListener('change', limitTransferTime);
+  }
 
   if (bankSel) setThaiValidation(bankSel, 'กรุณาเลือกธนาคารที่โอน', 'กรุณาเลือกธนาคารที่โอน');
   if (credInp) setThaiValidation(credInp, 'กรุณากรอกจำนวนเครดิตที่ต้องการ', 'กรุณากรอกจำนวนเครดิตที่ถูกต้อง');
