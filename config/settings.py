@@ -185,4 +185,9 @@ MESSAGE_TAGS = {
  
 # ── Dev Mode: ข้ามการยืนยันอีเมล ────────────────────────────
 # ตั้งเป็น False เมื่อ deploy จริง
-SKIP_EMAIL_VERIFICATION = False
+SKIP_EMAIL_VERIFICATION = True
+
+# กำหนดเวลาของกระบวนการจองเรียน (หน่วย: ชั่วโมงก่อน/หลังเวลาเรียน)
+BOOKING_CLOSE_HOURS = 4
+TUTOR_RESPONSE_DEADLINE_HOURS = 3
+COMPLETION_AUTO_CONFIRM_HOURS = 24

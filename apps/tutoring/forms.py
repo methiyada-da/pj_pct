@@ -33,10 +33,23 @@ class TutorRegisterForm(forms.Form):
 
 class TutorCourseForm(forms.ModelForm):
     """ฟอร์มสร้าง/แก้ไขรายวิชาที่รับสอน"""
+    tutc_meeting_detail = forms.CharField(
+        label='รายละเอียดนัดหมายเริ่มต้น',
+        required=True,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'เช่น เรียนภายในมหาวิทยาลัย รายละเอียดห้องเรียนจะแจ้งตอนตอบรับการจอง',
+        }),
+    )
+
     class Meta:
         model = TutorCourse
         # tutc_id และ tut_id กำหนดจาก view
-        fields = ['tutc_name', 'tutc_desc', 'tutc_img', 'tutc_max_stu', 'tutc_status', 'crs_id']
+        fields = [
+            'tutc_name', 'tutc_desc', 'tutc_meeting_detail', 'tutc_img',
+            'tutc_max_stu', 'tutc_status', 'crs_id',
+        ]
         widgets = {
             'tutc_name'   : forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ชื่อรายวิชาที่ประกาศสอน'}),
             'tutc_desc'   : forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
@@ -48,26 +61,27 @@ class TutorCourseForm(forms.ModelForm):
         labels = {
             'tutc_name'   : 'ชื่อรายวิชาที่ประกาศสอน',
             'tutc_desc'   : 'รายละเอียดเนื้อหา',
+            'tutc_meeting_detail': 'รายละเอียดนัดหมายเริ่มต้น',
             'tutc_img'    : 'รูปปก',
-            'tutc_max_stu': 'จำนวนรับสูงสุด (คน)',
+            'tutc_max_stu': 'จำนวนรับสูงสุด (คน/ครั้ง)',
             'tutc_status' : 'สถานะการเปิดสอน',
             'crs_id'      : 'รายวิชา',
         }
 
 
 class TutorRateForm(forms.ModelForm):
-    """ฟอร์มกำหนดอัตราค่าติว"""
+    """ฟอร์มกำหนดราคาเดียวต่อที่นั่ง"""
     class Meta:
         model = TutorRate
         # tutc_id กำหนดจาก view
         fields = ['tut_rate_stu_count', 'tut_rate_per_person']
         widgets = {
             'tut_rate_stu_count' : forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-            'tut_rate_per_person': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'tut_rate_per_person': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
         }
         labels = {
             'tut_rate_stu_count' : 'จำนวนคน',
-            'tut_rate_per_person': 'ค่าติว (เครดิต/คน)',
+            'tut_rate_per_person': 'ราคาต่อที่นั่ง (เครดิต)',
         }
 
 

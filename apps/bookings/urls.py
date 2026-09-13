@@ -8,6 +8,8 @@ urlpatterns = [
     # ─── ฝั่งติวเตอร์ ───────────────────────────────────────────────────────
     path('tutor/',                             views.tutor_requests,    name='tutor_requests'),
     path('tutor/<int:bk_id>/accept/',          views.booking_accept,    name='booking_accept'),
+    path('tutor/slot/<int:ts_id>/accept-all/', views.booking_accept_all, name='booking_accept_all'),
+    path('tutor/slot/<int:ts_id>/complete/',   views.tutoring_activity_group, name='tutoring_activity_group'),
     path('tutor/<int:bk_id>/reject/',          views.booking_reject,    name='booking_reject'),
     path('tutor/<int:bk_id>/studying/',        views.mark_studying,     name='mark_studying'),   # 1→2
     path('tutor/<int:bk_id>/activity/',        views.tutoring_activity, name='tutoring_activity'), # 2→3

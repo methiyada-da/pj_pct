@@ -58,7 +58,7 @@ class MemberRegisterForm(UserCreationForm):
         'This password is too common.':
             'รหัสผ่านนี้พบได้บ่อยเกินไป กรุณาใช้รหัสผ่านที่คาดเดายากขึ้น',
         'This password is entirely numeric.':
-            'รหัสผ่านนี้เป็นตัวเลขทั้งหมด กรุณาใช้ตัวอักษรหรือตัวเลขผสมกัน',
+            'รหัสผ่านนี้เป็นตัวเลขทั้งหมด กรุณาใช้ตัวอักษรและตัวเลขผสมกัน',
     }
 
     def _translate_password_errors(self, password, user=None):

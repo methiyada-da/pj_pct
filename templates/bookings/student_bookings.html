@@ -189,8 +189,8 @@
               <span class="badge" style="background:#0EA5E9;">ยกเลิกตามคำขอ</span>
               {% elif bk.bk_status == 6 and bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียน' or bk.bk_status == 6 and bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียนตามคำขอผู้เรียน' %}
               <span class="badge" style="background:#0EA5E9;">ยกเลิกโดยติวเตอร์</span>
-              {% elif bk.bk_status == 6 and bk.bk_cmt == 'ผู้เรียนยกเลิกการจอง' %}
-              <span class="badge" style="background:#F97316;">ยกเลิกโดยผู้เรียน</span>
+              {% elif bk.bk_status == 6 %}
+              <span class="badge" style="background:#F97316;">{{ bk.rejection_label }}</span>
               {% else %}
               <span class="badge
                 {% if bk.bk_status == 0 %}bg-warning text-dark
@@ -322,6 +322,7 @@ const bookingData = {
     ],
     desc:     "{{ bk.bk_desc|default:''|escapejs }}",
     cmt:      "{{ bk.bk_cmt|default:''|escapejs }}",
+    rejection_label: "{{ bk.rejection_label|escapejs }}",
     accepted: "{{ bk.bk_accepted_date|date:'d M Y H:i'|default:'' }}",
     {% if bk.bk_status == 3 %}
       {% with jc=bk.jobcompletion %}
@@ -332,8 +333,10 @@ const bookingData = {
     {% endif %}
     {% if bk.ts_id %}
     slot:     "{{ bk.ts_id.ts_start_time|time:'H:i' }} – {{ bk.ts_id.ts_end_time|time:'H:i' }}",
+    meeting:  "{{ bk.ts_id.ts_meeting_detail|default:bk.tutc_id.tutc_meeting_detail|default:''|escapejs }}",
     {% else %}
     slot:     "",
+    meeting:  "{{ bk.tutc_id.tutc_meeting_detail|default:''|escapejs }}",
     {% endif %}
     {% if bk.bk_status >= 3 %}
       {% with act=bk.tutoringactivity %}
@@ -467,7 +470,7 @@ function openDetail(bkId) {
     label = 'ยกเลิกโดยติวเตอร์';
     sc = 'info';
   }
-  if (bk.status === 6 && bk.cmt === 'ผู้เรียนยกเลิกการจอง') label = 'ยกเลิก';
+  if (bk.status === 6 && bk.rejection_label) label = bk.rejection_label;
 
   // progress track
   let trackHtml = '';
@@ -599,8 +602,8 @@ function openDetail(bkId) {
       actionHtml = `
         <div class="mt-3 pt-3 border-top d-grid gap-2">
           <div class="alert alert-info py-2 small mb-0">
-            <i class="fas fa-calendar-check me-1"></i>การจองนี้ได้รับการยืนยันแล้ว หากต้องการยกเลิกต้องส่งคำขอให้ติวเตอร์พิจารณา
-            <div class="mt-1">ส่งคำขอได้เมื่อเหลือเวลาอย่างน้อย 24 ชั่วโมงก่อนเวลาเรียน</div>
+            <i class="fas fa-calendar-check me-1"></i>การจองนี้ได้รับการยืนยันแล้ว
+            <div class="mt-1">ก่อน 24 ชั่วโมงยกเลิกได้ทันที และช่วง 24–3 ชั่วโมงจะส่งคำขอให้ติวเตอร์พิจารณา</div>
           </div>
           <button onclick="showRequestCancelModal(${bkId})" class="btn btn-outline-danger btn-sm rounded-3">
             <i class="fas fa-paper-plane me-1"></i>ขอยกเลิกการเรียน
@@ -795,6 +798,7 @@ function openDetail(bkId) {
       <div class="col-md-6">
         <div class="modal-detail-row"><span class="text-muted">วันเวลานัดเรียน</span><span>${bk.datetime}</span></div>
         ${bk.slot ? `<div class="modal-detail-row"><span class="text-muted">ช่วงเวลา</span><span>${bk.slot}</span></div>` : ''}
+        ${bk.meeting && bk.status >= 1 && bk.status !== 6 ? `<div class="modal-detail-row"><span class="text-muted">รายละเอียดนัดหมาย</span><span style="white-space:pre-wrap;">${escapeHtml(bk.meeting)}</span></div>` : ''}
         <div class="modal-detail-row"><span class="text-muted">วันที่จอง</span><span class="text-muted">${bk.booked}</span></div>
         ${bk.accepted ? `<div class="modal-detail-row"><span class="text-muted">ติวเตอร์รับเมื่อ</span><span class="text-success">${bk.accepted}</span></div>` : ''}
       </div>
@@ -1093,18 +1097,20 @@ function showRequestCancelModal(bkId) {
   const bk = bookingData[bkId];
   const startTime = bk.start_iso ? new Date(bk.start_iso) : null;
   const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+  const threeHoursMs = 3 * 60 * 60 * 1000;
+  const remainingMs = startTime ? startTime.getTime() - Date.now() : 0;
 
-  if (!startTime || (startTime.getTime() - Date.now()) < twentyFourHoursMs) {
+  if (!startTime || remainingMs < threeHoursMs) {
     setTimeout(() => {
       Swal.fire({
         title: 'ไม่สามารถส่งคำขอยกเลิกได้',
         html: `
           <div class="text-start small">
             <div class="p-3 rounded-3 mb-2" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;">
-              เหลือเวลาน้อยกว่า <strong>24 ชั่วโมงก่อนเริ่มเรียน</strong> จึงไม่สามารถส่งคำขอยกเลิกเองได้
+              เหลือเวลาน้อยกว่า <strong>3 ชั่วโมงก่อนเริ่มเรียน</strong> จึงไม่สามารถยกเลิกหรือส่งคำขอยกเลิกได้
             </div>
             <div class="p-3 rounded-3 mb-2" style="background:#EFF6FF;border:1px solid #BFDBFE;color:#1E3A8A;">
-              กรุณาแชทคุยกับติวเตอร์โดยตรง หากติวเตอร์ตกลงให้ยกเลิก ติวเตอร์จะเป็นผู้กดยกเลิกการเรียนให้คุณ
+              โปรดติดต่อพูดคุยกับติวเตอร์โดยตรง หากเกิดปัญหาในการเรียนให้ใช้เมนูรายงานตามเงื่อนไขของระบบ
             </div>
             <div style="font-size:12.5px;color:#64748B;line-height:1.55;">
               หมายเหตุ: ถ้ามีข้อพิพาทหลังถึงเวลาเรียน สามารถรายงานให้แอดมินพิจารณาได้
@@ -1132,20 +1138,26 @@ function showRequestCancelModal(bkId) {
     return;
   }
 
+  const isDirectCancel = remainingMs > twentyFourHoursMs;
   setTimeout(() => {
     Swal.fire({
-      title: 'ขอยกเลิกการเรียน',
+      title: isDirectCancel ? 'ยกเลิกการเรียน?' : 'ขอยกเลิกการเรียน',
       html: `
         <div class="text-start small">
           <div class="mb-3" style="font-size:13px;color:#64748B;text-align:center;">
-            ตรวจสอบเงื่อนไขก่อนส่งคำขอ ระบบจะส่งให้ติวเตอร์พิจารณา
+            ${isDirectCancel
+              ? 'เหลือเวลามากกว่า 24 ชั่วโมง ระบบจะยกเลิกและปลดล็อกเครดิตทันที'
+              : 'เหลือเวลา 24–3 ชั่วโมง ระบบจะส่งคำขอให้ติวเตอร์พิจารณา'}
           </div>
           <div style="display:grid;gap:8px;margin-bottom:14px;">
             <div style="padding:10px 12px;border-radius:10px;background:#EFF6FF;border:1px solid #BFDBFE;color:#334155;">
-              ส่งคำขอได้เมื่อเหลือเวลาอย่างน้อย <strong>24 ชั่วโมง</strong> ก่อนเวลาเรียน
+              <strong>มากกว่า 24 ชั่วโมง:</strong> ยกเลิกได้ทันที<br>
+              <strong>24–3 ชั่วโมง:</strong> ติวเตอร์ต้องอนุมัติ
             </div>
             <div style="padding:10px 12px;border-radius:10px;background:#FFFBEB;border:1px solid #FDE68A;color:#4B5563;">
-              การจองยังอยู่ในแท็บรอเรียน และเครดิตยังถูกล็อกไว้จนกว่าติวเตอร์จะพิจารณา
+              ${isDirectCancel
+                ? 'เมื่อยืนยัน รายการจะถูกยกเลิกและที่นั่งจะกลับมาให้ผู้อื่นจองได้'
+                : 'ระหว่างรอ การจองยังมีผลและเครดิตยังถูกล็อกไว้จนกว่าติวเตอร์จะพิจารณา'}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <div style="padding:10px 12px;border-radius:10px;background:#F0FDF4;border:1px solid #BBF7D0;">
@@ -1165,7 +1177,9 @@ function showRequestCancelModal(bkId) {
       inputAttributes: { rows: 4 },
       icon: 'question',
       showCancelButton: true,
-      confirmButtonText: '<i class="fas fa-paper-plane me-1"></i> ส่งคำขอ',
+      confirmButtonText: isDirectCancel
+        ? '<i class="fas fa-times-circle me-1"></i> ยืนยันยกเลิก'
+        : '<i class="fas fa-paper-plane me-1"></i> ส่งคำขอ',
       cancelButtonText: 'ยกเลิก',
       confirmButtonColor: '#2563EB',
       cancelButtonColor: '#6B7280',
