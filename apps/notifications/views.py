@@ -1,11 +1,20 @@
 # notifications/views.py - views จัดการการแจ้งเตือน
+import logging
+
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
+from apps.bookings.services import (
+    get_member_booking_state_token,
+    process_time_based_bookings,
+)
 from .models import Notification
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -16,6 +25,13 @@ def api_list(request):
     พร้อม unread_count แยกต่างหาก
     """
     user = request.user
+    # การ polling แจ้งเตือนทำหน้าที่เป็น heartbeat ของกฎเวลาในระบบด้วย
+    try:
+        process_time_based_bookings()
+    except Exception:
+        # การแจ้งเตือนทั่วไปต้องยังเปิดดูได้ แม้การซิงก์สถานะรอบนี้ขัดข้อง
+        logger.exception('ประมวลผลสถานะตามเวลาระหว่าง polling ไม่สำเร็จ')
+    booking_state_token = ''
 
     if hasattr(user, 'system'):
         qs_all       = Notification.objects.filter(admin_recipient=user)
@@ -25,13 +41,19 @@ def api_list(request):
             member       = user.member
             qs_all       = Notification.objects.filter(recipient=member)
             unread_count = qs_all.filter(notif_is_read=False).count()
+            booking_state_token = get_member_booking_state_token(member)
         except Exception:
-            return JsonResponse({'unread_count': 0, 'notifications': []})
+            return JsonResponse({
+                'unread_count': 0,
+                'notifications': [],
+                'booking_state_token': '',
+            })
 
     notifications = qs_all.order_by('-notif_created_at')[:20]
 
     data = {
         'unread_count': unread_count,
+        'booking_state_token': booking_state_token,
         'notifications': [
             {
                 'notif_id':   n.notif_id,

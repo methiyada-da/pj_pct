@@ -269,16 +269,17 @@
     <!-- Tab pills -->
     <div class="d-flex gap-2 mb-4 flex-wrap">
       <button class="tab-pill active" data-tab="pending">รอยืนยัน <span class="badge bg-warning text-dark ms-1">{{ pending|length }}</span></button>
-      <button class="tab-pill" data-tab="accepted">รับงานแล้ว <span class="badge bg-success ms-1">{{ accepted|length }}</span></button>
-      <button class="tab-pill" data-tab="studying">รอแจ้งจบงาน <span class="badge bg-info ms-1">{{ studying|length }}</span></button>
-      <button class="tab-pill" data-tab="notified">แจ้งจบงานแล้ว <span class="badge bg-primary ms-1">{{ notified|length }}</span></button>
-      <button class="tab-pill" data-tab="done">เสร็จสิ้น <span class="badge bg-success ms-1">{{ done|length }}</span></button>
-      <button class="tab-pill" data-tab="rejected">ปฏิเสธ <span class="badge bg-danger ms-1">{{ rejected|length }}</span></button>
+      <button class="tab-pill" data-tab="accepted">งานที่รับแล้ว <span class="badge bg-success ms-1">{{ accepted_count }}</span></button>
+      <button class="tab-pill" data-tab="completion">แจ้งจบงาน <span class="badge bg-primary ms-1">{{ completion_count }}</span></button>
+      <button class="tab-pill" data-tab="done">งานเสร็จสิ้น <span class="badge bg-success ms-1">{{ done|length }}</span></button>
+      <button class="tab-pill" data-tab="rejected">ปฏิเสธ/ยกเลิก <span class="badge bg-danger ms-1">{{ rejected|length }}</span></button>
       <button class="tab-pill" data-tab="reported">รายงาน <span class="badge ms-1" style="background:#7C3AED;" id="cnt-reported">{{ reported_bookings|length }}</span></button>
     </div>
 
     <!-- ── TAB: รอยืนยัน ── -->
     <div id="tab-pending">
+      {% include 'bookings/_tutor_pending_groups.html' %}
+      <div class="d-none" aria-hidden="true">
       {% if pending %}
         {% for bk in pending %}
         <div class="bk-card pending mb-3">
@@ -305,7 +306,7 @@
               <div class="row g-2">
                 <div class="col-md-6">
                   <div class="info-row"><span class="info-label"><i class="fas fa-user me-1 text-primary"></i>ผู้เรียน</span><span class="fw-semibold">{{ bk.member.mb_full_name }}</span></div>
-                  <div class="info-row"><span class="info-label"><i class="fas fa-users me-1 text-primary"></i>จำนวนผู้เรียน</span><span>{{ bk.bk_stu_count }} คน</span></div>
+                  <div class="info-row"><span class="info-label"><i class="fas fa-user me-1 text-primary"></i>สิทธิ์การจอง</span><span>{% if bk.bk_stu_count > 1 %}รายการเดิม {{ bk.bk_stu_count }} ที่นั่ง{% else %}1 บัญชี · 1 ที่นั่ง{% endif %}</span></div>
                   <div class="info-row"><span class="info-label"><i class="fas fa-calendar me-1 text-primary"></i>วันเวลานัด</span><span>{{ bk.bk_stu_datetime|date:"d M Y H:i" }} น.</span></div>
                 </div>
                 <div class="col-md-6">
@@ -324,8 +325,7 @@
             <div class="pending-booking-actions">
               <div class="earnings-box text-center mb-3">
                 <div class="text-muted small mb-1">เครดิตที่จะได้รับ</div>
-                <div class="fw-bold text-success" style="font-size:22px;">{{ bk.bk_rate_per_person }} <span style="font-size:13px;font-weight:500;">× {{ bk.bk_stu_count }}</span></div>
-                <div class="fw-bold text-success" style="font-size:18px;">= {{ bk.total_credit }} เครดิต</div>
+                <div class="fw-bold text-success" style="font-size:22px;">{{ bk.total_credit }} เครดิต</div>
               </div>
               <form method="post" action="{% url 'bookings:booking_accept' bk.bk_id %}" id="form-accept-{{ bk.bk_id }}">
                 {% csrf_token %}
@@ -350,134 +350,29 @@
           <div class="small">เมื่อมีผู้เรียนส่งคำขอ จะปรากฏที่นี่</div>
         </div>
       {% endif %}
+      </div>
     </div>
 
     <!-- ── TAB: รับงานแล้ว ── -->
     <div id="tab-accepted" class="d-none">
-      {% if accepted %}
-        {% for bk in accepted %}
-        <div class="bk-card mb-3" style="border-left:4px solid #10B981;">
-          {% if bk.cancel_request_pending %}
-          <div class="d-flex align-items-center gap-2 p-2" style="background:#FFFBEB;border-bottom:1px solid #FDE68A;">
-            <i class="fas fa-hourglass-half" style="color:#D97706;"></i>
-            <span class="small fw-semibold" style="color:#92400E;">ผู้เรียนส่งคำขอยกเลิกการเรียน</span>
-          </div>
-          {% endif %}
-          <div class="accepted-booking-row">
-            <div class="course-thumb">
-              {% if bk.tutc_id.tutc_img %}
-                <img src="{{ bk.tutc_id.tutc_img.url }}" alt="">
-              {% else %}
-                <img src="{% static bk.tutc_id|course_cover_path %}" alt="รูปปก {{ bk.tutc_id.tutc_name }}">
-              {% endif %}
-              <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
-            </div>
-            <div class="accepted-booking-content">
-          <div class="accepted-copy">
-              <div class="d-flex align-items-center gap-2 mb-2">
-                <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
-                {% if bk.cancel_request_pending %}
-                <span class="badge" style="background:#F59E0B;color:#111827;">รอพิจารณาการยกเลิก</span>
-                {% elif bk.cancel_request_rejected %}
-                <span class="badge bg-secondary">ไม่อนุมัติการยกเลิก</span>
-                {% elif bk.bk_cmt == 'ติวเตอร์อนุมัติการยกเลิกตามคำขอผู้เรียน' %}
-                  <span class="badge" style="background:#0EA5E9;">ยกเลิกตามคำขอ</span>
-                {% elif bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียน' or bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียนตามคำขอผู้เรียน' %}
-                  <span class="badge" style="background:#0EA5E9;">ยกเลิกโดยติวเตอร์</span>
-                {% else %}
-                <span class="badge bg-success">รับงานแล้ว</span>
-                {% endif %}
-
-              </div>
-              <div class="fw-bold mb-1" style="font-size:15px;">{{ bk.tutc_id.tutc_name }}</div>
-              <div class="text-muted small mb-1">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_count }} คน · {{ bk.bk_rate_per_person }} เครดิต/คน</div>
-              <div class="text-muted small"><i class="fas fa-calendar me-1"></i>{{ bk.bk_stu_datetime|date:"d M Y H:i" }} น.</div>
-              {% if bk.cancel_request_pending %}
-              <div class="accepted-note mt-2 p-2 rounded-3 small" style="background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;">
-                ผู้เรียนขอยกเลิกการเรียน หากอนุมัติ ระบบจะคืนเครดิตให้ผู้เรียนและเปิดช่วงเวลาเรียนนี้อีกครั้ง หากไม่อนุมัติ การจองยังมีผลตามเวลาเรียนเดิม
-              </div>
-              {% elif bk.cancel_request_rejected %}
-              <div class="accepted-note mt-2 p-2 rounded-3 small" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#374151;">
-                คุณไม่อนุมัติการยกเลิกแล้ว หากถึงเวลาเรียนแล้วยังเกิดข้อพิพาท สามารถส่งเรื่องให้แอดมินพิจารณา โดยเครดิตจะยังถูกล็อกไว้จนกว่าแอดมินจะตัดสิน
-              </div>
-              {% endif %}
-            </div>
-            <div class="accepted-actions">
-              <div class="fw-bold text-dark" style="font-size:18px;">{{ bk.total_credit }} เครดิต</div>
-              <form method="post" action="{% url 'bookings:mark_studying' bk.bk_id %}" id="form-studying-{{ bk.bk_id }}">
-                {% csrf_token %}
-              </form>
-              {% if bk.cancel_request_pending %}
-              <button class="btn btn-success btn-sm fw-semibold rounded-pill px-3 w-100"
-                onclick="openApproveCancel({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', {{ bk.total_credit }})">
-                <i class="fas fa-check me-1"></i>อนุมัติการยกเลิก
-              </button>
-              <button class="btn btn-outline-danger btn-sm fw-semibold rounded-pill px-3 w-100"
-                onclick="openRejectCancel({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
-                <i class="fas fa-times me-1"></i>ไม่อนุมัติการยกเลิก
-              </button>
-              {% elif bk.cancel_request_rejected %}
-              
-              <button type="button" class="btn btn-info text-white btn-sm fw-semibold rounded-pill px-3 w-100"
-                      onclick="openFinish('{{ bk.bk_id }}', '{{ bk.tutc_id.tutc_name|escapejs }}')">
-                <i class="fas fa-graduation-cap me-1"></i>เสร็จสิ้นการสอน
-              </button>
-              
-              {% if bk.cancel_dispute_available %}
-              <button class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 w-100"
-                onclick="openEscalateCancelDispute({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
-                <i class="fas fa-flag me-1"></i>รายงานปัญหา
-              </button>
-              {% endif %}
-              {% if bk.tutor_cancel_for_student_available %}
-              <button class="btn btn-outline-danger btn-sm fw-semibold rounded-pill px-3 w-100"
-                onclick="openTutorCancelForStudent({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', {{ bk.total_credit }})">
-                <i class="fas fa-rotate-left me-1"></i>ยกเลิกการเรียน
-              </button>
-              {% endif %}
-              {% else %}
-              <button class="btn btn-info text-white btn-sm fw-semibold rounded-pill px-3 w-100"
-                onclick="openFinish('{{ bk.bk_id }}', '{{ bk.tutc_id.tutc_name|escapejs }}')">
-                <i class="fas fa-graduation-cap me-1"></i>เสร็จสิ้นการสอน
-              </button>
-              
-              {% if bk.tutor_can_escalate_after_start %}
-              <button class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 w-100"
-                onclick="openEscalateCancelDispute({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}')">
-                <i class="fas fa-flag me-1"></i>รายงานปัญหา
-              </button>
-              {% endif %}
-
-              {% if bk.tutor_cancel_for_student_available %}
-              <button class="btn btn-outline-danger btn-sm fw-semibold rounded-pill px-3 w-100"
-                      onclick="openTutorCancelForStudent({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', {{ bk.total_credit }})">
-                <i class="fas fa-rotate-left me-1"></i>ยกเลิกการเรียน
-              </button>
-              {% endif %}
-              {% endif %}
-              <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
-                      onclick="openDetail({{ bk.bk_id }})">
-                <i class="fas fa-info-circle me-1"></i>รายละเอียด
-              </button>
-            </div>
-            </div>{# /accepted-booking-content #}
-          </div>{# /accepted-booking-row #}
-        </div>
-        {% endfor %}
-      {% else %}
-        <div class="empty-state text-center text-muted">
-          <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-clipboard-check"></i></div>
-          <div class="fw-semibold mb-1">ยังไม่มีงานที่รับแล้ว</div>
-          <div class="small">งานที่คุณยืนยันรับจะปรากฏที่นี่</div>
-        </div>
-      {% endif %}
+      {% include 'bookings/_tutor_accepted_groups.html' %}
     </div>
 
-    <!-- ── TAB: รอแจ้งจบงาน (เรียนแล้ว) ── -->
-    <div id="tab-studying" class="d-none">
-      {% if studying %}
-        {% for bk in studying %}
-        <div class="bk-card mb-3" style="border-left:4px solid #06B6D4;">
+    <!-- ── TAB: แจ้งจบงาน ── -->
+    <div id="tab-completion" class="d-none">
+      <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+        <label for="completionFilter" class="fw-semibold text-dark mb-0">สถานะ</label>
+        <select id="completionFilter" class="form-select form-select-sm" style="width:auto;min-width:190px;">
+          <option value="all">ทั้งหมด</option>
+          <option value="pending">รอแจ้งจบงาน</option>
+          <option value="submitted">แจ้งจบงานแล้ว</option>
+        </select>
+      </div>
+      {% if completion_pending_groups or completion_bookings %}
+      {% include 'bookings/_tutor_completion_groups.html' %}
+      {% if completion_bookings %}
+        {% for bk in completion_bookings %}
+        <div class="bk-card mb-3" style="border-left:4px solid {% if bk.bk_status == 2 %}#06B6D4{% else %}#3B82F6{% endif %};" data-completion-card data-completion-phase="{% if bk.bk_status == 2 %}pending{% else %}submitted{% endif %}">
           <div class="d-flex align-items-stretch">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -491,17 +386,21 @@
           <div>
               <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
-                <span class="badge bg-info">เรียนแล้ว</span>
+                <span class="badge {% if bk.bk_status == 2 %}bg-info text-dark{% else %}bg-primary{% endif %}">{% if bk.bk_status == 2 %}เรียนแล้ว — รอบันทึกกิจกรรม{% else %}แจ้งจบงานแล้ว — รอผู้เรียนยืนยัน{% endif %}</span>
               </div>
               <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
               <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
             </div>
             <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
               <div class="fw-bold" style="font-size:16px;">{{ bk.total_credit }} เครดิต</div>
+              {% if bk.bk_status == 2 %}
               <a href="{% url 'bookings:tutoring_activity' bk.bk_id %}"
                  class="btn btn-primary btn-sm fw-semibold rounded-pill px-3">
                 <i class="fas fa-camera me-1"></i>บันทึกกิจกรรม
               </a>
+              {% else %}
+              <span class="text-muted small"><i class="fas fa-clock me-1"></i>รอผู้เรียนยืนยัน</span>
+              {% endif %}
               <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
                       onclick="openDetail({{ bk.bk_id }})">
                 <i class="fas fa-info-circle me-1"></i>รายละเอียด
@@ -511,64 +410,32 @@
           </div>{# /d-flex align-items-stretch #}
         </div>
         {% endfor %}
+      {% endif %}
+        <div id="completionFilterEmpty" class="empty-state text-center text-muted d-none">
+          <div class="fw-semibold">ไม่มีรายการในสถานะนี้</div>
+        </div>
       {% else %}
         <div class="empty-state text-center text-muted">
           <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-book-open"></i></div>
-          <div class="fw-semibold mb-1">ยังไม่มีงานที่รอแจ้งจบ</div>
-          <div class="small">กด "เสร็จสิ้นการสอน" หลังสอนเสร็จเพื่อย้ายงานมาที่นี่</div>
-        </div>
-      {% endif %}
-    </div>
-
-    <!-- ── TAB: แจ้งจบงานแล้ว ── -->
-    <div id="tab-notified" class="d-none">
-      {% if notified %}
-        {% for bk in notified %}
-        <div class="bk-card mb-3" style="border-left:4px solid #3B82F6;">
-          <div class="d-flex align-items-stretch">
-            <div class="course-thumb">
-              {% if bk.tutc_id.tutc_img %}
-                <img src="{{ bk.tutc_id.tutc_img.url }}" alt="">
-              {% else %}
-                <img src="{% static bk.tutc_id|course_cover_path %}" alt="รูปปก {{ bk.tutc_id.tutc_name }}">
-              {% endif %}
-              <div class="thumb-label"><span>{{ bk.tutc_id.tutc_name|truncatechars:24 }}</span></div>
-            </div>
-            <div class="flex-fill p-4 d-flex align-items-center justify-content-between gap-3 flex-wrap">
-          <div>
-              <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
-                <span class="badge bg-primary">แจ้งจบงานแล้ว</span>
-              </div>
-              <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
-              <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
-            </div>
-            <div class="d-flex flex-column gap-2 text-end" style="min-width:160px;">
-              <div class="fw-bold" style="font-size:16px;">{{ bk.total_credit }} เครดิต</div>
-              <span class="text-muted small"><i class="fas fa-clock me-1"></i>รอผู้เรียนยืนยัน</span>
-              <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
-                      onclick="openDetail({{ bk.bk_id }})">
-                <i class="fas fa-info-circle me-1"></i>รายละเอียด
-              </button>
-            </div>
-            </div>{# /flex-fill p-4 #}
-          </div>{# /d-flex align-items-stretch #}
-        </div>
-        {% endfor %}
-      {% else %}
-        <div class="empty-state text-center text-muted">
-          <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-paper-plane"></i></div>
-          <div class="fw-semibold mb-1">ยังไม่มีงานที่แจ้งจบ</div>
-          <div class="small">งานที่ส่งหลักฐานแล้วจะปรากฏที่นี่</div>
+          <div class="fw-semibold mb-1">ยังไม่มีรายการแจ้งจบงาน</div>
+          <div class="small">รายการที่รอบันทึกกิจกรรมหรือแจ้งจบงานแล้วจะปรากฏที่นี่</div>
         </div>
       {% endif %}
     </div>
 
     <!-- ── TAB: เสร็จสิ้น (ยืนยันจบ + รีวิวแล้ว) ── -->
     <div id="tab-done" class="d-none">
+      <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+        <label for="tutorDoneFilter" class="fw-semibold text-dark mb-0">สถานะ</label>
+        <select id="tutorDoneFilter" class="form-select form-select-sm" style="width:auto;min-width:175px;">
+          <option value="all">ทั้งหมด</option>
+          <option value="unreviewed">ยังไม่รีวิว</option>
+          <option value="reviewed">รีวิวแล้ว</option>
+        </select>
+      </div>
       {% if done %}
         {% for bk in done %}
-        <div class="bk-card mb-3" style="border-left:4px solid #10B981;">
+        <div class="bk-card mb-3" style="border-left:4px solid #10B981;" data-tutor-done-card data-review-status="{% if bk.bk_status == 5 %}reviewed{% else %}unreviewed{% endif %}">
           <div class="d-flex align-items-stretch">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -601,6 +468,9 @@
           </div>{# /d-flex align-items-stretch #}
         </div>
         {% endfor %}
+        <div id="tutorDoneFilterEmpty" class="empty-state text-center text-muted d-none">
+          <div class="fw-semibold">ไม่มีรายการในสถานะนี้</div>
+        </div>
       {% else %}
         <div class="empty-state text-center text-muted">
           <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-check-double"></i></div>
@@ -611,9 +481,18 @@
 
     <!-- ── TAB: ปฏิเสธ ── -->
     <div id="tab-rejected" class="d-none">
+      <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+        <label for="tutorRejectedFilter" class="fw-semibold text-dark mb-0">ประเภท</label>
+        <select id="tutorRejectedFilter" class="form-select form-select-sm" style="width:auto;min-width:175px;">
+          <option value="all">ทั้งหมด</option>
+          <option value="cancelled">ยกเลิก</option>
+          <option value="rejected">ปฏิเสธ</option>
+          <option value="overdue">เลยกำหนดตอบรับ</option>
+        </select>
+      </div>
       {% if rejected %}
         {% for bk in rejected %}
-        <div class="bk-card mb-3" style="border-left:4px solid #EF4444;">
+        <div class="bk-card mb-3" style="border-left:4px solid #EF4444;" data-tutor-rejected-card data-rejection-type="{% if 'ยกเลิก' in bk.rejection_label %}cancelled{% elif bk.rejection_label == 'เลยกำหนดตอบรับ' %}overdue{% else %}rejected{% endif %}">
           <div class="d-flex align-items-stretch">
             <div class="course-thumb">
               {% if bk.tutc_id.tutc_img %}
@@ -627,15 +506,7 @@
           <div>
               <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="fw-bold text-muted small">BK{{ bk.bk_id|stringformat:"05d" }}</span>
-                {% if bk.bk_cmt == 'ผู้เรียนยกเลิกการจอง' %}
-                  <span class="badge" style="background:#F97316;">ยกเลิกโดยผู้เรียน</span>
-                {% elif bk.bk_cmt == 'ติวเตอร์อนุมัติการยกเลิกตามคำขอผู้เรียน' %}
-                  <span class="badge" style="background:#0EA5E9;">ยกเลิกตามคำขอ</span>
-                {% elif bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียน' or bk.bk_cmt == 'ติวเตอร์ยกเลิกการเรียนตามคำขอผู้เรียน' %}
-                  <span class="badge" style="background:#0EA5E9;">ยกเลิกโดยติวเตอร์</span>
-                {% else %}
-                  <span class="badge bg-danger">ติวเตอร์ปฏิเสธ</span>
-                {% endif %}
+                <span class="badge {% if bk.rejection_label == 'ติวเตอร์ปฏิเสธ' %}bg-danger{% else %}bg-secondary{% endif %}">{{ bk.rejection_label }}</span>
               </div>
               <div class="fw-semibold">{{ bk.tutc_id.tutc_name }}</div>
               <div class="text-muted small">{{ bk.member.mb_full_name }} · {{ bk.bk_stu_datetime|date:"d M Y H:i" }}</div>
@@ -651,6 +522,9 @@
           </div>{# /d-flex align-items-stretch #}
         </div>
         {% endfor %}
+        <div id="tutorRejectedFilterEmpty" class="empty-state text-center text-muted d-none">
+          <div class="fw-semibold">ไม่มีรายการในประเภทนี้</div>
+        </div>
       {% else %}
         <div class="empty-state text-center text-muted">
           <div class="mb-3" style="font-size:3rem; opacity:.25;"><i class="fas fa-times-circle"></i></div>
@@ -720,10 +594,7 @@
 
 <!-- hidden reject form -->
 <form id="rejectForm" method="post" style="display:none">{% csrf_token %}<textarea name="reject_reason" id="rejectReason"></textarea></form>
-<form id="cancelDecisionForm" method="post" style="display:none">
-  {% csrf_token %}
-  <textarea name="reject_reason" id="cancelRejectReason"></textarea>
-</form>
+<form id="tutorCancelForm" method="post" style="display:none">{% csrf_token %}</form>
 <form id="cancelDisputeForm" method="post" style="display:none">
   {% csrf_token %}
   <input type="hidden" name="rp_reason" id="cancelDisputeReason">
@@ -751,6 +622,9 @@
 
 <!-- Booking data embedded for JS -->
 <script>
+window.BOOKING_STATE_TOKEN = '{{ booking_state_token|escapejs }}';
+window.addEventListener('booking-time-state-changed', () => window.location.reload(), { once: true });
+
 const bookingData = {
   {% for bk in all_bookings %}
   {{ bk.bk_id }}: {
@@ -765,10 +639,6 @@ const bookingData = {
     end_iso: "{{ bk.lesson_end_datetime|date:'c' }}",
     booked:   "{{ bk.bk_date|date:'d M Y H:i' }}",
     status:   {{ bk.bk_status }},
-    cancel_pending: {% if bk.cancel_request_pending %}true{% else %}false{% endif %},
-    cancel_rejected: {% if bk.cancel_request_rejected %}true{% else %}false{% endif %},
-    cancel_request_reason: "{{ bk.cancel_request_reason|default:''|escapejs }}",
-    cancel_reject_reason: "{{ bk.cancel_reject_reason|default:''|escapejs }}",
     can_report_problem: {% if bk.can_report_problem_after_start %}true{% else %}false{% endif %},
     reported: {% if bk.bk_report_date %}true{% else %}false{% endif %},
     report_by_tutor: {% if bk.report_by_tutor %}true{% else %}false{% endif %},
@@ -790,11 +660,14 @@ const bookingData = {
       {% endfor %}
     ],
     desc:     "{{ bk.bk_desc|default:''|escapejs }}",
-    cmt:      "{{ bk.bk_cmt|default:''|escapejs }}",
+    cmt:      "{{ bk.display_cmt|default:''|escapejs }}",
+    rejection_label: "{{ bk.rejection_label|escapejs }}",
     {% if bk.ts_id %}
     slot:     "{{ bk.ts_id.ts_start_time|time:'H:i' }} – {{ bk.ts_id.ts_end_time|time:'H:i' }}",
+    meeting:  "{{ bk.ts_id.ts_meeting_detail|default:bk.tutc_id.tutc_meeting_detail|default:''|escapejs }}",
     {% else %}
     slot:     "",
+    meeting:  "{{ bk.tutc_id.tutc_meeting_detail|default:''|escapejs }}",
     {% endif %}
     {% if bk.bk_status >= 3 %}
       {% with act=bk.tutoringactivity %}
@@ -823,10 +696,140 @@ const bookingData = {
 };
 
 const STATUS_LABELS_TH = {
-  0:'รอยืนยัน', 1:'รับงานแล้ว', 2:'เรียนแล้ว',
+  0:'รอยืนยัน', 1:'รับงานแล้ว', 2:'รอแจ้งจบงาน',
   3:'แจ้งจบงานแล้ว', 4:'เสร็จสิ้น', 5:'รีวิวแล้ว', 6:'ติวเตอร์ปฏิเสธ'
 };
 const STATUS_COLORS = {0:'warning',1:'success',2:'info',3:'primary',4:'secondary',5:'success',6:'danger'};
+
+// คัดลอกรายละเอียดนัดหมายจากส่วนของรอบไปยังฟอร์มที่เลือกกดรับ
+function submitMeetingAccept(formId, meetingId, confirmId, promptText) {
+  const form = document.getElementById(formId);
+  const meeting = document.getElementById(meetingId);
+  const confirmed = document.getElementById(confirmId);
+  if (!form || !meeting || !confirmed) return;
+  if (!meeting.value.trim()) {
+    Swal.fire('กรุณาระบุรายละเอียดนัดหมาย', 'ต้องมีข้อมูลที่ผู้เรียนใช้เดินทางหรือเข้าเรียนได้', 'warning');
+    return;
+  }
+  if (!confirmed.checked) {
+    Swal.fire('กรุณาตรวจสอบรายละเอียด', 'โปรดยืนยันว่ารายละเอียดนัดหมายชัดเจนแล้ว', 'warning');
+    return;
+  }
+  Swal.fire({
+    title: promptText,
+    text: 'ระบบจะแจ้งรายละเอียดนัดหมายนี้แก่ผู้เรียนที่ได้รับการตอบรับ',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'ยืนยันรับงาน',
+    cancelButtonText: 'กลับไปตรวจสอบ',
+    confirmButtonColor: '#10B981'
+  }).then(result => {
+    if (!result.isConfirmed) return;
+    form.querySelector('[name="meeting_detail"]').value = meeting.value.trim();
+    form.querySelector('[name="meeting_confirmed"]').value = '1';
+    form.submit();
+  });
+}
+
+// ตรวจสอบข้อมูลรอบซ้ำก่อนเลือกรับทั้งหมดหรือรับทั้งหมดพร้อมปิดรอบ
+function reviewGroupAcceptance(formId, meetingId, confirmId, courseName, scheduleText, bookingCount, seatCount, totalCredit) {
+  const form = document.getElementById(formId);
+  const meeting = document.getElementById(meetingId);
+  const confirmed = document.getElementById(confirmId);
+  if (!form || !meeting || !confirmed) return;
+
+  const meetingDetail = meeting.value.trim();
+  if (!meetingDetail) {
+    meeting.classList.add('is-invalid');
+    meeting.focus();
+    return;
+  }
+  meeting.classList.remove('is-invalid');
+  if (!confirmed.checked) {
+    confirmed.classList.add('is-invalid');
+    confirmed.focus();
+    return;
+  }
+  confirmed.classList.remove('is-invalid');
+
+  const parentModal = meeting.closest('.modal');
+  const parentModalInstance = parentModal
+    ? bootstrap.Modal.getOrCreateInstance(parentModal)
+    : null;
+
+  const showReviewPopup = () => {
+    let selectedAction = null;
+    Swal.fire({
+    title: 'ตรวจสอบข้อมูลก่อนยืนยัน',
+    html: `
+      <div class="text-start" style="font-size:14px;">
+        <div class="border rounded-3 overflow-hidden mb-3">
+          <div class="d-flex justify-content-between gap-3 p-2 border-bottom"><strong>ชื่อคอร์ส</strong><span class="text-end">${escapeHtml(courseName)}</span></div>
+          <div class="d-flex justify-content-between gap-3 p-2 border-bottom"><strong>วันและเวลาเรียน</strong><span class="text-end">${escapeHtml(scheduleText)}</span></div>
+          <div class="d-flex justify-content-between gap-3 p-2 border-bottom"><strong>รายการที่จะยืนยัน</strong><span>${bookingCount} รายการ</span></div>
+          <div class="d-flex justify-content-between gap-3 p-2 border-bottom"><strong>จำนวนที่นั่ง</strong><span>${seatCount} ที่นั่ง</span></div>
+          <div class="d-flex justify-content-between gap-3 p-2"><strong>เครดิตรวม</strong><span class="fw-bold text-success">${totalCredit} เครดิต</span></div>
+        </div>
+        <div class="p-3 rounded-3 mb-3" style="background:#EFF6FF;border:1px solid #BFDBFE;">
+          <div class="fw-bold mb-1">รายละเอียดนัดหมาย</div>
+          <div style="white-space:pre-wrap;">${escapeHtml(meetingDetail)}</div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <div class="p-3 rounded-3 h-100 d-flex flex-column" style="background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;">
+              <div class="fw-bold mb-1">ยืนยันการจองทั้งหมด</div>
+              <div class="mb-3">รับรายการปัจจุบันทั้งหมด และยังเปิดช่วงเวลาให้ผู้เรียนคนอื่นจองเพิ่มได้จนเต็มหรือถึงเวลาปิดรับ</div>
+              <button type="button" class="btn btn-success fw-bold w-100 mt-auto" data-group-action="keep-open">ยืนยันการจองทั้งหมด</button>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 rounded-3 h-100 d-flex flex-column" style="background:#FFF7ED;border:1px solid #FED7AA;color:#9A3412;">
+              <div class="fw-bold mb-1">ยืนยันทั้งหมดและปิดรับรอบ</div>
+              <div class="mb-3">รับรายการปัจจุบันทั้งหมด แล้วปิดช่วงเวลาทันที ผู้เรียนใหม่จะไม่สามารถจองรอบนี้เพิ่มได้</div>
+              <button type="button" class="btn fw-bold text-white w-100 mt-auto" style="background:#EA580C;" data-group-action="close-slot">ยืนยันทั้งหมดและปิดรับรอบ</button>
+            </div>
+          </div>
+        </div>
+        <div class="text-center mt-4">
+          <button type="button" class="btn btn-secondary fw-semibold px-4" data-group-action="back">กลับไปแก้ไข</button>
+        </div>
+      </div>`,
+    icon: 'question',
+    width: 720,
+    showConfirmButton: false,
+    showCancelButton: false,
+    showDenyButton: false,
+    customClass: {
+      popup: 'rounded-4 shadow',
+      htmlContainer: 'text-start'
+    },
+    didOpen: popup => {
+      popup.querySelectorAll('[data-group-action]').forEach(button => {
+        button.addEventListener('click', () => {
+          selectedAction = button.dataset.groupAction;
+          Swal.close();
+        });
+      });
+    }
+  }).then(() => {
+    if (selectedAction !== 'keep-open' && selectedAction !== 'close-slot') {
+      if (parentModalInstance) parentModalInstance.show();
+      return;
+    }
+    form.querySelector('[name="meeting_detail"]').value = meetingDetail;
+    form.querySelector('[name="meeting_confirmed"]').value = '1';
+    form.querySelector('[name="close_slot"]').value = selectedAction === 'close-slot' ? '1' : '0';
+    form.submit();
+  });
+  };
+
+  if (parentModal && parentModal.classList.contains('show')) {
+    parentModal.addEventListener('hidden.bs.modal', showReviewPopup, { once: true });
+    parentModalInstance.hide();
+  } else {
+    showReviewPopup();
+  }
+}
 
 // เสร็จสิ้นการสอน → submit แล้วไปหน้า activity
 function submitAndGo(bkId) {
@@ -932,9 +935,12 @@ function openFinish(bkId, courseName) {
 // });
 
 // Tab switching
-const tabs = ['pending','accepted','studying','notified','done','rejected','reported'];
+const tabs = ['pending','accepted','completion','done','rejected','reported'];
 
 function showTab(tabName) {
+  if (tabName === 'studying' || tabName === 'notified') {
+    tabName = 'completion';
+  }
   if (!tabs.includes(tabName)) {
     tabName = 'pending';
   }
@@ -950,6 +956,107 @@ function showTab(tabName) {
     }
   });
 }
+
+// แยกรอบที่รับแล้วตามเวลาเริ่มและสิ้นสุดการสอน พร้อมอัปเดตป้ายเมื่อเปิดหน้าค้างไว้
+function refreshAcceptedGroupCards() {
+  const filter = document.getElementById('acceptedGroupFilter')?.value || 'all';
+  let visibleCount = 0;
+
+  document.querySelectorAll('[data-accepted-group]').forEach(card => {
+    const now = Date.now();
+    const lessonStart = Date.parse(card.dataset.lessonStart);
+    const lessonEnd = Date.parse(card.dataset.lessonEnd);
+    const previousPhase = card.dataset.phase;
+    const hasStarted = Number.isFinite(lessonStart) ? now >= lessonStart : card.dataset.phase !== 'accepted';
+    const hasEnded = Number.isFinite(lessonEnd) ? now >= lessonEnd : card.dataset.phase === 'finished';
+    const phase = hasEnded ? 'finished' : hasStarted ? 'studying' : 'accepted';
+
+    // เมื่อสิ้นสุดเวลาเรียน ให้โหลดใหม่เพื่อย้ายรอบไปแท็บแจ้งจบงาน
+    if (hasEnded && previousPhase !== 'finished') {
+      window.location.reload();
+      return;
+    }
+    card.dataset.phase = phase;
+
+    const modalElement = document.getElementById(card.dataset.modalId);
+    [card.querySelector('[data-accepted-phase-badge]'), modalElement?.querySelector('[data-accepted-phase-badge]')].forEach(badge => {
+      if (!badge) return;
+      badge.textContent = phase === 'finished' ? 'รอแจ้งจบงาน' : phase === 'studying' ? 'กำลังเรียน' : 'รอดำเนินการสอน';
+      badge.classList.toggle('bg-warning', phase === 'finished');
+      badge.classList.toggle('bg-info', phase === 'studying');
+      badge.classList.toggle('text-dark', phase !== 'accepted');
+      badge.classList.toggle('bg-success', phase === 'accepted');
+    });
+
+    // ปุ่มบันทึกผลกดได้เมื่อเลยเวลาสิ้นสุดการสอน และเปลี่ยนสถานะได้แม้เปิดหน้าค้างไว้
+    const finishLink = modalElement?.querySelector('[data-finish-link]');
+    if (finishLink) {
+      const canFinish = Number.isFinite(lessonEnd) && now >= lessonEnd;
+      finishLink.classList.toggle('btn-info', canFinish);
+      finishLink.classList.toggle('text-white', canFinish);
+      finishLink.classList.toggle('btn-secondary', !canFinish);
+      finishLink.classList.toggle('disabled', !canFinish);
+      modalElement.querySelector('[data-finish-hint]')?.classList.toggle('d-none', canFinish);
+      if (canFinish) {
+        finishLink.href = finishLink.dataset.finishUrl;
+        finishLink.removeAttribute('aria-disabled');
+        finishLink.removeAttribute('tabindex');
+        finishLink.removeAttribute('title');
+      } else {
+        finishLink.removeAttribute('href');
+        finishLink.setAttribute('aria-disabled', 'true');
+        finishLink.setAttribute('tabindex', '-1');
+        finishLink.setAttribute('title', 'กดได้หลังสิ้นสุดเวลาเรียน');
+      }
+    }
+
+    const isVisible = filter === 'all' || filter === phase;
+    card.classList.toggle('d-none', !isVisible);
+    if (isVisible) visibleCount += 1;
+  });
+
+  const emptyState = document.getElementById('acceptedGroupFilterEmpty');
+  if (emptyState) emptyState.classList.toggle('d-none', visibleCount > 0);
+}
+
+document.getElementById('acceptedGroupFilter')?.addEventListener('change', refreshAcceptedGroupCards);
+refreshAcceptedGroupCards();
+window.setInterval(refreshAcceptedGroupCards, 15000);
+
+// กรองรายการรอแจ้งจบงานและแจ้งจบงานแล้วภายในแท็บเดียว
+function filterCompletionCards() {
+  const filter = document.getElementById('completionFilter')?.value || 'all';
+  let visibleCount = 0;
+  document.querySelectorAll('[data-completion-card]').forEach(card => {
+    const isVisible = filter === 'all' || card.dataset.completionPhase === filter;
+    card.classList.toggle('d-none', !isVisible);
+    if (isVisible) visibleCount += 1;
+  });
+  const emptyState = document.getElementById('completionFilterEmpty');
+  if (emptyState) emptyState.classList.toggle('d-none', visibleCount > 0);
+}
+
+document.getElementById('completionFilter')?.addEventListener('change', filterCompletionCards);
+filterCompletionCards();
+
+// กรองงานที่เสร็จแล้วและรายการปฏิเสธ/ยกเลิกตามป้ายของแต่ละการ์ด
+function filterTutorStatusCards(selectId, cardSelector, dataKey, emptyId) {
+  const filter = document.getElementById(selectId)?.value || 'all';
+  let visibleCount = 0;
+  document.querySelectorAll(cardSelector).forEach(card => {
+    const isVisible = filter === 'all' || card.dataset[dataKey] === filter;
+    card.classList.toggle('d-none', !isVisible);
+    if (isVisible) visibleCount += 1;
+  });
+  document.getElementById(emptyId)?.classList.toggle('d-none', visibleCount > 0);
+}
+
+const filterDoneCards = () => filterTutorStatusCards('tutorDoneFilter', '[data-tutor-done-card]', 'reviewStatus', 'tutorDoneFilterEmpty');
+const filterRejectedCards = () => filterTutorStatusCards('tutorRejectedFilter', '[data-tutor-rejected-card]', 'rejectionType', 'tutorRejectedFilterEmpty');
+document.getElementById('tutorDoneFilter')?.addEventListener('change', filterDoneCards);
+document.getElementById('tutorRejectedFilter')?.addEventListener('change', filterRejectedCards);
+filterDoneCards();
+filterRejectedCards();
 
 const params = new URLSearchParams(window.location.search);
 showTab(params.get('tab') || 'pending');
@@ -974,10 +1081,19 @@ document.querySelectorAll('.tab-pill').forEach(btn => {
   if (empty) empty.style.display = cnt === 0 ? '' : 'none';
 })();
 
-async function openReject(bkId, studentName, savedReason = '') {
+async function openReject(bkId, studentName, savedReason = '', sourceElement = null, parentModal = null) {
+  // ปิดหน้าต่างรายละเอียดก่อน เพื่อไม่ให้ Bootstrap แย่งโฟกัสจากช่องพิมพ์ของ SweetAlert
+  parentModal = parentModal || sourceElement?.closest('.modal.show');
+  if (parentModal?.classList.contains('show')) {
+    await new Promise(resolve => {
+      parentModal.addEventListener('hidden.bs.modal', resolve, { once: true });
+      bootstrap.Modal.getOrCreateInstance(parentModal).hide();
+    });
+  }
+
   const inputResult = await Swal.fire({
     title: 'ปฏิเสธงาน?',
-    html: `ปฏิเสธคำขอจองจาก <strong>${studentName}</strong><br><span class="text-muted small d-block text-start mt-2">เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียน<br>และช่วงเวลาจองจะกลับมาเป็นเวลาว่างทันที</span>`,
+    html: `ปฏิเสธคำขอจองจาก <strong>${escapeHtml(studentName)}</strong><br><span class="text-muted small d-block text-start mt-2">เครดิตที่ล็อกไว้จะถูกปลดล็อกให้ผู้เรียน<br>และที่นั่งของรายการนี้จะกลับมาให้จองได้</span>`,
     icon: 'error',
     input: 'textarea',
     inputValue: savedReason,
@@ -1000,7 +1116,10 @@ async function openReject(bkId, studentName, savedReason = '') {
       },
   });
 
-  if (!inputResult.isConfirmed) return;
+  if (!inputResult.isConfirmed) {
+    if (parentModal) bootstrap.Modal.getOrCreateInstance(parentModal).show();
+    return;
+  }
 
   const reason = (inputResult.value || '').trim();
   const safeStudentName = escapeHtml(studentName);
@@ -1023,8 +1142,7 @@ async function openReject(bkId, studentName, savedReason = '') {
         <div class="text-danger small text-start d-flex align-items-start gap-1">
           <i class="fas fa-exclamation-triangle mt-1"></i>
           <div>
-            <div>เมื่อยืนยัน เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียน</div>
-            <div>และช่วงเวลาจองจะกลับมาเป็นเวลาว่างทันที</div>
+            <div>เมื่อยืนยัน เครดิตที่ล็อกไว้จะถูกคืนให้ผู้เรียนและที่นั่งของรายการนี้จะกลับมาให้จองได้</div>
           </div>
         </div>
       </div>`,
@@ -1049,88 +1167,16 @@ async function openReject(bkId, studentName, savedReason = '') {
     document.getElementById('rejectReason').value = reason;
     form.submit();
   } else if (confirmResult.dismiss === Swal.DismissReason.cancel) {
-    openReject(bkId, studentName, reason);
+    openReject(bkId, studentName, reason, null, parentModal);
+  } else if (parentModal) {
+    bootstrap.Modal.getOrCreateInstance(parentModal).show();
   }
 }
 
-function submitCancelDecision(actionUrl, rejectReason = '') {
-  const form = document.getElementById('cancelDecisionForm');
+function submitTutorCancel(actionUrl) {
+  const form = document.getElementById('tutorCancelForm');
   form.action = actionUrl;
-  document.getElementById('cancelRejectReason').value = rejectReason;
   form.submit();
-}
-
-function openApproveCancel(bkId, studentName, totalCredit) {
-  Swal.fire({
-    title: 'อนุมัติการยกเลิก?',
-    html: `
-      <div class="text-start small">
-        <div class="mb-2">อนุมัติคำขอยกเลิกของ <strong>${studentName}</strong></div>
-        <div class="p-3 rounded-3" style="background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;">
-          ระบบจะคืนเครดิต <strong>${totalCredit} เครดิต</strong> ให้ผู้เรียน และเปิดช่วงเวลาเรียนนี้ให้จองได้อีกครั้ง
-        </div>
-        <div class="mt-2 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#4B5563;">
-          เมื่อยืนยันแล้ว รายการนี้จะย้ายไปที่แท็บสถานะปฏิเสธ 
-        </div>
-      </div>`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: '<i class="fas fa-check me-1"></i> อนุมัติการยกเลิก',
-    cancelButtonText: 'ปิด',
-    confirmButtonColor: '#10B981',
-    cancelButtonColor: '#6B7280',
-    reverseButtons: true,
-    customClass: {
-      popup: 'rounded-4 shadow',
-      actions: 'gap-2',
-      confirmButton: 'rounded-3 px-4 fw-bold',
-      cancelButton: 'rounded-3 px-4 fw-semibold',
-    },
-  }).then(result => {
-    if (result.isConfirmed) {
-      submitCancelDecision(`/bookings/tutor/${bkId}/approve-cancel/`);
-    }
-  });
-}
-
-function openRejectCancel(bkId, studentName) {
-  Swal.fire({
-    title: 'ไม่อนุมัติการยกเลิก?',
-    html: `
-      <div class="text-start small">
-        <div class="p-3 rounded-3 mb-2" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#374151;">
-          <div class="fw-semibold mb-1">ผลหลังไม่อนุมัติ</div>
-          <div>• การจองยังมีผลตามเวลาเรียนเดิม</div>
-          <div>• เครดิตของผู้เรียนยังถูกล็อกไว้</div>
-          <div>• ผู้เรียนจะเห็นเหตุผลที่คุณระบุ</div>
-          <div>• หลังถึงเวลาเรียน หากยังมีข้อพิพาท สามารถรายงานปัญหาได้</div>
-        </div>
-      </div>`,
-    icon: 'warning',
-    input: 'textarea',
-    inputPlaceholder: 'ระบุเหตุผลที่ไม่อนุมัติการยกเลิก...',
-    inputAttributes: { rows: 4 },
-    showCancelButton: true,
-    confirmButtonText: '<i class="fas fa-times me-1"></i> ไม่อนุมัติการยกเลิก',
-    cancelButtonText: 'ปิด',
-    confirmButtonColor: '#EF4444',
-    cancelButtonColor: '#6B7280',
-    reverseButtons: true,
-    inputValidator: value => {
-      if (!value || !value.trim()) return 'กรุณาระบุเหตุผลที่ไม่อนุมัติการยกเลิก';
-      return null;
-    },
-    customClass: {
-      popup: 'rounded-4 shadow',
-      actions: 'gap-2',
-      confirmButton: 'rounded-3 px-4 fw-bold',
-      cancelButton: 'rounded-3 px-4 fw-semibold',
-    },
-  }).then(result => {
-    if (result.isConfirmed) {
-      submitCancelDecision(`/bookings/tutor/${bkId}/reject-cancel/`, result.value.trim());
-    }
-  });
 }
 
 function openTutorCancelForStudent(bkId, studentName, totalCredit) {
@@ -1140,18 +1186,11 @@ function openTutorCancelForStudent(bkId, studentName, totalCredit) {
       <div class="text-start small">
         <div class="mb-2">กรุณาพูดคุยหรือแจ้ง <strong>ผู้เรียน</strong> ให้ทราบก่อนยกเลิกการเรียน</div>
         <div class="p-3 rounded-3 mb-2" style="background:#FFFBEB;border:1px solid #FDE68A;color:#78350F;">
-          <div class="fw-semibold mb-2">ปุ่มนี้ใช้สำหรับการยกเลิก 2 กรณี</div>
-          <div class="p-2 rounded-2 mb-2" style="background:#FFFFFF;border:1px solid #FDE68A;">
-            <div class="fw-semibold mb-1">กรณีที่ 1: ผู้เรียนต้องการยกเลิก</div>
-            <div>เมื่อเหลือเวลาน้อยกว่า 24 ชั่วโมง ผู้เรียนจะส่งคำขอยกเลิกผ่านระบบไม่ได้ จึงต้องติดต่อขอให้ติวเตอร์ช่วยกดยกเลิกให้</div>
-          </div>
-          <div class="p-2 rounded-2" style="background:#FFFFFF;border:1px solid #FDE68A;">
-            <div class="fw-semibold mb-1">กรณีที่ 2: ติวเตอร์ต้องการยกเลิก</div>
-            <div>เมื่อติวเตอร์ไม่สะดวกสอนและจำเป็นต้องยกเลิก ต้องแจ้งให้ผู้เรียนทราบก่อน แล้วจึงกดยกเลิกการเรียน</div>
-          </div>
+          <div class="fw-semibold mb-2">ใช้เมื่อเหลือเวลาไม่เกิน 24 ชั่วโมงก่อนเรียน</div>
+          <div>ผู้เรียนไม่สามารถยกเลิกเองในช่วงนี้ได้ จึงต้องพูดคุยกับคุณก่อน เมื่อยืนยัน ระบบจะยกเลิกรายการ ปลดล็อกเครดิต และคืนที่นั่งให้รอบเรียน</div>
         </div>
         <div class="p-3 rounded-3" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;">
-          ระบบจะคืนเครดิต <strong>${totalCredit} เครดิต</strong> ให้ผู้เรียน และเปิดช่วงเวลาเรียนนี้ให้จองได้อีกครั้ง
+          ระบบจะปลดล็อกเครดิต <strong>${totalCredit} เครดิต</strong> ให้ผู้เรียน และคืนจำนวนที่นั่งของรายการนี้
         </div>
         <div class="mt-2 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;color:#4B5563;">
           หากเป็นกรณีข้อพิพาทที่ต้องให้แอดมินพิจารณา กรุณาใช้เมนูรายงานปัญหา
@@ -1172,7 +1211,7 @@ function openTutorCancelForStudent(bkId, studentName, totalCredit) {
     },
   }).then(result => {
     if (result.isConfirmed) {
-      submitCancelDecision(`/bookings/tutor/${bkId}/cancel-for-student/`);
+      submitTutorCancel(`/bookings/tutor/${bkId}/cancel-for-student/`);
     }
   });
 }
@@ -1376,40 +1415,29 @@ function showReportStatementModal(bkId) {
   }, 250);
 }
 
+// ปิดรายละเอียดรอบก่อนเปิดหน้าต่างดำเนินการ เพื่อไม่ให้ป๊อปอัปซ้อนกัน
+function runAcceptedGroupAction(modalId, action) {
+  const modalElement = document.getElementById(modalId);
+  const modal = modalElement && bootstrap.Modal.getInstance(modalElement);
+  if (!modal) {
+    action();
+    return;
+  }
+  modalElement.addEventListener('hidden.bs.modal', action, { once: true });
+  modal.hide();
+}
+
 function openDetail(bkId) {
   const bk = bookingData[bkId];
   if (!bk) return;
   const total = bk.rate * bk.count;
-  const isAdminAction = bk.cmt && bk.cmt.includes('[แอดมิน]');
   let sc = STATUS_COLORS[bk.status] || 'secondary';
 
   let label = STATUS_LABELS_TH[bk.status] || '';
 
-  if (bk.cancel_pending) {
-    label = 'รอพิจารณาการยกเลิก';
-    sc = 'warning';
-  }
-  if (bk.cancel_rejected) {
-    label = 'ไม่อนุมัติการยกเลิก';
-    sc = 'secondary';
-  }
-
-  if (bk.status === 6 && isAdminAction) {
-    label = 'คืนเครดิตตามผลพิจารณา';
-    sc = 'success';
-  } else if (bk.status === 6 && bk.cmt === 'ติวเตอร์อนุมัติการยกเลิกตามคำขอผู้เรียน') {
-    label = 'ยกเลิกตามคำขอ';
-    sc = 'info';
-  } else if (bk.status === 6 && (
-    bk.cmt === 'ติวเตอร์ยกเลิกการเรียน' ||
-    bk.cmt === 'ติวเตอร์ยกเลิกการเรียนตามคำขอผู้เรียน'
-  )) {
-    label = 'ยกเลิกโดยติวเตอร์';
-    sc = 'info';
-  } else if (bk.status === 6 && bk.cmt === 'ผู้เรียนยกเลิกการจอง') {
-    label = 'ยกเลิกโดยผู้เรียน';
-  } else if (bk.status === 6) {
-    label = 'ติวเตอร์ปฏิเสธ';
+  if (bk.status === 6) {
+    label = bk.rejection_label || STATUS_LABELS_TH[6];
+    sc = label === 'ติวเตอร์ปฏิเสธ' ? 'danger' : 'secondary';
   }
   if (bk.reported) {
     label = bk.report_resolved ? 'พิจารณาเสร็จสิ้นแล้ว' : 'รอพิจารณา';
@@ -1464,12 +1492,6 @@ function openDetail(bkId) {
   const rawAdminNote = bk.cmt && bk.cmt.includes('[แอดมิน]')
     ? bk.cmt.split('[แอดมิน]').pop().trim() : '';
   const statementHtml = buildReportStatementHtml(bk.report_statements || []);
-  const cancelHistoryHtml = (bk.cancel_request_reason || bk.cancel_reject_reason) ? `
-    <div class="mt-3 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;font-size:13px;">
-      <div class="fw-semibold mb-2"><i class="fas fa-clock-rotate-left me-1 text-secondary"></i>ประวัติคำขอยกเลิก</div>
-      ${bk.cancel_request_reason ? `<div class="mb-2"><span class="fw-semibold">เหตุผลที่ผู้เรียนขอยกเลิก:</span><div class="text-muted mt-1">${escapeHtml(bk.cancel_request_reason)}</div></div>` : ''}
-      ${bk.cancel_reject_reason ? `<div><span class="fw-semibold">เหตุผลที่คุณไม่อนุมัติ:</span><div class="text-muted mt-1">${escapeHtml(bk.cancel_reject_reason)}</div></div>` : ''}
-    </div>` : '';
   const REASON_LABELS = {
     '1': 'หลักฐานการสอนไม่ตรงความจริง',
     '2': 'ติวเตอร์ไม่เข้าสอน',
@@ -1533,17 +1555,17 @@ function openDetail(bkId) {
         <div class="modal-detail-row"><span class="text-muted">วิชา</span><span class="fw-semibold">${bk.course}</span></div>
         <div class="modal-detail-row"><span class="text-muted">ผู้เรียน</span><span>${bk.student}</span></div>
         <div class="modal-detail-row"><span class="text-muted">อีเมล</span><span class="text-muted small">${bk.email}</span></div>
-        <div class="modal-detail-row"><span class="text-muted">จำนวนผู้เรียน</span><span>${bk.count} คน</span></div>
+        <div class="modal-detail-row"><span class="text-muted">สิทธิ์การจอง</span><span>${bk.count > 1 ? 'รายการเดิม ' + bk.count + ' ที่นั่ง' : '1 บัญชี · 1 ที่นั่ง'}</span></div>
       </div>
       <div class="col-md-6">
         <div class="modal-detail-row"><span class="text-muted">วันเวลานัดเรียน</span><span>${bk.datetime}</span></div>
         ${bk.slot ? `<div class="modal-detail-row"><span class="text-muted">ช่วงเวลา</span><span>${bk.slot}</span></div>` : ''}
-        <div class="modal-detail-row"><span class="text-muted">อัตราค่าเรียน</span><span>${bk.rate} เครดิต/คน</span></div>
+        ${bk.meeting && bk.status >= 1 && bk.status !== 6 ? `<div class="modal-detail-row"><span class="text-muted">รายละเอียดนัดหมาย</span><span style="white-space:pre-wrap;">${escapeHtml(bk.meeting)}</span></div>` : ''}
+        <div class="modal-detail-row"><span class="text-muted">อัตราค่าเรียน</span><span>${bk.rate} เครดิต/ที่นั่ง</span></div>
         <div class="modal-detail-row"><span class="text-muted">รวมรายได้</span><span class="fw-bold text-success">${total} เครดิต</span></div>
       </div>
     </div>
     ${bk.desc ? `<div class="mt-3 p-3 rounded-2" style="background:#F8FAFC;font-size:13px;"><span class="text-muted">ข้อความผู้เรียน:</span> ${bk.desc}</div>` : ''}
-    ${cancelHistoryHtml}
     ${bk.reported ? `
       <div class="mt-3 pt-3" style="border-top:1px solid #E2E8F0;">
         <div class="d-flex align-items-center gap-2 mb-3">
@@ -1562,32 +1584,6 @@ function openDetail(bkId) {
         ${reportResultHtml}
         ${statementHtml}
         ${statementButton}
-      </div>` : bk.cancel_pending ? `
-      <div class="mt-3 p-3 rounded-3" style="background:#FFFBEB;border:1px solid #FDE68A;">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <i class="fas fa-hourglass-half" style="color:#D97706;"></i>
-          <span class="fw-semibold small" style="color:#92400E;">ผู้เรียนส่งคำขอยกเลิกการเรียน</span>
-        </div>
-        ${bk.cancel_request_reason ? `<div style="font-size:13px;color:#374151;"><span class="fw-semibold">เหตุผล:</span> ${bk.cancel_request_reason}</div>` : ''}
-        <div class="mt-3 pt-3" style="border-top:1px solid #FDE68A;">
-          <div class="row g-2">
-            <div class="col-md-6">
-              <div class="p-2 rounded-3" style="background:#F0FDF4;border:1px solid #BBF7D0;font-size:13px;color:#166534;">
-                <i class="fas fa-check-circle me-1"></i>อนุมัติ: คืนเครดิตให้ผู้เรียน และเปิดช่วงเวลาเรียนอีกครั้ง
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="p-2 rounded-3" style="background:#FEF2F2;border:1px solid #FECACA;font-size:13px;color:#991B1B;">
-                <i class="fas fa-times-circle me-1"></i>ไม่อนุมัติ: การจองยังมีผลตามเวลาเดิม และเครดิตยังถูกล็อกไว้
-              </div>
-            </div>
-          </div>
-          <div class="small mt-2" style="color:#6B7280;">หากไม่อนุมัติแล้วภายหลังเกิดข้อพิพาท สามารถส่งเรื่องให้แอดมินพิจารณาหลังถึงเวลาเรียนได้</div>
-        </div>
-      </div>` : bk.cancel_rejected ? `
-      <div class="mt-3 p-3 rounded-3" style="background:#F8FAFC;border:1px solid #E5E7EB;">
-        <div class="fw-semibold small mb-1"><i class="fas fa-circle-info me-1 text-secondary"></i>บันทึกผลไม่อนุมัติการยกเลิก</div>
-        <div style="font-size:13px;color:#4B5563;">การจองยังมีผลตามเวลาเรียนเดิม</div>
       </div>` : bk.cmt ? `<div class="mt-2 p-3 rounded-2 bg-danger bg-opacity-10" style="font-size:13px;"><span class="text-muted">หมายเหตุ:</span> ${bk.cmt}</div>` : ''}
     <div class="text-muted small mt-3">จองเมื่อ: ${bk.booked}</div>
     ${activityHtml}

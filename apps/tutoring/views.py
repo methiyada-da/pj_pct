@@ -2,6 +2,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
@@ -9,16 +11,36 @@ from django.utils import timezone
 from django.db import transaction
 from django.db.models import Avg, Count, Q, OuterRef, Subquery
 
-from apps.accounts.models import Tutor, Member
+from apps.accounts.models import Tutor, Member, TutorExperienceImage
 from apps.courses.models import CourseGroup, Course
 from apps.bookings.models import Booking, Review
-from .forms import TutorRegisterForm
+from apps.bookings.services import (
+    get_booking_close_at,
+    get_fixed_rate,
+    get_remaining_seats,
+    has_active_course_bookings,
+    process_time_based_bookings,
+)
+from .forms import ExperienceImagesField, TutorRegisterForm
 from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 import re
 import os
 
 
 BAYESIAN_MIN_REVIEWS = 5
+
+
+def _is_future_schedule_start(slot_date, start_time, local_now):
+    """ตรวจว่าเวลาเริ่มเรียนยังเหลือเวลารับจองตามค่ากลางของระบบ"""
+    try:
+        start = timezone.datetime.strptime(
+            f'{slot_date.isoformat()} {start_time}',
+            '%Y-%m-%d %H:%M',
+        )
+    except (TypeError, ValueError):
+        return False
+    start = timezone.make_aware(start, timezone.get_current_timezone())
+    return start >= local_now + timezone.timedelta(hours=settings.BOOKING_CLOSE_HOURS)
 
 
 def calculate_bayesian_rating(raw_rating, review_count, global_average, minimum_reviews=BAYESIAN_MIN_REVIEWS):
@@ -121,7 +143,11 @@ def search_tutors(request):
             'crs_id',           # Course
             'crs_id__cg_id',    # CourseGroup
         )
-        .annotate(lowest_price=Subquery(min_rate_subquery))
+        .annotate(
+            lowest_price=Subquery(min_rate_subquery),
+            rate_count=Count('tutorrate'),
+        )
+        .filter(rate_count=1)
     )
 
     # ── Full-text search ──
@@ -233,6 +259,8 @@ def get_courses_by_group(request):
 # ============================================================
 
 def course_detail(request, tutc_id):
+    # คืนที่นั่งจากคำขอที่หมดเวลาก่อนคำนวณรอบว่าง
+    process_time_based_bookings()
     tutcourse = get_object_or_404(
         TutorCourse.objects.select_related(
             'tut_id',
@@ -255,24 +283,7 @@ def course_detail(request, tutc_id):
     global_average, course_stats = _get_course_rating_stats()
     _attach_bayesian_rating(tutcourse, global_average, course_stats)
 
-    rates_qs = list(TutorRate.objects.filter(tutc_id=tutcourse).order_by('tut_rate_stu_count'))
-
-    # สร้าง rates_with_range: แต่ละ rate จะรู้ช่วงของตัวเอง
-    # เช่น rate1(1คน, 10cr), rate2(3คน, 9cr), max=5
-    # → ช่วง: 1–2 คน = 10cr, 3–5 คน = 9cr
-    rates = []
-    for i, r in enumerate(rates_qs):
-        start = r.tut_rate_stu_count
-        if i + 1 < len(rates_qs):
-            end = rates_qs[i + 1].tut_rate_stu_count - 1
-        else:
-            end = tutcourse.tutc_max_stu
-        rates.append({
-            'start':       start,
-            'end':         end,
-            'price':       r.tut_rate_per_person,
-            'is_single':   start == end,
-        })
+    fixed_rate = get_fixed_rate(tutcourse)
 
     # ── ดึง ScheduleDate เฉพาะวันนี้เป็นต้นไป ──
     schedule_qs = (
@@ -285,20 +296,25 @@ def course_detail(request, tutc_id):
         .order_by('sd_date')
     )
 
-    # กรองเฉพาะวันที่ยังมี slot ว่าง (ts_status=0) และเวลายังไม่ผ่าน
-    now_local = timezone.localtime(timezone.now())
-    today     = now_local.date()
-    now_time  = now_local.time()
+    # กรองรอบที่ยังไม่ปิดรับและยังมีที่นั่งเหลือ
+    now = timezone.now()
 
     available_dates = []
     for sd in schedule_qs:
-        if sd.sd_date == today:
-            # วันนี้ — กรอง slot ที่เวลาเริ่มยังไม่ผ่าน
-            has_slot = sd.time_slots.filter(ts_status=0, ts_start_time__gt=now_time).exists()
-        else:
-            # วันอื่น (อนาคต) — กรอง slot ว่างปกติ
-            has_slot = sd.time_slots.filter(ts_status=0).exists()
-        if has_slot:
+        available_slots = []
+        for slot in sd.time_slots.all():
+            if slot.ts_status == 2:
+                continue
+            slot.booking_close_at = get_booking_close_at(slot)
+            if now > slot.booking_close_at:
+                continue
+            slot.remaining_seats = get_remaining_seats(slot)
+            if slot.remaining_seats <= 0:
+                continue
+            available_slots.append(slot)
+
+        sd.available_slots = available_slots
+        if available_slots:
             available_dates.append(sd)
 
     user_credit = None
@@ -313,7 +329,7 @@ def course_detail(request, tutc_id):
         'tc':              tutcourse,
         'tutor':           tutor,
         'member':          member,
-        'rates':           rates,
+        'fixed_rate':      fixed_rate,
         'available_dates': available_dates,
         'user_credit':     user_credit,
         'tutor_review_count': tutor_review_count,
@@ -327,11 +343,15 @@ def booking_create(request, tutc_id):
     if request.method != 'POST':
         return redirect('tutoring:course_detail', tutc_id=tutc_id)
 
+    # ป้องกันคำขอหมดเวลากินที่นั่งค้างก่อนเริ่ม transaction การจองใหม่
+    process_time_based_bookings()
+
     tutcourse    = get_object_or_404(TutorCourse, tutc_id=tutc_id)
     tutor_member = tutcourse.tut_id.tut_id
 
     ts_id     = request.POST.get('ts_id', '').strip()
-    stu_count = request.POST.get('stu_count', '1')
+    # หนึ่งบัญชีจองได้หนึ่งที่นั่งต่อหนึ่งช่วงเวลาเท่านั้น
+    stu_count = 1
     bk_desc   = request.POST.get('bk_desc', '').strip()
 
     errors = []
@@ -339,24 +359,10 @@ def booking_create(request, tutc_id):
     if not ts_id:
         errors.append('กรุณาเลือกช่วงเวลา')
 
-    try:
-        stu_count = int(stu_count)
-        if stu_count < 1:
-            errors.append('จำนวนผู้เรียนต้องอย่างน้อย 1 คน')
-        if stu_count > tutcourse.tutc_max_stu:
-            errors.append(f'จำนวนผู้เรียนต้องไม่เกิน {tutcourse.tutc_max_stu} คน')
-    except (ValueError, TypeError):
-        errors.append('จำนวนผู้เรียนไม่ถูกต้อง')
-        stu_count = 1
+    if tutcourse.tutc_status != 1:
+        errors.append('คอร์สนี้ปิดรับการจองแล้ว')
 
-    rate_obj = (
-        TutorRate.objects
-        .filter(tutc_id=tutcourse, tut_rate_stu_count__gte=stu_count)
-        .order_by('tut_rate_stu_count')
-        .first()
-    ) or TutorRate.objects.filter(tutc_id=tutcourse).order_by('-tut_rate_stu_count').first()
-
-    if not rate_obj:
+    if not get_fixed_rate(tutcourse):
         errors.append('ไม่พบอัตราค่าบริการ')
 
     if errors:
@@ -364,37 +370,49 @@ def booking_create(request, tutc_id):
             messages.error(request, e)
         return redirect('tutoring:course_detail', tutc_id=tutc_id)
 
-    rate_per_person = rate_obj.tut_rate_per_person
-    total_credit    = rate_per_person * stu_count
-
-    try:
-        slot = TimeSlot.objects.select_related('sd_id').get(
-            ts_id=ts_id,
-            sd_id__tutc_id=tutcourse,
-            ts_status=0,
-        )
-    except TimeSlot.DoesNotExist:
-        messages.error(request, 'ช่วงเวลาที่เลือกไม่พร้อมใช้งานแล้ว กรุณาเลือกใหม่')
-        return redirect('tutoring:course_detail', tutc_id=tutc_id)
-
-    mb = request.user.member
-    available_credit = mb.mb_deposit_crd + mb.mb_income_crd - mb.mb_locked_crd
-
-    if mb == tutor_member:
+    if request.user.member == tutor_member:
         messages.error(request, 'ไม่สามารถจองคอร์สของตัวเองได้')
-        return redirect('tutoring:course_detail', tutc_id=tutc_id)
-
-    if available_credit < total_credit:
-        messages.error(request, f'เครดิตไม่เพียงพอ (ต้องการ {total_credit} เครดิต)')
         return redirect('tutoring:course_detail', tutc_id=tutc_id)
 
     try:
         with transaction.atomic():
-            slot.ts_status = 1
-            slot.save()
+            slot = get_object_or_404(
+                TimeSlot.objects.select_for_update().select_related('sd_id__tutc_id'),
+                ts_id=ts_id,
+                sd_id__tutc_id=tutcourse,
+            )
+            if slot.ts_status == 2 or timezone.now() > get_booking_close_at(slot):
+                messages.error(request, 'ช่วงเวลานี้ปิดรับการจองแล้ว')
+                return redirect('tutoring:course_detail', tutc_id=tutc_id)
 
-            mb.mb_locked_crd += total_credit
-            mb.save()
+            if Booking.objects.filter(
+                ts_id=slot,
+                member=request.user.member,
+            ).exclude(bk_status=6).exists():
+                messages.error(request, 'คุณมีรายการจองช่วงเวลานี้แล้ว หนึ่งบัญชีจองได้หนึ่งที่นั่งต่อรอบเรียน')
+                return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+            remaining_seats = get_remaining_seats(slot)
+            if remaining_seats < 1:
+                messages.error(request, 'ช่วงเวลานี้เต็มแล้ว กรุณาเลือกช่วงเวลาอื่น')
+                return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+            rate_obj = get_fixed_rate(tutcourse, for_update=True)
+            if not rate_obj:
+                messages.error(request, 'ไม่พบอัตราค่าบริการ')
+                return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+            rate_per_person = rate_obj.tut_rate_per_person
+            total_credit = rate_per_person * stu_count
+            mb = Member.objects.select_for_update().get(pk=request.user.member.pk)
+            available_credit = mb.mb_deposit_crd + mb.mb_income_crd - mb.mb_locked_crd
+            if available_credit < total_credit:
+                messages.error(request, f'เครดิตไม่เพียงพอ (ต้องการ {total_credit} เครดิต)')
+                return redirect('tutoring:course_detail', tutc_id=tutc_id)
+
+            if total_credit > 0:
+                mb.mb_locked_crd += total_credit
+                mb.save(update_fields=['mb_locked_crd'])
 
             Booking.objects.create(
                 bk_desc            = bk_desc or None,
@@ -410,10 +428,11 @@ def booking_create(request, tutc_id):
                 ts_id              = slot,
             )
 
-        messages.success(
-            request,
-            f'จองสำเร็จ! ติวเตอร์จะทำการยืนยันคำขอจองให้โดยเร็ว (ล็อกจำนวน {total_credit} เครดิต)'
-        )
+        if total_credit > 0:
+            success_message = f'จองสำเร็จและล็อกเครดิตไว้ {total_credit} เครดิต กรุณารอผู้สอนตอบรับการจองเรียน'
+        else:
+            success_message = 'จองสำเร็จ รายการนี้ไม่มีใช้เครดิต(ฟรี) กรุณารอผู้สอนตอบรับ'
+        messages.success(request, success_message)
         return redirect('bookings:student_bookings')
     except Exception:
         messages.error(request, 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')
@@ -440,6 +459,8 @@ def tutor_profile_view(request, tut_id):
     courses = (
         TutorCourse.objects
         .filter(tut_id=tutor, tutc_status=1)
+        .annotate(rate_count=Count('tutorrate'))
+        .filter(rate_count=1)
         .select_related('crs_id')
         .prefetch_related('tutorrate_set')
     )
@@ -528,6 +549,7 @@ def tutor_profile_view(request, tut_id):
         'review_count'         : review_count,
         'activity_images'      : activity_images,
         'rating_rows'          : rating_rows,
+        'experience_images'    : tutor.experience_images.all(),
     })
 
 
@@ -546,6 +568,12 @@ def tutor_profile_edit(request):
     skills = [s.strip() for s in (tutor.tut_skill or '').split(',') if s.strip()]
 
     if request.method == 'POST':
+        try:
+            experience_images = ExperienceImagesField().clean(request.FILES.getlist('experience_images'))
+        except ValidationError as error:
+            messages.error(request, ' '.join(error.messages))
+            return redirect('tutoring:tutor_profile_edit')
+
         # อัปเดตรูปโปรไฟล์
         if 'mb_img' in request.FILES:
             member.mb_img = request.FILES['mb_img']
@@ -554,9 +582,12 @@ def tutor_profile_edit(request):
         # อัปเดตข้อมูลติวเตอร์
         tutor.tut_desc     = request.POST.get('tut_desc', '').strip()
         tutor.tut_skill    = request.POST.get('tut_skill', '').strip()
-        tutor.tut_has_exp  = int(request.POST.get('tut_has_exp', 0))
+        tutor.tut_has_exp  = int(request.POST.get('tut_has_exp') == '1')
         tutor.tut_exp_desc = request.POST.get('tut_exp_desc', '').strip()
         tutor.save(update_fields=['tut_desc', 'tut_skill', 'tut_has_exp', 'tut_exp_desc'])
+        if tutor.tut_has_exp:
+            for image in experience_images:
+                TutorExperienceImage.objects.create(tutor=tutor, image=image)
 
         messages.success(request, 'บันทึกโปรไฟล์เรียบร้อยแล้ว')
         return redirect('tutoring:tutor_profile', tut_id=member.pk)
@@ -567,6 +598,7 @@ def tutor_profile_edit(request):
         'skills'      : skills,
         'faculty_name': member.mj_id.fac_id.fac_name if member.mj_id else '—',
         'major_name'  : member.mj_id.mj_name          if member.mj_id else '—',
+        'experience_images': tutor.experience_images.all(),
     })
 
 
@@ -616,6 +648,10 @@ def register_tutor(request):
 
     form = TutorRegisterForm(request.POST or None, request.FILES or None, initial=initial)
 
+    if request.method == 'POST' and tutor and tutor.tut_status in (0, 3):
+        messages.warning(request, 'ไม่สามารถแก้ไขข้อมูลระหว่างรอตรวจสอบหรือถูกระงับการสอนได้')
+        return redirect('tutoring:register_tutor')
+
     if request.method == 'POST' and form.is_valid():
         if tutor:
             old_status         = tutor.tut_status
@@ -652,6 +688,9 @@ def register_tutor(request):
                 request,
                 'ส่งคำขอสมัครเป็นติวเตอร์เรียบร้อยแล้ว Adminจะตรวจสอบและแจ้งผลภายใน 1-3 วันทำการ'
             )
+        if tutor.tut_has_exp:
+            for image in form.cleaned_data['experience_images']:
+                TutorExperienceImage.objects.create(tutor=tutor, image=image)
         return redirect('tutoring:register_tutor')
 
     return render(request, 'tutoring/register_tutor.html', {
@@ -660,6 +699,7 @@ def register_tutor(request):
         'tutor'       : tutor,
         'is_view_only': tutor is not None and tutor.tut_status in (0, 3),
         'reject_note' : tutor.tut_reject_note if tutor else None,
+        'experience_images': tutor.experience_images.all() if tutor else [],
     })
 
 
@@ -714,11 +754,15 @@ def manage_course(request, tutc_id=None):
 
     tutc  = None
     rates = []
+    fixed_rate = None
+    course_edit_locked = False
     schedule_dates_with_slots = []
 
     if tutc_id:
         tutc  = get_object_or_404(TutorCourse, tutc_id=tutc_id, tut_id=tutor)
         rates = TutorRate.objects.filter(tutc_id=tutc).order_by('tut_rate_stu_count')
+        fixed_rate = rates.first()
+        course_edit_locked = has_active_course_bookings(tutc)
         _today    = timezone.localdate()
         _now_time = timezone.localtime(timezone.now()).time()
         _sds  = list(
@@ -726,25 +770,27 @@ def manage_course(request, tutc_id=None):
             .prefetch_related('time_slots')
             .order_by('sd_date')
         )
-        # ลบวันที่ผ่านมาแล้วที่อาจค้างในฐานข้อมูล (ไม่มี booking อยู่)
+        # ลบวันที่ผ่านมาแล้วได้เฉพาะเมื่อไม่เคยมีรายการจองอ้างถึง
         ScheduleDate.objects.filter(tutc_id=tutc, sd_date__lt=_today).exclude(
-            time_slots__ts_status=1
+            time_slots__booking__isnull=False
         ).delete()
 
-        # แนบ weekday (0=จ … 6=อา) และ available_slots (กรอง slot ที่จองแล้ว + เวลาผ่านออก)
+        # แนบ weekday (0=จ … 6=อา) และแยกช่วงที่แก้ไขได้ออกจากช่วงที่มีประวัติการจอง
         for sd in _sds:
             sd.weekday = sd.sd_date.weekday()
+            editable_slots = [
+                ts for ts in sd.time_slots.all()
+                if not ts.booking_set.exists() and ts.ts_status != 2
+            ]
             if sd.sd_date == _today:
-                # วันนี้ — ซ่อน slot ที่จองแล้ว และเวลาเริ่มผ่านไปแล้ว
                 sd.available_slots = [
-                    ts for ts in sd.time_slots.all()
-                    if ts.ts_status == 0 and ts.ts_start_time > _now_time
+                    ts for ts in editable_slots if ts.ts_start_time > _now_time
                 ]
             else:
-                # วันอนาคต — ซ่อนเฉพาะ slot ที่ถูกจองแล้ว
-                sd.available_slots = [ts for ts in sd.time_slots.all() if ts.ts_status == 0]
-            # นับ slot ที่ถูกจองแล้วสำหรับแสดง badge
-            sd.booked_slot_count = sd.time_slots.filter(ts_status=1).count()
+                sd.available_slots = editable_slots
+            sd.booked_slot_count = sum(
+                1 for ts in sd.time_slots.all() if ts.booking_set.exists()
+            )
 
         # กรองออกวันที่ไม่มี available slot เลย (ทุก slot จองหมดแล้ว)
         schedule_dates_with_slots = [sd for sd in _sds if sd.available_slots]
@@ -761,16 +807,16 @@ def manage_course(request, tutc_id=None):
         # ── ข้อมูลพื้นฐาน ──
         tutc_name    = request.POST.get('tutc_name', '').strip()
         tutc_desc    = request.POST.get('tutc_desc', '').strip()
+        tutc_meeting_detail = request.POST.get('tutc_meeting_detail', '').strip()
         tutc_max_stu = request.POST.get('tutc_max_stu', '').strip()
         tutc_status  = 1 if request.POST.get('tutc_status') == '1' else 0
         crs_id_val   = request.POST.get('crs_id', '').strip()
 
         # ── ตรวจ new_dates + existing_sd ──
-        _today_str = timezone.localdate().isoformat()
-        # กรองเฉพาะวันในอนาคต (ไม่ยอมรับวันที่ผ่านมาแล้ว)
+        # เก็บวันที่ที่ส่งมาทั้งหมดเพื่อตรวจย้อนหลังและแจ้งข้อผิดพลาดอย่างชัดเจน
         new_dates = [
             d for d in request.POST.getlist('new_date[]')
-            if d.strip() and d.strip() >= _today_str
+            if d.strip()
         ]
         existing_sd_ids  = [
             key.split('ts_start_')[1].rstrip('[]').split('[')[0]
@@ -779,54 +825,11 @@ def manage_course(request, tutc_id=None):
         ]
         has_any_date = len(new_dates) > 0 or len(existing_sd_ids) > 0
 
-        # ── ตรวจ rate (tiered pricing) ──
-        stu_counts  = request.POST.getlist('rate_stu_count[]')
-        per_persons = request.POST.getlist('rate_per_person[]')
-
-        # parse เรทที่กรอกครบถ้วน
-        valid_rates = []
-        for sc, pp in zip(stu_counts, per_persons):
-            sc_s, pp_s = sc.strip(), pp.strip()
-            if sc_s and pp_s and int(sc_s) >= 1 and int(pp_s) >= 0:
-                valid_rates.append((int(sc_s), int(pp_s)))
-
-        # validate tiered pricing logic
-        rate_errors = []
-        if not valid_rates:
-            rate_errors.append('กรุณากรอกอัตราค่าติวอย่างน้อย 1 เรท')
-        else:
-            max_stu_int = int(tutc_max_stu) if tutc_max_stu and tutc_max_stu.isdigit() and int(tutc_max_stu) >= 1 else 0
-            first_price = valid_rates[0][1]
-
-            for i, (stu, price) in enumerate(valid_rates):
-                # จำนวนคนต้องมากกว่าแถวก่อนหน้า
-                if i > 0 and stu <= valid_rates[i - 1][0]:
-                    rate_errors.append(f'เรทที่ {i+1}: จำนวนคนต้องมากกว่าเรทก่อนหน้า ({valid_rates[i-1][0]} คน)')
-                    break
-
-                # จำนวนคนต้องไม่เกิน max
-                if max_stu_int > 0 and stu > max_stu_int:
-                    rate_errors.append(f'เรทที่ {i+1}: จำนวนคนต้องไม่เกิน {max_stu_int} คน (จำนวนรับสูงสุด)')
-                    break
-
-                # เครดิต: ถ้าเรทแรก=0(ฟรี) เรทที่2 เป็นอะไรก็ได้ แต่เรทที่3+ ต้อง < ก่อนหน้า
-                # ถ้าเรทแรก>=1 ทุกเรทถัดไปต้อง < ก่อนหน้า
-                if i > 0:
-                    prev_price = valid_rates[i - 1][1]
-                    # เรทที่ 2+ ห้ามเป็น 0 (0 ได้เฉพาะเรทแรกเท่านั้น)
-                    if price == 0:
-                        rate_errors.append(
-                            f'เรทที่ {i+1}: เครดิต 0 ได้เฉพาะเรทแรกเท่านั้น'
-                        )
-                        break
-                    if first_price == 0 and i == 1:
-                        pass  # เรทที่ 2 หลังจากฟรี → ใส่อะไรก็ได้ (แต่ต้องไม่ใช่ 0 ซึ่งเช็คไปแล้ว)
-                    else:
-                        if price >= prev_price:
-                            rate_errors.append(
-                                f'เรทที่ {i+1}: เครดิตต้องต่ำกว่าเรทก่อนหน้า ({prev_price} เครดิต)'
-                            )
-                            break
+        # ── ตรวจราคาเดียวต่อที่นั่ง ──
+        rate_per_person_raw = request.POST.get('rate_per_person', '').strip()
+        rate_per_person = None
+        if rate_per_person_raw.isdigit():
+            rate_per_person = int(rate_per_person_raw)
 
         # ── ตรวจ time slots อย่างน้อย 1 ช่วงในแต่ละวัน และทุก slot ต้องกรอกครบคู่ ──
         has_all_slots   = True
@@ -844,8 +847,8 @@ def manage_course(request, tutc_id=None):
                     continue
                 seen_new_suffixes.add(suffix)
 
-                starts = [s.strip() for s in request.POST.getlist(key)                       if s.strip()]
-                ends   = [e.strip() for e in request.POST.getlist(f'ts_end_new_{suffix}[]')  if e.strip()]
+                starts = [s.strip() for s in request.POST.getlist(key)]
+                ends   = [e.strip() for e in request.POST.getlist(f'ts_end_new_{suffix}[]')]
 
                 if len(starts) == 0:
                     has_all_slots  = False
@@ -857,6 +860,10 @@ def manage_course(request, tutc_id=None):
                     break
                 # ตรวจ format HH:MM และ end > start
                 for s, e in zip(starts, ends):
+                    if not s or not e:
+                        has_all_slots = False
+                        slot_error_msg = 'กรุณากรอกเวลาเริ่มและเวลาสิ้นสุดให้ครบทุกช่วง'
+                        break
                     if not time_re.match(s) or not time_re.match(e):
                         has_all_slots  = False
                         slot_error_msg = 'รูปแบบเวลาไม่ถูกต้อง กรุณาใช้รูปแบบ HH:MM (เช่น 09:00)'
@@ -871,8 +878,8 @@ def manage_course(request, tutc_id=None):
         # วันเก่า — key รูปแบบ ts_start_SDID[]
         if has_all_slots:
             for sd_id_str in existing_sd_ids:
-                starts = [s.strip() for s in request.POST.getlist(f'ts_start_{sd_id_str}[]') if s.strip()]
-                ends   = [e.strip() for e in request.POST.getlist(f'ts_end_{sd_id_str}[]')   if e.strip()]
+                starts = [s.strip() for s in request.POST.getlist(f'ts_start_{sd_id_str}[]')]
+                ends   = [e.strip() for e in request.POST.getlist(f'ts_end_{sd_id_str}[]')]
 
                 if len(starts) == 0:
                     has_all_slots  = False
@@ -883,6 +890,10 @@ def manage_course(request, tutc_id=None):
                     slot_error_msg = 'กรุณากรอกเวลาเริ่มและเวลาสิ้นสุดให้ครบทุกช่วง'
                     break
                 for s, e in zip(starts, ends):
+                    if not s or not e:
+                        has_all_slots = False
+                        slot_error_msg = 'กรุณากรอกเวลาเริ่มและเวลาสิ้นสุดให้ครบทุกช่วง'
+                        break
                     if not time_re.match(s) or not time_re.match(e):
                         has_all_slots  = False
                         slot_error_msg = 'รูปแบบเวลาไม่ถูกต้อง กรุณาใช้รูปแบบ HH:MM (เช่น 09:00)'
@@ -894,10 +905,73 @@ def manage_course(request, tutc_id=None):
                 if not has_all_slots:
                     break
 
+        # ตรวจวันและเวลาเริ่มก่อนแก้ข้อมูลใด ๆ เพื่อไม่ให้ส่งฟอร์มข้ามข้อจำกัดหน้าเว็บ
+        if has_all_slots:
+            local_now = timezone.localtime(timezone.now())
+            today_date = local_now.date()
+            posted_new_dates = request.POST.getlist('new_date[]')
+            posted_new_suffixes = []
+            for key in request.POST:
+                if key.startswith('ts_start_new_'):
+                    suffix = key[len('ts_start_new_'):].rstrip('[]')
+                    if suffix not in posted_new_suffixes:
+                        posted_new_suffixes.append(suffix)
+
+            if len(posted_new_dates) != len(posted_new_suffixes):
+                has_all_slots = False
+                slot_error_msg = 'ข้อมูลวันที่และช่วงเวลาไม่ครบ กรุณาเพิ่มใหม่อีกครั้ง'
+            else:
+                for date_str, suffix in zip(posted_new_dates, posted_new_suffixes):
+                    try:
+                        slot_date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        has_all_slots = False
+                        slot_error_msg = 'รูปแบบวันที่เปิดสอนไม่ถูกต้อง'
+                        break
+                    if slot_date < today_date:
+                        has_all_slots = False
+                        slot_error_msg = 'ไม่สามารถเพิ่มวันที่ผ่านมาแล้วได้'
+                        break
+                    starts = request.POST.getlist(f'ts_start_new_{suffix}[]')
+                    if any(
+                        not _is_future_schedule_start(slot_date, start.strip(), local_now)
+                        for start in starts
+                    ):
+                        has_all_slots = False
+                        slot_error_msg = f'ต้องกำหนดเวลาเริ่มเรียนล่วงหน้าอย่างน้อย {settings.BOOKING_CLOSE_HOURS} ชั่วโมง'
+                        break
+
+            if has_all_slots and existing_sd_ids:
+                valid_sd_ids = [int(sd_id) for sd_id in existing_sd_ids if sd_id.isdigit()]
+                schedule_dates = dict(
+                    ScheduleDate.objects.filter(tutc_id=tutc, sd_id__in=valid_sd_ids)
+                    .values_list('sd_id', 'sd_date')
+                )
+                for sd_id_str in existing_sd_ids:
+                    slot_date = schedule_dates.get(int(sd_id_str)) if sd_id_str.isdigit() else None
+                    if slot_date is None:
+                        has_all_slots = False
+                        slot_error_msg = 'ไม่พบวันที่เปิดสอนที่ต้องการแก้ไข'
+                        break
+                    if slot_date < today_date:
+                        has_all_slots = False
+                        slot_error_msg = 'ไม่สามารถบันทึกวันที่ผ่านมาแล้วได้'
+                        break
+                    starts = request.POST.getlist(f'ts_start_{sd_id_str}[]')
+                    if any(
+                        not _is_future_schedule_start(slot_date, start.strip(), local_now)
+                        for start in starts
+                    ):
+                        has_all_slots = False
+                        slot_error_msg = f'ต้องกำหนดเวลาเริ่มเรียนล่วงหน้าอย่างน้อย {settings.BOOKING_CLOSE_HOURS} ชั่วโมง'
+                        break
+
         # ── รวม error ──
         errors = []
         if not tutc_name:
             errors.append('กรุณากรอกชื่อรายวิชา')
+        if not tutc_meeting_detail:
+            errors.append('กรุณาระบุรายละเอียดนัดหมายเริ่มต้น')
         if not crs_id_val:
             errors.append('กรุณาเลือกรายวิชา')
         if not tutc_max_stu or not tutc_max_stu.isdigit() or int(tutc_max_stu) < 1:
@@ -906,10 +980,20 @@ def manage_course(request, tutc_id=None):
             errors.append('กรุณาเพิ่มวันที่อย่างน้อย 1 วัน')
         elif not has_all_slots:
             errors.append(slot_error_msg or 'แต่ละวันต้องมีช่วงเวลาอย่างน้อย 1 ช่วง')
-        if not valid_rates:
-            errors.append('กรุณากรอกอัตราค่าติวอย่างน้อย 1 เรท')
-        elif rate_errors:
-            errors.extend(rate_errors)
+        if rate_per_person is None:
+            errors.append('กรุณาระบุราคาต่อที่นั่งเป็นจำนวนเต็มตั้งแต่ 0 เครดิตขึ้นไป')
+
+        # ราคาและจำนวนรับเปลี่ยนไม่ได้ขณะมีรายการรอรับหรือรอเรียน
+        if tutc and has_active_course_bookings(tutc):
+            current_rate = get_fixed_rate(tutc)
+            current_price = current_rate.tut_rate_per_person if current_rate else None
+            max_changed = tutc_max_stu.isdigit() and int(tutc_max_stu) != tutc.tutc_max_stu
+            price_changed = rate_per_person is not None and rate_per_person != current_price
+            if max_changed or price_changed:
+                errors.append(
+                    'ไม่สามารถแก้ราคาและจำนวนรับได้ '
+                    'เนื่องจากมีรายการจองที่รอตอบรับหรือรอเรียนอยู่'
+                )
 
         if errors:
             for err in errors:
@@ -919,10 +1003,13 @@ def manage_course(request, tutc_id=None):
                 'tutor'                    : tutor,
                 'tutc'                     : tutc,
                 'rates'                    : rates,
+                'fixed_rate'               : fixed_rate,
+                'course_edit_locked'       : course_edit_locked,
                 'course_groups'            : course_groups,
                 'schedule_dates_with_slots': schedule_dates_with_slots,
                 'grouped_schedule'         : grouped_schedule if tutc_id else [],
                 'weekday_labels'           : ['จ','อ','พ','พฤ','ศ','ส','อา'],
+                'booking_close_hours'      : settings.BOOKING_CLOSE_HOURS,
             })
 
         course = get_object_or_404(Course, crs_id=crs_id_val)
@@ -931,6 +1018,7 @@ def manage_course(request, tutc_id=None):
         if tutc:
             tutc.tutc_name    = tutc_name
             tutc.tutc_desc    = tutc_desc or None
+            tutc.tutc_meeting_detail = tutc_meeting_detail or None
             tutc.tutc_max_stu = int(tutc_max_stu)
             tutc.tutc_status  = tutc_status
             tutc.crs_id       = course
@@ -957,6 +1045,7 @@ def manage_course(request, tutc_id=None):
                 tutc_id      = new_id,
                 tutc_name    = tutc_name,
                 tutc_desc    = tutc_desc or None,
+                tutc_meeting_detail = tutc_meeting_detail or None,
                 tutc_max_stu = int(tutc_max_stu),
                 tutc_status  = tutc_status,
                 crs_id       = course,
@@ -965,14 +1054,13 @@ def manage_course(request, tutc_id=None):
             )
             messages.success(request, 'เพิ่มคอร์สเรียบร้อยแล้ว')
 
-        # ── อัปเดต Rates (เรียงตามจำนวนคน) ──
+        # ── อัปเดตราคาเดียวต่อที่นั่ง โดยคงตาราง TutorRate เดิมไว้ ──
         TutorRate.objects.filter(tutc_id=tutc).delete()
-        for stu, price in sorted(valid_rates, key=lambda x: x[0]):
-            TutorRate.objects.create(
-                tutc_id             = tutc,
-                tut_rate_stu_count  = stu,
-                tut_rate_per_person = price,
-            )
+        TutorRate.objects.create(
+            tutc_id=tutc,
+            tut_rate_stu_count=1,
+            tut_rate_per_person=rate_per_person,
+        )
 
         # ── อัปเดต Schedule Dates + Time Slots ──
         # วันที่มีอยู่แล้ว (sd_id ที่ส่งมาจาก POST)
@@ -982,16 +1070,16 @@ def manage_course(request, tutc_id=None):
             if key.startswith('ts_start_') and not key.startswith('ts_start_new_')
         ]
         # ลบ sd เก่าที่ไม่ได้ส่งมา (ผู้ใช้กดลบออก)
-        # เฉพาะที่ไม่มี slot ถูกจอง (ts_status=1) เพื่อไม่ให้กระทบ booking ที่ยังค้างอยู่
+        # เฉพาะวันที่ไม่เคยมี Booking เพื่อไม่ทำให้ประวัติรายการจองเสียความสัมพันธ์
         ScheduleDate.objects.filter(tutc_id=tutc).exclude(sd_id__in=[
             int(i) for i in existing_sd_ids if i.isdigit()
-        ]).exclude(time_slots__ts_status=1).delete()
+        ]).exclude(time_slots__booking__isnull=False).delete()
 
         # ลบวันที่ผ่านมาแล้วที่ค้างในฐานข้อมูล (ไม่มี booking อยู่)
         _today_save = timezone.localdate()
         ScheduleDate.objects.filter(
             tutc_id=tutc, sd_date__lt=_today_save
-        ).exclude(time_slots__ts_status=1).delete()
+        ).exclude(time_slots__booking__isnull=False).delete()
 
         # อัปเดต time slots ของวันที่มีอยู่
         for sd_id_str in existing_sd_ids:
@@ -1000,7 +1088,7 @@ def manage_course(request, tutc_id=None):
             sd = ScheduleDate.objects.filter(sd_id=int(sd_id_str), tutc_id=tutc).first()
             if not sd:
                 continue
-            TimeSlot.objects.filter(sd_id=sd, ts_status=0).delete()
+            TimeSlot.objects.filter(sd_id=sd, booking__isnull=True).delete()
             starts = request.POST.getlist(f'ts_start_{sd_id_str}[]')
             ends   = request.POST.getlist(f'ts_end_{sd_id_str}[]')
             for s, e in zip(starts, ends):
@@ -1041,10 +1129,13 @@ def manage_course(request, tutc_id=None):
         'tutor'                   : tutor,
         'tutc'                    : tutc,
         'rates'                   : rates,
+        'fixed_rate'              : fixed_rate,
+        'course_edit_locked'      : course_edit_locked,
         'course_groups'           : course_groups,
         'schedule_dates_with_slots': schedule_dates_with_slots,
         'grouped_schedule'        : grouped_schedule if tutc_id else [],
         'weekday_labels'          : ['จ','อ','พ','พฤ','ศ','ส','อา'],
+        'booking_close_hours'     : settings.BOOKING_CLOSE_HOURS,
     })
 
 

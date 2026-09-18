@@ -58,11 +58,24 @@ function _buildItem(n, iconSet, iconPrefix) {
     </a>`;
 }
 
+function _syncBookingState(data) {
+  const nextToken = data.booking_state_token || '';
+  if (!window.BOOKING_STATE_TOKEN || !nextToken) return;
+  if (nextToken === window.BOOKING_STATE_TOKEN) return;
+
+  const previousToken = window.BOOKING_STATE_TOKEN;
+  window.BOOKING_STATE_TOKEN = nextToken;
+  window.dispatchEvent(new CustomEvent('booking-time-state-changed', {
+    detail: { previousToken, nextToken },
+  }));
+}
+
 /* ── User Notification ── */
 function fetchNotifications() {
-  fetch(window.NOTIF_API)
+  fetch(window.NOTIF_API, { cache: 'no-store' })
     .then(r => r.json())
     .then(data => {
+      _syncBookingState(data);
       const badge = document.getElementById('notif-badge');
       const empty = document.getElementById('notif-empty');
       const list  = document.getElementById('notifBell').closest('.dropdown').querySelector('.dropdown-menu');
@@ -121,7 +134,7 @@ function markAllRead(event) {
 
 /* ── Admin Notification ── */
 function adminFetchNotifications() {
-  fetch(window.NOTIF_API)
+  fetch(window.NOTIF_API, { cache: 'no-store' })
     .then(r => r.json())
     .then(data => {
       const badge = document.getElementById('admin-notif-badge');
