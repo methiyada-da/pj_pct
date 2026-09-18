@@ -7,7 +7,7 @@
 <div class="admin-dashboard">
   <section class="dashboard-hero">
     <div>
-      <span class="eyebrow">Admin overview</span>
+      <span class="eyebrow">ภาพรวมผู้ดูแลระบบ</span>
       <h1>รายงานระบบ</h1>
       <p>ติดตามสมาชิก ติวเตอร์ รายการเงิน เครดิต และเคสที่ต้องดำเนินการจากจุดเดียว</p>
     </div>
@@ -46,15 +46,6 @@
       </div>
     </article>
 
-    <article class="metric-card">
-      <div class="metric-icon"><i class="bi bi-cash-coin"></i></div>
-      <div>
-        <span class="metric-label">ยอดเติมเงินสำเร็จ</span>
-        <strong class="metric-value">฿{{ total_topup_money|floatformat:"0"|default:"0" }}</strong>
-        <span class="metric-note">รายการผ่านการตรวจสอบแล้ว</span>
-      </div>
-    </article>
-
     <article class="metric-card metric-card-accent">
       <div class="metric-icon"><i class="bi bi-bank2"></i></div>
       <div>
@@ -87,25 +78,30 @@
     <div class="panel-card panel-card-large">
       <div class="panel-header">
         <div>
-          <span class="panel-kicker">Analytics</span>
-          <h2>{{ chart_metric_label }}ตามช่วงเวลา</h2>
+          <span class="panel-kicker">การวิเคราะห์ข้อมูล</span>
+          <h2>{{ chart_metric_label }} — {{ chart_range_label }}</h2>
           <div class="chart-controls">
             <select id="chartMetric" aria-label="เลือกข้อมูลกราฟ"><option value="members" {% if chart_metric == 'members' %}selected{% endif %}>สมาชิกใหม่</option><option value="bookings" {% if chart_metric == 'bookings' %}selected{% endif %}>การจองเรียน</option><option value="topups" {% if chart_metric == 'topups' %}selected{% endif %}>ยอดเติมเครดิต</option><option value="reviews" {% if chart_metric == 'reviews' %}selected{% endif %}>รีวิวที่ได้รับ</option></select>
             <select id="chartRange" aria-label="เลือกช่วงเวลาของกราฟ"><option value="7d" {% if chart_range == '7d' %}selected{% endif %}>7 วัน</option><option value="30d" {% if chart_range == '30d' %}selected{% endif %}>30 วัน</option><option value="6m" {% if chart_range == '6m' %}selected{% endif %}>6 เดือน</option><option value="year" {% if chart_range == 'year' %}selected{% endif %}>ปีนี้</option></select>
           </div>
-          <h2>สมาชิกใหม่ 7 เดือนล่าสุด</h2>
         </div>
-        <span class="status-pill status-pill-calm">รายเดือน</span>
+        <span class="status-pill status-pill-calm">รวม {{ chart_total_display }}</span>
       </div>
       <div class="chart-frame">
-        <canvas id="growthChart"></canvas>
+        {% if chart_has_data %}
+          <canvas id="growthChart" role="img" aria-label="กราฟ{{ chart_metric_label }} {{ chart_range_label }}">
+            เบราว์เซอร์นี้ไม่รองรับการแสดงกราฟ
+          </canvas>
+        {% else %}
+          <p class="empty-state">ยังไม่มีข้อมูล{{ chart_metric_label }}ในช่วง{{ chart_range_label }}</p>
+        {% endif %}
       </div>
     </div>
 
     <aside class="panel-card action-panel">
       <div class="panel-header">
         <div>
-          <span class="panel-kicker">Queue</span>
+          <span class="panel-kicker">งานรอดำเนินการ</span>
           <h2>งานที่ต้องจัดการ</h2>
         </div>
       </div>
@@ -152,7 +148,7 @@
     <div class="panel-card">
       <div class="panel-header">
         <div>
-          <span class="panel-kicker">Education data</span>
+          <span class="panel-kicker">ข้อมูลการศึกษา</span>
           <h2>ฐานข้อมูลรายวิชา</h2>
         </div>
       </div>
@@ -190,7 +186,7 @@
     <div class="panel-card">
       <div class="panel-header">
         <div>
-          <span class="panel-kicker">Members</span>
+          <span class="panel-kicker">สมาชิก</span>
           <h2>สมาชิกใหม่ล่าสุด</h2>
         </div>
         <a href="{% url 'admin_panel:member_mgmt' %}" class="panel-link">ทั้งหมด</a>
@@ -214,7 +210,7 @@
     <div class="panel-card">
       <div class="panel-header">
         <div>
-          <span class="panel-kicker">Credit</span>
+          <span class="panel-kicker">เครดิต</span>
           <h2>เติมเครดิตล่าสุด</h2>
         </div>
         <a href="{% url 'admin_panel:refill_mgmt' %}" class="panel-link">ทั้งหมด</a>
@@ -248,7 +244,7 @@
     <div class="panel-card">
       <div class="panel-header">
         <div>
-          <span class="panel-kicker">Bookings</span>
+          <span class="panel-kicker">การจองเรียน</span>
           <h2>การจองเรียนล่าสุด</h2>
         </div>
         <a href="{% url 'admin_reports' %}?report_type=bookings" class="panel-link">ดูรายงาน</a>
@@ -270,7 +266,7 @@
     <div class="panel-card">
       <div class="panel-header">
         <div>
-          <span class="panel-kicker">Completion</span>
+          <span class="panel-kicker">การแจ้งจบงาน</span>
           <h2>งานที่แจ้งจบล่าสุด</h2>
         </div>
         <span class="status-pill status-pill-calm">รอยืนยัน {{ pending_completions }}</span>
@@ -292,7 +288,7 @@
     <div class="panel-card">
       <div class="panel-header">
         <div>
-          <span class="panel-kicker">Reports</span>
+          <span class="panel-kicker">รายงาน</span>
           <h2>รายงานที่ใช้งานบ่อย</h2>
         </div>
       </div>
@@ -311,24 +307,38 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     const canvas = document.getElementById('growthChart');
-    if (!canvas || typeof Chart === 'undefined') return;
+    if (!canvas) return;
+    if (typeof Chart === 'undefined') {
+      canvas.parentElement.innerHTML = '<p class="empty-state">ไม่สามารถโหลดกราฟได้ กรุณาลองใหม่อีกครั้ง</p>';
+      return;
+    }
+
+    const metricLabel = '{{ chart_metric_label|escapejs }}';
+    const chartUnit = '{{ chart_unit|escapejs }}';
+    const chartType = '{{ chart_type|escapejs }}';
+    const isMoney = chartUnit === 'บาท';
+    const valueFormatter = new Intl.NumberFormat('th-TH', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: isMoney ? 2 : 0
+    });
 
     new Chart(canvas, {
-      type: 'line',
+      type: chartType,
       data: {
         labels: {{ chart_labels|safe }},
         datasets: [{
-          label: 'สมาชิกใหม่',
+          label: metricLabel,
           data: {{ chart_data|safe }},
-          fill: true,
-          backgroundColor: 'rgba(37, 99, 235, 0.12)',
-          borderColor: '#2563EB',
+          fill: chartType === 'line',
+          backgroundColor: '{{ chart_background_color|escapejs }}',
+          borderColor: '{{ chart_border_color|escapejs }}',
           borderWidth: 3,
+          borderRadius: chartType === 'bar' ? 6 : 0,
           tension: 0.38,
           pointBackgroundColor: '#FFFFFF',
-          pointBorderColor: '#2563EB',
+          pointBorderColor: '{{ chart_border_color|escapejs }}',
           pointBorderWidth: 2,
-          pointRadius: 4,
+          pointRadius: chartType === 'line' ? 4 : 0,
           pointHoverRadius: 6
         }]
       },
@@ -343,7 +353,9 @@
             displayColors: false,
             callbacks: {
               label: function (context) {
-                return ' สมาชิกใหม่: ' + context.parsed.y + ' คน';
+                const value = valueFormatter.format(context.parsed.y);
+                return ' ' + metricLabel + ': ' + (isMoney ? '฿' : '') + value
+                  + (isMoney ? '' : ' ' + chartUnit);
               }
             }
           }
@@ -351,12 +363,24 @@
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: '#64748B', font: { size: 12 } }
+            ticks: {
+              color: '#64748B',
+              autoSkip: true,
+              maxTicksLimit: 12,
+              font: { size: 12 }
+            }
           },
           y: {
             beginAtZero: true,
             grid: { color: '#E2E8F0' },
-            ticks: { color: '#64748B', precision: 0, font: { size: 12 } }
+            ticks: {
+              color: '#64748B',
+              precision: isMoney ? undefined : 0,
+              font: { size: 12 },
+              callback: function (value) {
+                return (isMoney ? '฿' : '') + valueFormatter.format(value);
+              }
+            }
           }
         }
       }
