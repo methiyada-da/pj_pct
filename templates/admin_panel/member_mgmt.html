@@ -368,6 +368,27 @@ function openDetail(id) {
         </div>
 
       </div>
+
+      <div class="member-status-panel mt-3">
+        <div>
+          <div class="fw-semibold mb-1"><i class="bi bi-person-gear me-1"></i>จัดการสถานะสมาชิก</div>
+          <div class="text-muted" style="font-size:12px;">เลือกสถานะที่ต้องการกำหนดให้สมาชิก</div>
+        </div>
+        <form method="post" class="member-status-form"
+              onsubmit="return confirm('ยืนยันการเปลี่ยนสถานะสมาชิกหรือไม่?')">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_status">
+          <input type="hidden" name="member_id" value="${m.id}">
+          <select name="member_status" class="form-select form-select-sm" aria-label="สถานะสมาชิก">
+            <option value="1" ${m.status === 1 ? 'selected' : ''}>ใช้งานปกติ</option>
+            <option value="2" ${m.status === 2 ? 'selected' : ''}>ระงับชั่วคราว</option>
+            <option value="0" ${m.status === 0 ? 'selected' : ''}>ปิดการใช้งาน</option>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-check2-circle me-1"></i>บันทึกสถานะ
+          </button>
+        </form>
+      </div>
     </div>`;
 
   new bootstrap.Modal(document.getElementById('memberModal')).show();
@@ -389,4 +410,30 @@ function creditCard(label, val, bg, color) {
   </div>`;
 }
 </script>
+
+<style>
+  .member-status-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid #BFDBFE;
+    border-radius: 10px;
+    background: #EFF6FF;
+  }
+  .member-status-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .member-status-form select { min-width: 160px; }
+  @media (max-width: 767px) {
+    .member-status-panel, .member-status-form {
+      align-items: stretch;
+      flex-direction: column;
+    }
+    .member-status-form select { min-width: 0; }
+  }
+</style>
 {% endblock %}

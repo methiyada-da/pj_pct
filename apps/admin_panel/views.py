@@ -2,13 +2,22 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
+from django.contrib.staticfiles import finders
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import (
+    Avg, Case, Count, ExpressionWrapper, F, FloatField, IntegerField,
+    Q, Sum, Value, When,
+)
 from django.db import transaction
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.urls import reverse
 
 from django.utils import timezone
-from django.db.models import Sum, Count, Avg
+from django.utils.dateparse import parse_date
+
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
 
 from .models import System
 from .forms  import SystemForm, AdminUserForm
@@ -42,6 +51,7 @@ def dashboard(request):
     from apps.bookings.models import Booking, JobCompletion, Review
     import json
     from datetime import datetime, date, time, timedelta
+    successful_booking_statuses = [4, 5]
 
     # ── Summary stats ──
     member_users = member_user_queryset()
@@ -50,87 +60,172 @@ def dashboard(request):
     total_tutors    = Tutor.objects.filter(tut_id__user__is_staff=False, tut_id__user__is_superuser=False, tut_status=1).count()
     pending_tutors  = Tutor.objects.filter(tut_id__user__is_staff=False, tut_id__user__is_superuser=False, tut_status=0).count()
 
-    approved_refills = Refill.objects.filter(rf_status=1)
-    total_topup_money = approved_refills.aggregate(t=Sum('rf_money'))['t'] or 0
     pending_refills   = Refill.objects.filter(rf_status=0).count()
     pending_withdraw  = Withdrawals.objects.filter(wd_status=0).count()
-    pending_reports   = Booking.objects.filter(bk_report_date__isnull=False, bk_report_resolved_date__isnull=True).count()
+    pending_reports   = Booking.objects.filter(
+        bk_status__in=successful_booking_statuses,
+        bk_report_date__isnull=False,
+        bk_report_resolved_date__isnull=True,
+    ).count()
 
     total_faculties   = Faculty.objects.count()
     total_majors      = Major.objects.count()
     total_courses     = Course.objects.count()
-    total_bookings    = Booking.objects.count()
+    total_bookings    = Booking.objects.filter(bk_status__in=successful_booking_statuses).count()
     active_bookings   = Booking.objects.filter(bk_status__in=[0, 1, 2, 3]).count()
     completed_bookings = Booking.objects.filter(bk_status__in=[4, 5]).count()
     pending_completions = JobCompletion.objects.filter(jc_confirm_date__isnull=True).count()
-    average_review = Review.objects.aggregate(avg=Avg('rv_satisfaction'))['avg'] or 0
+    completed_reviews = Review.objects.filter(
+        bk_id__bk_status__in=successful_booking_statuses,
+    )
+    review_averages = completed_reviews.aggregate(
+        quality=Avg('rv_quality'),
+        knowledge=Avg('rv_knowledge'),
+        communication=Avg('rv_communication'),
+        punctuality=Avg('rv_punctuality'),
+        satisfaction=Avg('rv_satisfaction'),
+    )
+    available_review_averages = [
+        float(value) for value in review_averages.values() if value is not None
+    ]
+    average_review = (
+        sum(available_review_averages) / len(available_review_averages)
+        if available_review_averages else 0
+    )
     
     # System revenue (fees)
     system = System.objects.first()
     total_fees = system.total_accumulated_fee if system else 0
 
-    # ── Monthly new members (last 7 months) ──
-    today = timezone.now()
+    # ── กราฟแนวโน้ม ──
+    from collections import defaultdict
+
+    today = timezone.localdate()
     chart_metric = request.GET.get('chart_metric', 'members')
     chart_range = request.GET.get('chart_range', '6m')
     metric_config = {
-        'members': ('สมาชิกใหม่', Member, 'user__date_joined', 'count'),
-        'bookings': ('การจองเรียน', Booking, 'bk_date', 'count'),
-        'topups': ('ยอดเติมเครดิต', Refill, 'rf_date', 'sum'),
-        'reviews': ('รีวิวที่ได้รับ', Review, 'rv_date', 'count'),
+        'members': {
+            'label': 'สมาชิกใหม่',
+            'unit': 'คน',
+            'type': 'line',
+            'border_color': '#2563EB',
+            'background_color': 'rgba(37, 99, 235, 0.12)',
+        },
+        'bookings': {
+            'label': 'การจองเรียน',
+            'unit': 'รายการ',
+            'type': 'line',
+            'border_color': '#0F9F8F',
+            'background_color': 'rgba(15, 159, 143, 0.12)',
+        },
+        'topups': {
+            'label': 'ยอดเติมเครดิต',
+            'unit': 'บาท',
+            'type': 'bar',
+            'border_color': '#D97706',
+            'background_color': 'rgba(245, 158, 11, 0.55)',
+        },
+        'reviews': {
+            'label': 'รีวิวที่ได้รับ',
+            'unit': 'รีวิว',
+            'type': 'line',
+            'border_color': '#7C3AED',
+            'background_color': 'rgba(124, 58, 237, 0.12)',
+        },
     }
     if chart_metric not in metric_config:
         chart_metric = 'members'
     if chart_range not in {'7d', '30d', '6m', 'year'}:
         chart_range = '6m'
-    metric_label, metric_model, metric_field, metric_operation = metric_config[chart_metric]
-    chart_labels, chart_data, periods = [], [], []
+    metric_options = metric_config[chart_metric]
+
+    def shift_month(source_date, month_offset):
+        # เลื่อนเดือนโดยไม่พึ่งแพ็กเกจภายนอก
+        month_index = source_date.year * 12 + source_date.month - 1 + month_offset
+        return date(month_index // 12, month_index % 12 + 1, 1)
+
+    month_labels = [
+        '', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+        'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.',
+    ]
+    chart_keys = []
     if chart_range in {'7d', '30d'}:
         day_count = 7 if chart_range == '7d' else 30
-        first_day = today.date() - timedelta(days=day_count - 1)
-        for offset in range(day_count):
-            current_day = first_day + timedelta(days=offset)
-            periods.append((current_day, current_day + timedelta(days=1)))
-            chart_labels.append(current_day.strftime('%d/%m'))
+        first_period = today - timedelta(days=day_count - 1)
+        period_end = today + timedelta(days=1)
+        chart_keys = [first_period + timedelta(days=offset) for offset in range(day_count)]
+        chart_labels = [item.strftime('%d/%m') for item in chart_keys]
+        chart_range_label = f'{day_count} วันล่าสุด'
+        group_by_day = True
     else:
-        month_count = 6 if chart_range == '6m' else 12
-        for offset in range(month_count - 1, -1, -1):
-            year = today.year
-            month = today.month - offset
-            while month <= 0:
-                month += 12
-                year -= 1
-            current_month = date(year, month, 1)
-            next_month = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
-            periods.append((current_month, next_month))
-            chart_labels.append(f'{month:02d}/{str(year)[-2:]}')
-    for period_start, period_end in periods:
-        start_datetime = timezone.make_aware(datetime.combine(period_start, time.min), timezone.get_current_timezone())
-        end_datetime = timezone.make_aware(datetime.combine(period_end, time.min), timezone.get_current_timezone())
-        period_qs = metric_model.objects.filter(**{f'{metric_field}__gte': start_datetime, f'{metric_field}__lt': end_datetime})
-        if metric_operation == 'sum':
-            value = period_qs.filter(rf_status=1).aggregate(total=Sum('rf_money'))['total'] or 0
-            chart_data.append(float(value))
+        if chart_range == 'year':
+            first_period = date(today.year, 1, 1)
+            month_count = today.month
+            chart_range_label = f'ปี {today.year + 543}'
         else:
-            chart_data.append(period_qs.count())
-    MONTH_TH = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
-                'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-    for i in range(6, -1, -1):
-        year = today.year
-        month = today.month - i
-        while month <= 0:
-            month += 12
-            year -= 1
+            first_period = shift_month(today, -5)
+            month_count = 6
+            chart_range_label = '6 เดือนล่าสุด'
+        month_starts = [shift_month(first_period, offset) for offset in range(month_count)]
+        chart_keys = [(item.year, item.month) for item in month_starts]
+        chart_labels = [f'{month_labels[item.month]} {str(item.year + 543)[-2:]}' for item in month_starts]
+        period_end = shift_month(month_starts[-1], 1)
+        group_by_day = False
 
-        # กรองช่วงวันเวลาโดยตรง เพื่อไม่พึ่ง CONVERT_TZ ของ MySQL
-        # ซึ่งอาจคืนค่า NULL หากฐานข้อมูลไม่มีตาราง Time Zone
-        month_start = timezone.make_aware(datetime(year, month, 1), timezone.get_current_timezone())
-        if month == 12:
-            next_month_start = timezone.make_aware(datetime(year + 1, 1, 1), timezone.get_current_timezone())
-        else:
-            next_month_start = timezone.make_aware(datetime(year, month + 1, 1), timezone.get_current_timezone())
+    current_timezone = timezone.get_current_timezone()
+    start_datetime = timezone.make_aware(
+        datetime.combine(first_period, time.min), current_timezone
+    )
+    end_datetime = timezone.make_aware(
+        datetime.combine(period_end, time.min), current_timezone
+    )
 
-        # การนับสมาชิกถูกย้ายไปใช้ชุดข้อมูลกราฟที่เลือกด้านบนแล้ว
+    # ดึงข้อมูลทั้งช่วงเพียงครั้งเดียว แล้วจัดกลุ่มใน Python เพื่อเลี่ยง CONVERT_TZ ของ MySQL
+    if chart_metric == 'members':
+        chart_rows = member_user_queryset().filter(
+            user__date_joined__gte=start_datetime,
+            user__date_joined__lt=end_datetime,
+        ).values_list('user__date_joined', flat=True)
+    elif chart_metric == 'bookings':
+        chart_rows = Booking.objects.filter(
+            bk_status__in=successful_booking_statuses,
+            bk_date__gte=start_datetime,
+            bk_date__lt=end_datetime,
+        ).values_list('bk_date', flat=True)
+    elif chart_metric == 'reviews':
+        chart_rows = Review.objects.filter(
+            bk_id__bk_status__in=successful_booking_statuses,
+            rv_date__gte=start_datetime,
+            rv_date__lt=end_datetime,
+        ).values_list('rv_date', flat=True)
+    else:
+        chart_rows = Refill.objects.filter(
+            rf_status=1,
+            rf_date__gte=start_datetime,
+            rf_date__lt=end_datetime,
+        ).values_list('rf_date', 'rf_money')
+
+    grouped_values = defaultdict(float)
+    for row in chart_rows:
+        occurred_at, amount = row if chart_metric == 'topups' else (row, 1)
+        local_occurred_at = timezone.localtime(occurred_at)
+        key = (
+            local_occurred_at.date()
+            if group_by_day
+            else (local_occurred_at.year, local_occurred_at.month)
+        )
+        grouped_values[key] += float(amount)
+
+    chart_data = [grouped_values[key] for key in chart_keys]
+    if chart_metric != 'topups':
+        chart_data = [int(value) for value in chart_data]
+    chart_total = sum(chart_data)
+    chart_total_display = (
+        f'฿{chart_total:,.2f}'
+        if chart_metric == 'topups'
+        else f'{int(chart_total):,} {metric_options["unit"]}'
+    )
+    chart_has_data = any(value > 0 for value in chart_data)
 
     # ── Top course groups by course count ──
     top_groups = (CourseGroup.objects
@@ -140,12 +235,15 @@ def dashboard(request):
 
     # ── Recent activity ──
     recent_members  = member_users.select_related('user').order_by('-user__date_joined')[:5]
-    recent_refills  = Refill.objects.select_related('member').order_by('-rf_date')[:5]
-    recent_withdraw = Withdrawals.objects.select_related('member').order_by('-wd_req_date')[:3]
+    recent_refills  = Refill.objects.filter(
+        rf_status=1,
+    ).select_related('member').order_by('-rf_date')[:5]
     recent_bookings = (Booking.objects
+                       .filter(bk_status__in=successful_booking_statuses)
                        .select_related('member', 'tutc_id__tut_id__tut_id')
                        .order_by('-bk_date')[:5])
     recent_completions = (JobCompletion.objects
+                          .filter(bk_id__bk_status__in=successful_booking_statuses)
                           .select_related('bk_id__member', 'bk_id__tutc_id__tut_id__tut_id')
                           .order_by('-jc_complete_date')[:5])
 
@@ -157,7 +255,6 @@ def dashboard(request):
         'active_members'    : active_members,
         'total_tutors'      : total_tutors,
         'pending_tutors'    : pending_tutors,
-        'total_topup_money' : total_topup_money,
         'pending_refills'   : pending_refills,
         'pending_withdraw'  : pending_withdraw,
         'pending_reports'   : pending_reports,
@@ -175,14 +272,20 @@ def dashboard(request):
         'chart_data'        : json.dumps(chart_data),
         'chart_metric'      : chart_metric,
         'chart_range'       : chart_range,
-        'chart_metric_label': metric_label,
+        'chart_metric_label': metric_options['label'],
+        'chart_range_label': chart_range_label,
+        'chart_unit'        : metric_options['unit'],
+        'chart_type'        : metric_options['type'],
+        'chart_border_color': metric_options['border_color'],
+        'chart_background_color': metric_options['background_color'],
+        'chart_total_display': chart_total_display,
+        'chart_has_data'    : chart_has_data,
         # top groups
         'top_groups'        : top_groups,
         'max_crs'           : max_crs,
         # recent activity
         'recent_members'    : recent_members,
         'recent_refills'    : recent_refills,
-        'recent_withdraw'   : recent_withdraw,
         'recent_bookings'   : recent_bookings,
         'recent_completions': recent_completions,
     })
@@ -190,160 +293,669 @@ def dashboard(request):
 
 # ─── ศูนย์ออกรายงาน ───────────────────────────────────────────────────────
 
+REPORT_TITLES = {
+    'members': 'รายงานสมาชิก',
+    'tutors': 'รายงานติวเตอร์',
+    'courses': 'รายงานรายวิชา',
+    'bookings': 'รายงานการจองเรียน',
+    'refills': 'รายงานการเติมเครดิต',
+    'withdrawals': 'รายงานการถอนเครดิต',
+    'reviews': 'รายงานการรีวิว',
+}
+
+REPORT_FILE_NAMES = {
+    'members': 'member-report.pdf',
+    'tutors': 'tutor-report.pdf',
+    'courses': 'course-report.pdf',
+    'bookings': 'booking-report.pdf',
+    'refills': 'refill-report.pdf',
+    'withdrawals': 'withdrawal-report.pdf',
+    'reviews': 'review-report.pdf',
+}
+
+
+def _select_filter(name, label, value, options):
+    normalized_options = []
+    for option in options:
+        option_value, option_label, *metadata = option
+        normalized_options.append(
+            (str(option_value), option_label, *metadata)
+        )
+    return {
+        'type': 'select', 'name': name, 'label': label, 'value': value,
+        'options': normalized_options,
+    }
+
+
+def _input_filter(name, label, value, input_type='date', **attrs):
+    options = attrs.pop('options', [])
+    return {
+        'type': input_type, 'name': name, 'label': label, 'value': value,
+        'options': options,
+        **attrs,
+    }
+
+
+def _safe_choice(raw_value, valid_values, errors, label):
+    if raw_value in {'', 'all', None}:
+        return ''
+    if raw_value not in valid_values:
+        errors.append(f'ค่า{label}ไม่ถูกต้อง ระบบจึงไม่ใช้เงื่อนไขนี้')
+        return ''
+    return raw_value
+
+
+def _safe_decimal(raw_value, errors, label):
+    if not raw_value:
+        return None
+    try:
+        return Decimal(raw_value)
+    except (InvalidOperation, TypeError):
+        errors.append(f'ค่า{label}ไม่ถูกต้อง ระบบจึงไม่ใช้เงื่อนไขนี้')
+        return None
+
+
+def _apply_date_range(queryset, field_name, start_raw, end_raw, errors, label):
+    # ใช้ช่วงวันเวลาโดยตรงเพื่อไม่พึ่งตารางเขตเวลาของฐานข้อมูล MySQL
+    from datetime import datetime, time
+
+    try:
+        start = parse_date(start_raw) if start_raw else None
+    except ValueError:
+        start = None
+    try:
+        end = parse_date(end_raw) if end_raw else None
+    except ValueError:
+        end = None
+    if (start_raw and not start) or (end_raw and not end):
+        errors.append(f'ช่วง{label}ไม่ถูกต้อง')
+        return queryset.none()
+    if start and end and start > end:
+        errors.append(f'{label}เริ่มต้นต้องไม่มากกว่าวันสิ้นสุด')
+        return queryset.none()
+    timezone_info = timezone.get_current_timezone()
+    if start:
+        start_datetime = timezone.make_aware(datetime.combine(start, time.min), timezone_info)
+        queryset = queryset.filter(**{f'{field_name}__gte': start_datetime})
+    if end:
+        end_datetime = timezone.make_aware(datetime.combine(end, time.max), timezone_info)
+        queryset = queryset.filter(**{f'{field_name}__lte': end_datetime})
+    return queryset
+
+
+def _format_datetime(value):
+    if not value:
+        return '—'
+    if timezone.is_aware(value):
+        value = timezone.localtime(value)
+    return value.strftime('%d/%m/%Y %H:%M')
+
+
+def _format_date(value):
+    return value.strftime('%d/%m/%Y') if value else '—'
+
+
+def _format_number(value, decimals=0):
+    if value is None:
+        value = 0
+    return f'{value:,.{decimals}f}'
+
+
+def _group_report_rows(rows, group_indexes):
+    """สร้าง rowspan เฉพาะค่าที่เรียงติดกัน และรองรับกลุ่มซ้อนหลายระดับ"""
+    prepared = [{'cells': [{'value': value, 'rowspan': 1} for value in row]} for row in rows]
+    for level, column_index in enumerate(group_indexes):
+        row_index = 0
+        while row_index < len(rows):
+            signature = tuple(rows[row_index][index] for index in group_indexes[:level + 1])
+            end_index = row_index + 1
+            while end_index < len(rows):
+                next_signature = tuple(rows[end_index][index] for index in group_indexes[:level + 1])
+                if next_signature != signature:
+                    break
+                end_index += 1
+            prepared[row_index]['cells'][column_index]['rowspan'] = end_index - row_index
+            for hidden_index in range(row_index + 1, end_index):
+                prepared[hidden_index]['cells'][column_index]['rowspan'] = 0
+            row_index = end_index
+    return prepared
+
+
+def _selected_filter_summary(filter_fields):
+    summary = []
+    for field in filter_fields:
+        value = field.get('value')
+        if not value:
+            continue
+        display_value = value
+        if field['type'] == 'select':
+            display_value = next(
+                (
+                    option[1]
+                    for option in field['options']
+                    if option[0] == str(value)
+                ),
+                value,
+            )
+        summary.append((field['label'], display_value))
+    return summary or [('เงื่อนไข', 'ทั้งหมด')]
+
+
 @login_required
 @user_passes_test(is_admin)
 def report_center(request):
-    """แสดงตัวอย่างรายงานตามประเภทและตัวกรองที่ผู้ดูแลเลือก"""
-    from apps.bookings.models import Booking, Review
+    """แสดงตัวอย่างและส่งออก PDF จากชุดข้อมูลและตัวกรองเดียวกัน"""
+    from apps.bookings.models import Booking, BookingReportStatement, Review
     from apps.courses.models import Course, CourseGroup
 
     report_type = request.GET.get('report_type', '')
-    start_date = request.GET.get('start_date', '')
-    end_date = request.GET.get('end_date', '')
-    status = request.GET.get('status', 'all')
-    order = request.GET.get('order', 'latest')
-    course_group = request.GET.get('course_group', '')
-
-    report_titles = {
-        'members': 'รายงานสมาชิก', 'tutors': 'รายงานติวเตอร์',
-        'courses': 'รายงานรายวิชา', 'bookings': 'รายงานการจองเรียน',
-        'tutor_income': 'รายงานรายได้ติวเตอร์', 'refills': 'รายงานการเติมเครดิต',
-        'summary': 'รายงานสรุปภาพรวมระบบ',
-    }
     if not report_type:
         return render(request, 'admin_panel/report_center.html', {
-            'active_menu': 'dashboard', 'topbar_breadcrumb': 'ออกรายงาน',
+            'active_menu': 'dashboard',
+            'topbar_breadcrumb': 'ออกรายงาน',
             'report_selected': False,
         })
-    if report_type not in report_titles:
+    if report_type not in REPORT_TITLES:
         report_type = 'members'
 
-    filter_configs = {
-        'members': {
-            'date_label': 'วันที่สมัครสมาชิก',
-            'status_label': 'สถานะบัญชี',
-            'status_options': [('all', 'ทั้งหมด'), ('0', 'ปิดการใช้งาน'), ('1', 'ใช้งานปกติ'), ('2', 'ระงับชั่วคราว')],
-        },
-        'tutors': {
-            'date_label': 'วันที่สมัครเป็นติวเตอร์',
-            'status_label': 'สถานะติวเตอร์',
-            'status_options': [('all', 'ทั้งหมด'), ('0', 'รอการตรวจสอบ'), ('1', 'อนุมัติแล้ว'), ('2', 'ปฏิเสธ'), ('3', 'ระงับการสอน')],
-        },
-        'courses': {
-            'date_label': '', 'status_label': '', 'status_options': [],
-        },
-        'bookings': {
-            'date_label': 'วันที่จองเรียน',
-            'status_label': 'สถานะการจองเรียน',
-            'status_options': [('all', 'ทั้งหมด'), ('0', 'จอง'), ('1', 'รับงานแล้ว'), ('2', 'เรียนแล้ว'), ('3', 'แจ้งจบงาน'), ('4', 'ยืนยันการจบงาน'), ('5', 'รีวิวแล้ว'), ('6', 'ปฏิเสธ')],
-        },
-        'tutor_income': {
-            'date_label': 'วันที่รับงาน',
-            'status_label': 'สถานะงาน',
-            'status_options': [('all', 'ทั้งหมด'), ('0', 'จอง'), ('1', 'รับงานแล้ว'), ('2', 'เรียนแล้ว'), ('3', 'แจ้งจบงาน'), ('4', 'ยืนยันการจบงาน'), ('5', 'รีวิวแล้ว'), ('6', 'ปฏิเสธ')],
-        },
-        'refills': {
-            'date_label': 'วันที่เติมเครดิต',
-            'status_label': 'สถานะการเติมเครดิต',
-            'status_options': [('all', 'ทั้งหมด'), ('0', 'รอตรวจสอบ'), ('1', 'ผ่านการตรวจสอบ'), ('2', 'ไม่ผ่านการตรวจสอบ')],
-        },
-        'summary': {
-            'date_label': '', 'status_label': '', 'status_options': [],
-        },
-    }
-    filter_config = filter_configs[report_type]
-    if report_type == 'courses':
-        filter_config['course_groups'] = CourseGroup.objects.order_by('cg_name')
+    errors = []
+    filters = {key: value.strip() for key, value in request.GET.items()}
+    filter_fields = []
+    headers = []
+    group_indexes = ()
+    summary_items = []
 
-    def apply_date_filter(queryset, field_name):
-        # เปรียบเทียบช่วงวันเวลาโดยตรง เพราะฐานข้อมูล MySQL อาจไม่มีตาราง Time Zone
-        # ซึ่งทำให้การใช้ lookup __date คืนค่า NULL และกรองข้อมูลไม่พบ
-        from datetime import datetime, time
-        from django.utils.dateparse import parse_date
+    faculties = Faculty.objects.order_by('fac_name')
+    majors = Major.objects.select_related('fac_id').order_by('fac_id__fac_name', 'mj_name')
+    major_options = [
+        (item.pk, item.mj_name, item.fac_id_id)
+        for item in majors
+    ]
+    courses = Course.objects.order_by('crs_id')
+    course_options = [
+        (item.pk, f'{item.pk} — {item.crs_name}', item.cg_id_id)
+        for item in courses
+    ]
+    tutors = Tutor.objects.select_related('tut_id').order_by('tut_id__mb_full_name')
+    members = member_user_queryset().order_by('mb_full_name')
 
-        start = parse_date(start_date) if start_date else None
-        end = parse_date(end_date) if end_date else None
-        timezone_info = timezone.get_current_timezone()
-        if start:
-            start_datetime = timezone.make_aware(datetime.combine(start, time.min), timezone_info)
-            queryset = queryset.filter(**{f'{field_name}__gte': start_datetime})
-        if end:
-            end_datetime = timezone.make_aware(datetime.combine(end, time.max), timezone_info)
-            queryset = queryset.filter(**{f'{field_name}__lte': end_datetime})
-        return queryset
-
-    headers, rows, summary_items = [], [], []
     if report_type == 'members':
-        queryset = apply_date_filter(member_user_queryset().select_related('user'), 'user__date_joined')
-        if status != 'all' and status in {'0', '1', '2'}:
+        faculty = filters.get('faculty', '')
+        major = filters.get('major', '')
+        status = _safe_choice(filters.get('status', ''), {'0', '1', '2'}, errors, 'สถานะสมาชิก')
+        user_type = _safe_choice(
+            filters.get('user_type', ''),
+            {'tutor'},
+            errors,
+            'ประเภทผู้ใช้งาน',
+        )
+        queryset = member_user_queryset().select_related('mj_id__fac_id', 'tutor')
+        if faculty.isdigit():
+            queryset = queryset.filter(mj_id__fac_id_id=int(faculty))
+        elif faculty:
+            errors.append('ค่าคณะไม่ถูกต้อง ระบบจึงไม่ใช้เงื่อนไขนี้')
+        if major.isdigit():
+            queryset = queryset.filter(mj_id_id=int(major))
+        elif major:
+            errors.append('ค่าสาขาไม่ถูกต้อง ระบบจึงไม่ใช้เงื่อนไขนี้')
+        if status:
             queryset = queryset.filter(mb_status=int(status))
-        queryset = queryset.order_by('user__date_joined' if order == 'oldest' else '-user__date_joined')
-        headers = ['ชื่อสมาชิก', 'ประเภท', 'วันที่สมัคร', 'สถานะ', 'เครดิตคงเหลือ']
-        tutor_member_ids = set(Tutor.objects.values_list('tut_id_id', flat=True))
-        rows = [[m.mb_full_name, 'ติวเตอร์' if m.pk in tutor_member_ids else 'ผู้เรียน', m.user.date_joined, m.get_mb_status_display(), m.mb_deposit_crd + m.mb_income_crd] for m in queryset]
-        summary_items = [('สมาชิกทั้งหมด', len(rows)), ('ติวเตอร์', sum(1 for row in rows if row[1] == 'ติวเตอร์')), ('ผู้เรียน', sum(1 for row in rows if row[1] == 'ผู้เรียน'))]
-    elif report_type == 'tutors':
-        queryset = apply_date_filter(Tutor.objects.select_related('tut_id__user').annotate(course_count=Count('tutorcourse')), 'tut_id__user__date_joined')
-        if status != 'all' and status in {'0', '1', '2', '3'}:
-            queryset = queryset.filter(tut_status=int(status))
-        queryset = queryset.order_by('tut_id__user__date_joined' if order == 'oldest' else '-tut_id__user__date_joined')
-        headers = ['ชื่อติวเตอร์', 'รายวิชาที่เปิดสอน', 'คะแนนรีวิว', 'สถานะ', 'วันที่สมัคร']
-        rows = [[t.tut_id.mb_full_name, t.course_count, t.tut_rating, t.get_tut_status_display(), t.tut_id.user.date_joined] for t in queryset]
-        summary_items = [('ติวเตอร์ทั้งหมด', len(rows)), ('คะแนนรีวิวเฉลี่ย', round(sum(float(row[2]) for row in rows) / len(rows), 2) if rows else 0), ('รายวิชาที่เปิดสอนรวม', sum(row[1] for row in rows))]
-    elif report_type == 'courses':
-        queryset = Course.objects.select_related('cg_id').annotate(tutor_count=Count('tutorcourse'))
-        if course_group:
-            queryset = queryset.filter(cg_id_id=course_group)
-        # Course ไม่มีวันที่สร้าง จึงใช้รหัสรายวิชาแทนลำดับล่าสุด/เก่าสุด
-        queryset = queryset.order_by('crs_id' if order == 'oldest' else '-crs_id')
-        headers = ['รหัสรายวิชา', 'ชื่อรายวิชา', 'กลุ่มรายวิชา', 'ติวเตอร์ที่เปิดสอน']
-        rows = [[c.crs_id, c.crs_name, c.cg_id.cg_name, c.tutor_count] for c in queryset]
-        summary_items = [('รายวิชาทั้งหมด', len(rows)), ('ติวเตอร์ที่เปิดสอนรวม', sum(row[3] for row in rows))]
-    elif report_type in {'bookings', 'tutor_income'}:
-        queryset = apply_date_filter(Booking.objects.select_related('member', 'tutc_id__tut_id__tut_id'), 'bk_date')
-        if status != 'all' and status in {'0', '1', '2', '3', '4', '5', '6'}:
-            queryset = queryset.filter(bk_status=int(status))
-        queryset = queryset.order_by('bk_date' if order == 'oldest' else '-bk_date')
-        if report_type == 'bookings':
-            headers = ['รหัสการจอง', 'ผู้เรียน', 'ติวเตอร์', 'รายวิชา', 'วันที่จองเรียน', 'สถานะ']
-            rows = [[f'BK{b.bk_id:05d}', b.member.mb_full_name, b.tutc_id.tut_id.tut_id.mb_full_name, b.tutc_id.tutc_name, b.bk_date, b.get_bk_status_display()] for b in queryset]
-            summary_items = [('การการจองเรียนทั้งหมด', len(rows)), ('เรียนสำเร็จ', sum(1 for row in rows if row[5] in {'ยืนยันการจบงาน', 'รีวิวแล้ว'}))]
-        else:
-            headers = ['ติวเตอร์', 'รหัสการจอง', 'รายวิชา', 'เครดิตที่ได้รับ', 'สถานะ', 'วันที่จองเรียน']
-            rows = [[b.tutc_id.tut_id.tut_id.mb_full_name, f'BK{b.bk_id:05d}', b.tutc_id.tutc_name, b.total_credit, b.get_bk_status_display(), b.bk_date] for b in queryset]
-            summary_items = [('งานที่รับทั้งหมด', len(rows)), ('เครดิตค่าติวรวม', sum(row[3] for row in rows))]
-    elif report_type == 'refills':
-        queryset = apply_date_filter(Refill.objects.select_related('member'), 'rf_date')
-        if status != 'all' and status in {'0', '1', '2'}:
-            queryset = queryset.filter(rf_status=int(status))
-        queryset = queryset.order_by('rf_date' if order == 'oldest' else '-rf_date')
-        headers = ['รหัสรายการ', 'สมาชิก', 'จำนวนเงิน', 'เครดิต', 'วันที่แจ้งเติม', 'สถานะ']
-        rows = [[f'RF{r.rf_id:05d}', r.member.mb_full_name, r.rf_money, r.rf_credit, r.rf_date, r.get_rf_status_display()] for r in queryset]
-        summary_items = [('รายการเติมเครดิต', len(rows)), ('ยอดเงินรวม', sum(row[2] for row in rows)), ('เครดิตรวม', sum(row[3] for row in rows))]
-    else:
-        members = member_user_queryset()
-        total_credit = members.aggregate(total=Sum('mb_deposit_crd') + Sum('mb_income_crd'))['total'] or 0
-        average_rating = Review.objects.aggregate(avg=Avg('rv_satisfaction'))['avg'] or 0
-        system = System.objects.first()
-        headers = ['จำนวนสมาชิก', 'ผู้เรียน', 'ติวเตอร์', 'รายวิชา', 'การจองเรียน', 'รายได้ระบบ', 'เครดิตคงเหลือ', 'คะแนนรีวิวเฉลี่ย']
-        rows = [[members.count(), members.exclude(tutor__isnull=False).count(), Tutor.objects.filter(tut_status=1).count(), Course.objects.count(), Booking.objects.count(), system.total_accumulated_fee if system else 0, total_credit, average_rating]]
-        summary_items = list(zip(headers, rows[0]))
+        if user_type == 'tutor':
+            queryset = queryset.filter(tutor__isnull=False)
+        queryset = queryset.order_by('mj_id__fac_id__fac_name', 'mj_id__mj_name', 'mb_full_name', 'pk')
+        totals = queryset.aggregate(
+            total=Count('pk', distinct=True),
+            active=Count('pk', filter=Q(mb_status=1), distinct=True),
+            suspended=Count('pk', filter=Q(mb_status=2), distinct=True),
+            disabled=Count('pk', filter=Q(mb_status=0), distinct=True),
+        )
+        headers = ['คณะ', 'สาขา', 'รหัสสมาชิก', 'ชื่อ-นามสกุล', 'ประเภทผู้ใช้งาน', 'สถานะสมาชิก']
+        group_indexes = (0, 1)
+        row_builder = lambda member: [
+            member.mj_id.fac_id.fac_name if member.mj_id else 'ไม่ระบุคณะ',
+            member.mj_id.mj_name if member.mj_id else 'ไม่ระบุสาขา',
+            f'M{member.pk:03d}', member.mb_full_name,
+            'ติวเตอร์' if hasattr(member, 'tutor') else '—',
+            member.get_mb_status_display(),
+        ]
+        summary_items = [
+            ('สมาชิกทั้งหมด', totals['total']), ('ใช้งานปกติ', totals['active']),
+            ('ระงับชั่วคราว', totals['suspended']), ('ปิดการใช้งาน', totals['disabled']),
+        ]
+        filter_fields = [
+            _select_filter('faculty', 'คณะ', faculty, [(item.pk, item.fac_name) for item in faculties]),
+            _select_filter('major', 'สาขา', major, major_options),
+            _select_filter(
+                'user_type',
+                'ประเภทผู้ใช้งาน',
+                user_type,
+                [('tutor', 'ติวเตอร์')],
+            ),
+            _select_filter('status', 'สถานะสมาชิก', status, Member.STATUS_CHOICES),
+        ]
 
-    total_rows = len(rows)
+    elif report_type == 'tutors':
+        faculty = filters.get('faculty', '')
+        major = filters.get('major', '')
+        status = _safe_choice(filters.get('status', ''), {'0', '1', '2', '3'}, errors, 'สถานะติวเตอร์')
+        rating_min_raw = filters.get('rating_min', '')
+        rating_max_raw = filters.get('rating_max', '')
+        rating_min = _safe_decimal(rating_min_raw, errors, 'คะแนนต่ำสุด')
+        rating_max = _safe_decimal(rating_max_raw, errors, 'คะแนนสูงสุด')
+        queryset = Tutor.objects.select_related('tut_id__user', 'tut_id__mj_id__fac_id').filter(
+            tut_id__user__is_staff=False,
+            tut_id__user__is_superuser=False,
+        )
+        if faculty.isdigit():
+            queryset = queryset.filter(tut_id__mj_id__fac_id_id=int(faculty))
+        elif faculty:
+            errors.append('ค่าคณะไม่ถูกต้อง ระบบจึงไม่ใช้เงื่อนไขนี้')
+        if major.isdigit():
+            queryset = queryset.filter(tut_id__mj_id_id=int(major))
+        elif major:
+            errors.append('ค่าสาขาไม่ถูกต้อง ระบบจึงไม่ใช้เงื่อนไขนี้')
+        if status:
+            queryset = queryset.filter(tut_status=int(status))
+        if rating_min is not None:
+            queryset = queryset.filter(tut_rating__gte=rating_min)
+        if rating_max is not None:
+            queryset = queryset.filter(tut_rating__lte=rating_max)
+        if rating_min is not None and rating_max is not None and rating_min > rating_max:
+            errors.append('คะแนนต่ำสุดต้องไม่มากกว่าคะแนนสูงสุด')
+            queryset = queryset.none()
+        queryset = queryset.order_by(
+            'tut_id__mj_id__fac_id__fac_name', 'tut_id__mj_id__mj_name',
+            'tut_id__mb_full_name', 'pk',
+        )
+        totals = queryset.aggregate(
+            total=Count('pk', distinct=True), pending=Count('pk', filter=Q(tut_status=0), distinct=True),
+            approved=Count('pk', filter=Q(tut_status=1), distinct=True),
+            rejected=Count('pk', filter=Q(tut_status=2), distinct=True),
+            suspended=Count('pk', filter=Q(tut_status=3), distinct=True),
+            average=Avg('tut_rating'),
+        )
+        headers = ['คณะ', 'สาขา', 'รหัสติวเตอร์', 'ชื่อ-นามสกุล', 'ความถนัด', 'คะแนนรีวิวเฉลี่ย', 'สถานะ']
+        group_indexes = (0, 1)
+        row_builder = lambda tutor: [
+            tutor.tut_id.mj_id.fac_id.fac_name if tutor.tut_id.mj_id else 'ไม่ระบุคณะ',
+            tutor.tut_id.mj_id.mj_name if tutor.tut_id.mj_id else 'ไม่ระบุสาขา',
+            f'TR-{tutor.tut_id.user.date_joined.year}-{tutor.pk:04d}',
+            tutor.tut_id.mb_full_name, tutor.tut_skill or '—',
+            _format_number(tutor.tut_rating, 2), tutor.get_tut_status_display(),
+        ]
+        summary_items = [
+            ('ติวเตอร์ทั้งหมด', totals['total']), ('รอตรวจสอบ', totals['pending']),
+            ('อนุมัติแล้ว', totals['approved']), ('ปฏิเสธ', totals['rejected']),
+            ('ระงับการสอน', totals['suspended']),
+            ('คะแนนรีวิวเฉลี่ย', _format_number(totals['average'], 2)),
+        ]
+        filter_fields = [
+            _select_filter('faculty', 'คณะ', faculty, [(item.pk, item.fac_name) for item in faculties]),
+            _select_filter('major', 'สาขา', major, major_options),
+            _select_filter('status', 'สถานะติวเตอร์', status, Tutor.STATUS_CHOICES),
+            _input_filter('rating_min', 'คะแนนรีวิวต่ำสุด', rating_min_raw, 'number', step='0.01', min='0', max='5'),
+            _input_filter('rating_max', 'คะแนนรีวิวสูงสุด', rating_max_raw, 'number', step='0.01', min='0', max='5'),
+        ]
+
+    elif report_type == 'courses':
+        course_group = filters.get('course_group', '')
+        course = filters.get('course', '')
+        has_tutor = _safe_choice(filters.get('has_tutor', ''), {'yes', 'no'}, errors, 'การเปิดสอน')
+        queryset = Course.objects.select_related('cg_id').annotate(
+            tutor_count=Count(
+                'tutorcourse__tut_id',
+                filter=Q(tutorcourse__tutc_status=1, tutorcourse__tut_id__tut_status=1),
+                distinct=True,
+            ),
+        )
+        if course_group.isdigit():
+            queryset = queryset.filter(cg_id_id=int(course_group))
+        elif course_group:
+            errors.append('ค่ากลุ่มรายวิชาไม่ถูกต้อง ระบบจึงไม่ใช้เงื่อนไขนี้')
+        if course:
+            queryset = queryset.filter(crs_id=course)
+        if has_tutor == 'yes':
+            queryset = queryset.filter(tutor_count__gt=0)
+        elif has_tutor == 'no':
+            queryset = queryset.filter(tutor_count=0)
+        queryset = queryset.order_by('cg_id__cg_name', 'crs_id')
+        total_courses = queryset.count()
+        headers = ['กลุ่มรายวิชา', 'รหัสรายวิชา', 'ชื่อรายวิชา', 'ติวเตอร์ที่เปิดสอน']
+        group_indexes = (0,)
+        row_builder = lambda item: [item.cg_id.cg_name, item.crs_id, item.crs_name, item.tutor_count]
+        summary_items = [
+            ('จำนวนกลุ่มรายวิชา', queryset.values('cg_id_id').distinct().count()),
+            ('จำนวนรายวิชา', total_courses),
+            ('มีติวเตอร์เปิดสอน', queryset.filter(tutor_count__gt=0).count()),
+            ('ยังไม่มีติวเตอร์เปิดสอน', queryset.filter(tutor_count=0).count()),
+        ]
+        filter_fields = [
+            _select_filter('course_group', 'กลุ่มรายวิชา', course_group, [
+                (item.pk, item.cg_name) for item in CourseGroup.objects.order_by('cg_name')
+            ]),
+            _select_filter('course', 'รายวิชา', course, course_options),
+            _select_filter('has_tutor', 'การเปิดสอน', has_tutor, [('yes', 'มีติวเตอร์เปิดสอน'), ('no', 'ไม่มีติวเตอร์เปิดสอน')]),
+        ]
+
+    elif report_type == 'bookings':
+        date_from = filters.get('date_from', '')
+        date_to = filters.get('date_to', '')
+        course = filters.get('course', '')
+        tutor = filters.get('tutor', '')
+        queryset = Booking.objects.select_related(
+            'member', 'tutc_id__crs_id', 'tutc_id__tut_id__tut_id', 'ts_id__sd_id',
+        ).filter(bk_status=5)
+        queryset = _apply_date_range(queryset, 'bk_date', date_from, date_to, errors, 'วันที่จอง')
+        if course:
+            queryset = queryset.filter(tutc_id__crs_id_id=course)
+        if tutor:
+            queryset = queryset.filter(
+                tutc_id__tut_id__tut_id__mb_full_name__icontains=tutor,
+            )
+        queryset = queryset.order_by('-bk_date', '-bk_id')
+        booking_value = ExpressionWrapper(
+            F('bk_rate_per_person') * F('bk_stu_count'), output_field=IntegerField(),
+        )
+        totals = queryset.aggregate(
+            total=Count('bk_id', distinct=True),
+            total_value=Sum(booking_value),
+        )
+        headers = ['วันที่จอง', 'เลขที่การจอง', 'ผู้เรียน', 'รายวิชา', 'ติวเตอร์', 'ค่าติว', 'สถานะ']
+        group_indexes = (0,)
+        def row_builder(booking):
+            booking_date = (
+                timezone.localtime(booking.bk_date).date()
+                if booking.bk_date else None
+            )
+            return [
+                _format_date(booking_date), f'BK{booking.bk_id:05d}',
+                booking.member.mb_full_name, booking.tutc_id.crs_id.crs_name,
+                booking.tutc_id.tut_id.tut_id.mb_full_name,
+                f'{booking.total_credit:,} เครดิต', booking.get_bk_status_display(),
+            ]
+        summary_items = [
+            ('การจองทั้งหมด', totals['total']),
+            ('มูลค่าการจองรวม', f'{_format_number(totals["total_value"])} เครดิต'),
+        ]
+        filter_fields = [
+            _input_filter('date_from', 'วันที่จองเริ่มต้น', date_from),
+            _input_filter('date_to', 'วันที่จองสิ้นสุด', date_to),
+            _select_filter('course', 'รายวิชา', course, [(item.pk, f'{item.pk} — {item.crs_name}') for item in courses]),
+            _input_filter(
+                'tutor',
+                'ค้นหาติวเตอร์',
+                tutor,
+                'search',
+                options=[item.tut_id.mb_full_name for item in tutors],
+            ),
+        ]
+
+    elif report_type == 'refills':
+        date_from = filters.get('date_from', '')
+        date_to = filters.get('date_to', '')
+        member = filters.get('member', '')
+        queryset = Refill.objects.filter(
+            rf_status=1,
+        ).select_related('member')
+        queryset = _apply_date_range(queryset, 'rf_date', date_from, date_to, errors, 'วันที่แจ้งเติม')
+        if member.isdigit():
+            queryset = queryset.filter(member_id=int(member))
+        elif member:
+            queryset = queryset.filter(member__mb_full_name__icontains=member)
+        queryset = queryset.order_by('-rf_date', '-rf_id')
+        totals = queryset.aggregate(
+            total=Count('rf_id', distinct=True),
+            money=Sum('rf_money'),
+            credits=Sum('rf_credit'),
+        )
+        headers = ['เลขที่รายการ', 'วันที่', 'สมาชิก', 'จำนวนเงิน', 'จำนวนเครดิต', 'สถานะ']
+        row_builder = lambda refill: [
+            f'RF{refill.rf_id:05d}', _format_datetime(refill.rf_date), refill.member.mb_full_name,
+            f'{_format_number(refill.rf_money, 2)} บาท', f'{refill.rf_credit:,} เครดิต', refill.get_rf_status_display(),
+        ]
+        summary_items = [
+            ('รายการเติมที่สำเร็จ', totals['total']),
+            ('จำนวนเงินที่สำเร็จ', f'{_format_number(totals["money"], 2)} บาท'),
+            ('เครดิตที่เติมสำเร็จ', f'{_format_number(totals["credits"])} เครดิต'),
+        ]
+        filter_fields = [
+            _input_filter('date_from', 'วันที่แจ้งเติมเริ่มต้น', date_from),
+            _input_filter('date_to', 'วันที่แจ้งเติมสิ้นสุด', date_to),
+            _input_filter(
+                'member',
+                'ค้นหาสมาชิก',
+                member,
+                'search',
+                options=[item.mb_full_name for item in members],
+            ),
+        ]
+
+    elif report_type == 'withdrawals':
+        date_from = filters.get('date_from', '')
+        date_to = filters.get('date_to', '')
+        withdrawal_type = _safe_choice(filters.get('withdrawal_type', ''), {str(value) for value, _ in Withdrawals.TYPE_CHOICES}, errors, 'ประเภทเครดิต')
+        member = filters.get('member', '')
+        queryset = Withdrawals.objects.filter(
+            wd_status=1,
+        ).select_related('member')
+        queryset = _apply_date_range(queryset, 'wd_req_date', date_from, date_to, errors, 'วันที่ขอถอน')
+        if withdrawal_type:
+            queryset = queryset.filter(wd_type=int(withdrawal_type))
+        if member.isdigit():
+            queryset = queryset.filter(member_id=int(member))
+        elif member:
+            queryset = queryset.filter(member__mb_full_name__icontains=member)
+        queryset = queryset.order_by('wd_type', '-wd_req_date', '-wd_id')
+        totals = queryset.aggregate(
+            total=Count('wd_id', distinct=True),
+            credits=Sum('wd_credit'),
+            net_cash=Sum('wd_net_cash'),
+        )
+        headers = ['ประเภทเครดิต', 'เลขที่รายการ', 'วันที่ขอถอน', 'สมาชิก', 'จำนวนเครดิต', 'ยอดสุทธิ', 'สถานะ']
+        group_indexes = (0,)
+        row_builder = lambda withdrawal: [
+            'เครดิตนำฝาก' if withdrawal.wd_type == 0 else 'เครดิตรายได้',
+            f'WD{withdrawal.wd_id:05d}',
+            _format_datetime(withdrawal.wd_req_date), withdrawal.member.mb_full_name,
+            f'{withdrawal.wd_credit:,} เครดิต', f'{_format_number(withdrawal.wd_net_cash, 2)} บาท',
+            withdrawal.get_wd_status_display(),
+        ]
+        summary_items = [
+            ('รายการถอนที่สำเร็จ', totals['total']),
+            ('เครดิตที่จ่ายสำเร็จ', f'{_format_number(totals["credits"])} เครดิต'),
+            ('ยอดสุทธิที่จ่ายจริง', f'{_format_number(totals["net_cash"], 2)} บาท'),
+        ]
+        filter_fields = [
+            _input_filter('date_from', 'วันที่ขอถอนเริ่มต้น', date_from),
+            _input_filter('date_to', 'วันที่ขอถอนสิ้นสุด', date_to),
+            _select_filter('withdrawal_type', 'ประเภทเครดิต', withdrawal_type, Withdrawals.TYPE_CHOICES),
+            _input_filter(
+                'member',
+                'ค้นหาสมาชิก',
+                member,
+                'search',
+                options=[item.mb_full_name for item in members],
+            ),
+        ]
+
+    elif report_type == 'reviews':
+        date_from = filters.get('date_from', '')
+        date_to = filters.get('date_to', '')
+        tutor = filters.get('tutor', '')
+        course = filters.get('course', '')
+        rating_min_raw = filters.get('rating_min', '')
+        rating_max_raw = filters.get('rating_max', '')
+        rating_min = _safe_decimal(rating_min_raw, errors, 'คะแนนต่ำสุด')
+        rating_max = _safe_decimal(rating_max_raw, errors, 'คะแนนสูงสุด')
+        average_expression = ExpressionWrapper(
+            (F('rv_quality') + F('rv_knowledge') + F('rv_communication') +
+             F('rv_punctuality') + F('rv_satisfaction')) / Value(5.0),
+            output_field=FloatField(),
+        )
+        queryset = Review.objects.select_related(
+            'bk_id__member', 'bk_id__tutc_id__crs_id', 'bk_id__tutc_id__tut_id__tut_id',
+        ).annotate(review_average=average_expression)
+        queryset = _apply_date_range(queryset, 'rv_date', date_from, date_to, errors, 'วันที่รีวิว')
+        if tutor.isdigit():
+            queryset = queryset.filter(bk_id__tutc_id__tut_id_id=int(tutor))
+        elif tutor:
+            errors.append('ค่าติวเตอร์ไม่ถูกต้อง ระบบจึงไม่ใช้เงื่อนไขนี้')
+        if course:
+            queryset = queryset.filter(bk_id__tutc_id__crs_id_id=course)
+        if rating_min is not None:
+            queryset = queryset.filter(review_average__gte=rating_min)
+        if rating_max is not None:
+            queryset = queryset.filter(review_average__lte=rating_max)
+        if rating_min is not None and rating_max is not None and rating_min > rating_max:
+            errors.append('คะแนนต่ำสุดต้องไม่มากกว่าคะแนนสูงสุด')
+            queryset = queryset.none()
+        queryset = queryset.order_by(
+            'bk_id__tutc_id__tut_id__tut_id__mb_full_name', '-rv_date', '-bk_id_id',
+        )
+        totals = queryset.aggregate(
+            total=Count('bk_id', distinct=True), quality=Avg('rv_quality'), knowledge=Avg('rv_knowledge'),
+            communication=Avg('rv_communication'), punctuality=Avg('rv_punctuality'),
+            satisfaction=Avg('rv_satisfaction'), overall=Avg(average_expression),
+        )
+        headers = ['วันที่รีวิว', 'ติวเตอร์', 'รายวิชา', 'ผู้เรียน', 'คะแนนเฉลี่ย', 'ความคิดเห็น']
+        group_indexes = (1,)
+        row_builder = lambda review: [
+            _format_datetime(review.rv_date), review.bk_id.tutc_id.tut_id.tut_id.mb_full_name,
+            review.bk_id.tutc_id.crs_id.crs_name, review.bk_id.member.mb_full_name,
+            _format_number(review.review_average, 2), review.rv_cmt or '—',
+        ]
+        summary_items = [
+            ('จำนวนรีวิวทั้งหมด', totals['total']), ('คะแนนเฉลี่ยรวม', _format_number(totals['overall'], 2)),
+            ('คุณภาพการสอน', _format_number(totals['quality'], 2)),
+            ('ความรู้', _format_number(totals['knowledge'], 2)),
+            ('การสื่อสาร', _format_number(totals['communication'], 2)),
+            ('ความตรงต่อเวลา', _format_number(totals['punctuality'], 2)),
+            ('ความพึงพอใจ', _format_number(totals['satisfaction'], 2)),
+        ]
+        filter_fields = [
+            _input_filter('date_from', 'วันที่รีวิวเริ่มต้น', date_from),
+            _input_filter('date_to', 'วันที่รีวิวสิ้นสุด', date_to),
+            _select_filter('tutor', 'ติวเตอร์', tutor, [(item.pk, item.tut_id.mb_full_name) for item in tutors]),
+            _select_filter('course', 'รายวิชา', course, [(item.pk, f'{item.pk} — {item.crs_name}') for item in courses]),
+            _input_filter('rating_min', 'คะแนนต่ำสุด', rating_min_raw, 'number', step='0.01', min='0', max='5'),
+            _input_filter('rating_max', 'คะแนนสูงสุด', rating_max_raw, 'number', step='0.01', min='0', max='5'),
+        ]
+
+    else:
+        date_from = filters.get('date_from', '')
+        date_to = filters.get('date_to', '')
+        role = _safe_choice(filters.get('role', ''), {'student', 'tutor'}, errors, 'บทบาทผู้รายงาน')
+        reason = _safe_choice(filters.get('reason', ''), {value for value, _ in Booking.REPORT_REASON_CHOICES}, errors, 'สาเหตุ')
+        resolution = _safe_choice(filters.get('resolution', ''), {'waiting', 'resolved'}, errors, 'สถานะดำเนินการ')
+        course = filters.get('course', '')
+        tutor = filters.get('tutor', '')
+        queryset = BookingReportStatement.objects.select_related(
+            'member', 'bk_id__member', 'bk_id__tutc_id__crs_id',
+            'bk_id__tutc_id__tut_id__tut_id',
+        )
+        queryset = _apply_date_range(queryset, 'brs_date', date_from, date_to, errors, 'วันที่รายงาน')
+        if role:
+            queryset = queryset.filter(brs_role=role)
+        if reason:
+            queryset = queryset.filter(bk_id__bk_report_reason=reason)
+        if resolution == 'waiting':
+            queryset = queryset.filter(bk_id__bk_report_resolved_date__isnull=True)
+        elif resolution == 'resolved':
+            queryset = queryset.filter(bk_id__bk_report_resolved_date__isnull=False)
+        if course:
+            queryset = queryset.filter(bk_id__tutc_id__crs_id_id=course)
+        if tutor.isdigit():
+            queryset = queryset.filter(bk_id__tutc_id__tut_id_id=int(tutor))
+        elif tutor:
+            errors.append('ค่าติวเตอร์ไม่ถูกต้อง ระบบจึงไม่ใช้เงื่อนไขนี้')
+        queryset = queryset.annotate(
+            resolution_order=Case(
+                When(bk_id__bk_report_resolved_date__isnull=True, then=Value(0)),
+                default=Value(1), output_field=IntegerField(),
+            ),
+        ).order_by('resolution_order', '-brs_date', '-brs_id')
+        totals = queryset.aggregate(
+            total=Count('brs_id', distinct=True),
+            student=Count('brs_id', filter=Q(brs_role='student'), distinct=True),
+            tutor=Count('brs_id', filter=Q(brs_role='tutor'), distinct=True),
+            bookings=Count('bk_id', distinct=True),
+            waiting=Count('brs_id', filter=Q(bk_id__bk_report_resolved_date__isnull=True), distinct=True),
+            resolved=Count('brs_id', filter=Q(bk_id__bk_report_resolved_date__isnull=False), distinct=True),
+        )
+        headers = ['รหัสรายงาน', 'วันที่รายงาน', 'เลขที่การจอง', 'ผู้รายงาน', 'บทบาท', 'สาเหตุ', 'สถานะ']
+        group_indexes = (6,)
+        row_builder = lambda statement: [
+            f'BRS{statement.brs_id:05d}', _format_datetime(statement.brs_date),
+            f'BK{statement.bk_id_id:05d}', statement.member.mb_full_name,
+            'ผู้เรียน' if statement.brs_role == 'student' else 'ติวเตอร์',
+            statement.bk_id.get_bk_report_reason_display() or '—',
+            'ยังไม่ดำเนินการ' if statement.bk_id.bk_report_resolved_date is None else 'ดำเนินการแล้ว',
+        ]
+        summary_items = [
+            ('รายงานปัญหาทั้งหมด', totals['total']), ('ผู้เรียนเป็นผู้รายงาน', totals['student']),
+            ('ติวเตอร์เป็นผู้รายงาน', totals['tutor']), ('Booking ที่มีปัญหา', totals['bookings']),
+            ('ยังไม่ดำเนินการ', totals['waiting']), ('ดำเนินการแล้ว', totals['resolved']),
+        ]
+        filter_fields = [
+            _input_filter('date_from', 'วันที่รายงานเริ่มต้น', date_from),
+            _input_filter('date_to', 'วันที่รายงานสิ้นสุด', date_to),
+            _select_filter('role', 'บทบาทผู้รายงาน', role, [('student', 'ผู้เรียน'), ('tutor', 'ติวเตอร์')]),
+            _select_filter('reason', 'สาเหตุ', reason, Booking.REPORT_REASON_CHOICES),
+            _select_filter('resolution', 'สถานะดำเนินการ', resolution, [('waiting', 'ยังไม่ดำเนินการ'), ('resolved', 'ดำเนินการแล้ว')]),
+            _select_filter('course', 'รายวิชา', course, [(item.pk, f'{item.pk} — {item.crs_name}') for item in courses]),
+            _select_filter('tutor', 'ติวเตอร์', tutor, [(item.pk, item.tut_id.mb_full_name) for item in tutors]),
+        ]
+
+    total_rows = queryset.count()
+    is_pdf = request.GET.get('print') == '1'
+    page_obj = None
+    if is_pdf:
+        page_items = queryset
+    else:
+        paginator = Paginator(queryset, 50)
+        page_obj = paginator.get_page(request.GET.get('page'))
+        page_items = page_obj.object_list
+    plain_rows = [row_builder(item) for item in page_items]
+    rows = _group_report_rows(plain_rows, group_indexes)
+
+    query_parameters = request.GET.copy()
+    query_parameters.pop('page', None)
+    query_parameters.pop('print', None)
+    base_query = query_parameters.urlencode()
     report_context = {
-        'report_type': report_type, 'report_title': report_titles[report_type],
-        'headers': headers, 'rows': rows, 'total_rows': total_rows,
-        'start_date': start_date, 'end_date': end_date, 'status': status, 'order': order, 'course_group': course_group,
-        'summary_items': summary_items, 'generated_at': timezone.now(),
+        'report_type': report_type,
+        'report_title': REPORT_TITLES[report_type],
+        'headers': headers,
+        'rows': rows,
+        'total_rows': total_rows,
+        'summary_items': summary_items,
+        'generated_at': timezone.now(),
         'reporter_name': request.user.get_full_name() or request.user.username,
-        'report_selected': True, 'filter_config': filter_config,
+        'report_selected': True,
+        'filter_fields': filter_fields,
+        'filter_summary': _selected_filter_summary(filter_fields),
+        'filter_errors': errors,
+        'page_obj': page_obj,
+        'row_start': page_obj.start_index() if page_obj and total_rows else 1,
+        'base_query': base_query,
+        'export_url': f'?{base_query}&print=1' if base_query else '?print=1',
+        'page_orientation': 'landscape' if len(headers) + 1 > 6 else 'portrait',
     }
-    if request.GET.get('print') == '1':
-        return render(request, 'admin_panel/report_pdf.html', report_context)
+    if is_pdf:
+        logo_path = finders.find('images/report-logo.png')
+        report_context['logo_uri'] = Path(logo_path).resolve().as_uri() if logo_path else ''
+        html_string = render_to_string('admin_panel/report_pdf.html', report_context, request=request)
+        from weasyprint import HTML
+
+        pdf = HTML(string=html_string).write_pdf()
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{REPORT_FILE_NAMES[report_type]}"'
+        return response
 
     return render(request, 'admin_panel/report_center.html', {
-        'active_menu': 'dashboard', 'topbar_breadcrumb': 'ออกรายงาน',
-        **report_context, 'rows': rows[:200],
+        'active_menu': 'dashboard',
+        'topbar_breadcrumb': 'ออกรายงาน',
+        **report_context,
     })
 
 
@@ -464,7 +1076,7 @@ def tutor_mgmt_detail(request, pk):
     tutor = get_object_or_404(
         Tutor.objects.select_related(
             'tut_id', 'tut_id__mj_id', 'tut_id__mj_id__fac_id', 'tut_id__user'
-        ),
+        ).prefetch_related('experience_images'),
         pk=pk
     )
 
@@ -513,6 +1125,7 @@ def tutor_mgmt_detail(request, pk):
         'member'            : member,
         'tutor_id'          : tutor_id,
         'skills'            : skills,
+        'experience_images' : tutor.experience_images.all(),
         'report_history'    : report_history,
         'faculty_name'      : member.mj_id.fac_id.fac_name if member.mj_id else '—',
         'major_name'        : member.mj_id.mj_name          if member.mj_id else '—',
@@ -625,12 +1238,36 @@ def refill_mgmt(request):
 @login_required
 @user_passes_test(is_admin)
 def member_mgmt(request):
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "update_status":
+            member = get_object_or_404(
+                member_user_queryset(),
+                pk=request.POST.get("member_id"),
+            )
+            status_value = request.POST.get("member_status", "")
+            valid_statuses = {str(value) for value, _ in Member.STATUS_CHOICES}
+            if status_value not in valid_statuses:
+                messages.error(request, "สถานะสมาชิกไม่ถูกต้อง")
+            elif member.mb_status == int(status_value):
+                messages.info(request, "สมาชิกอยู่ในสถานะที่เลือกอยู่แล้ว")
+            else:
+                member.mb_status = int(status_value)
+                member.save(update_fields=["mb_status"])
+                messages.success(
+                    request,
+                    f"เปลี่ยนสถานะสมาชิก {member.mb_full_name} เป็น {member.get_mb_status_display()} เรียบร้อยแล้ว",
+                )
+            return redirect("admin_panel:member_mgmt")
+
     q             = request.GET.get("q", "").strip()
     fac_filter    = request.GET.get("fac", "")
     mj_filter     = request.GET.get("mj", "")
     status_filter = request.GET.get("status", "")
 
-    qs = member_user_queryset().select_related("user", "mj_id", "mj_id__fac_id").order_by("-user__date_joined")
+    qs = member_user_queryset().select_related(
+        "user", "mj_id", "mj_id__fac_id", "tutor",
+    ).order_by("-user__date_joined")
 
     if q:
         qs = qs.filter(
@@ -686,39 +1323,68 @@ def payment_mgmt(request):
         wd_id  = request.POST.get('wd_id')
         action = request.POST.get('action')
         note   = request.POST.get('note', '').strip()
-        wd = get_object_or_404(Withdrawals.objects.select_related('member'), pk=wd_id)
+        wd = get_object_or_404(Withdrawals, pk=wd_id)
 
         if action == 'pay' and wd.wd_status == 0:
-            wd.wd_status    = 1
-            wd.wd_paid_date = timezone.now()
-            wd.wd_cmt       = note or None
-            wd.save()
-            
-            # หักเครดิตออกจากระบบถาวร (หักจาก locked และยอดหลัก)
-            member = wd.member
-            member.mb_locked_crd = max(0, member.mb_locked_crd - wd.wd_credit)
-            if wd.wd_type == 1:
-                member.mb_income_crd = max(0, member.mb_income_crd - wd.wd_credit)
-            else:
-                member.mb_deposit_crd = max(0, member.mb_deposit_crd - wd.wd_credit)
-            member.save(update_fields=['mb_locked_crd', 'mb_income_crd', 'mb_deposit_crd'])
+            with transaction.atomic():
+                wd = Withdrawals.objects.select_for_update().get(pk=wd.pk)
+                if wd.wd_status != 0:
+                    messages.info(request, f'รายการ WD{wd.wd_id:05d} ดำเนินการไปแล้ว')
+                else:
+                    member = Member.objects.select_for_update().get(pk=wd.member_id)
+                    source_balance = (
+                        member.mb_income_crd
+                        if wd.wd_type == 1
+                        else member.mb_deposit_crd
+                    )
+                    if source_balance < wd.wd_credit:
+                        messages.error(
+                            request,
+                            f'ไม่สามารถจ่าย WD{wd.wd_id:05d} ได้ เนื่องจากเครดิตต้นทางไม่เพียงพอ',
+                        )
+                    else:
+                        wd.wd_status    = 1
+                        wd.wd_paid_date = timezone.now()
+                        wd.wd_cmt       = note or None
+                        member.mb_locked_crd -= wd.wd_credit
+                        if wd.wd_type == 1:
+                            member.mb_income_crd -= wd.wd_credit
+                        else:
+                            member.mb_deposit_crd -= wd.wd_credit
+                        member.save(update_fields=[
+                            'mb_locked_crd', 'mb_income_crd', 'mb_deposit_crd',
+                        ])
+                        wd.save(update_fields=[
+                            'wd_status', 'wd_paid_date', 'wd_cmt',
+                        ])
 
-            # สะสมค่าธรรมเนียมเมื่อทำรายการสำเร็จ
-            if system:
-                system.total_accumulated_fee += wd.wd_fee
-                system.save(update_fields=['total_accumulated_fee'])
-                
-            messages.success(request, f'บันทึกการจ่าย WD{wd.wd_id:05d} เรียบร้อยแล้ว (เครดิตถูกหักออกจากบัญชีแล้ว)')
+                        locked_system = System.objects.select_for_update().first()
+                        if locked_system:
+                            locked_system.total_accumulated_fee += wd.wd_fee
+                            locked_system.save(update_fields=['total_accumulated_fee'])
+
+                        messages.success(
+                            request,
+                            f'บันทึกการจ่าย WD{wd.wd_id:05d} เรียบร้อยแล้ว (เครดิตถูกหักออกจากบัญชีแล้ว)',
+                        )
 
         elif action == 'reject' and wd.wd_status == 0:
-            wd.wd_status = 2
-            wd.wd_cmt    = note or None
-            wd.save()
-            # คืนเครดิตที่ล็อกไว้ให้ member เมื่อปฏิเสธ (ลดเฉพาะ locked_crd)
-            member = wd.member
-            member.mb_locked_crd = max(0, member.mb_locked_crd - wd.wd_credit)
-            member.save(update_fields=['mb_locked_crd'])
-            messages.error(request, f'ปฏิเสธการถอน WD{wd.wd_id:05d} — เครดิตที่ล็อกไว้ถูกปลดล็อกคืนให้สมาชิกแล้ว')
+            with transaction.atomic():
+                wd = Withdrawals.objects.select_for_update().get(pk=wd.pk)
+                if wd.wd_status == 0:
+                    member = Member.objects.select_for_update().get(pk=wd.member_id)
+                    wd.wd_status = 2
+                    wd.wd_cmt    = note or None
+                    wd.save(update_fields=['wd_status', 'wd_cmt'])
+                    member.mb_locked_crd = max(
+                        0,
+                        member.mb_locked_crd - wd.wd_credit,
+                    )
+                    member.save(update_fields=['mb_locked_crd'])
+                    messages.error(
+                        request,
+                        f'ปฏิเสธการถอน WD{wd.wd_id:05d} — เครดิตที่ล็อกไว้ถูกปลดล็อกคืนให้สมาชิกแล้ว',
+                    )
 
         return redirect('admin_panel:payment_mgmt')
 
