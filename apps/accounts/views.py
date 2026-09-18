@@ -3,9 +3,12 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.utils.http import url_has_allowed_host_and_scheme
 from .forms import MemberRegisterForm
 from apps.courses.models import Major
 from apps.admin_panel.utils import get_system_email_suffix
+from config.validators import validate_uploaded_image
 import os
 
 
@@ -71,27 +74,33 @@ def login_view(request):
         # Django default auth ใช้ username; เราเก็บ email ใน User.email ด้วย
         # ดังนั้นลอง lookup user จาก email ก่อน แล้วค่อย authenticate
         from django.contrib.auth.models import User as AuthUser
-        try:
-            user_obj = AuthUser.objects.get(email=email)
-            username = user_obj.username
-        except AuthUser.DoesNotExist:
-            username = email   # fallback: ใส่ตรงๆ
+        matched_users = list(AuthUser.objects.filter(email__iexact=email)[:2])
+        if len(matched_users) == 1:
+            username = matched_users[0].username
+            user = authenticate(request, username=username, password=password)
+        elif len(matched_users) > 1:
+            # ปฏิเสธแบบข้อความกลางเมื่อข้อมูลเดิมมีอีเมลซ้ำ เพื่อไม่เลือกบัญชีผิดคน
+            user = None
+        else:
+            user = authenticate(request, username=email, password=password)
 
-        user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
             if request.POST.get('remember_me'):
-                request.session.set_expiry(60 * 60 * 24 * 7)  # 30 วัน
+                request.session.set_expiry(60 * 60 * 24 * 7)  # 7 วัน
             else:
                 request.session.set_expiry(0)  # หมดอายุเมื่อปิด browser
             messages.success(request, f'ยินดีต้อนรับกลับ, {user.first_name or user.username}!')
             if user.is_staff:
                 return redirect('admin_panel:dashboard')
-            return redirect(next_url or 'home')
+            next_is_safe = url_has_allowed_host_and_scheme(
+                url=next_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            )
+            return redirect(next_url if next_is_safe else 'home')
         else:
             login_error = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง'
-
-    from django import forms as dj_forms
 
     class _LoginForm:
         """ตัวช่วยส่ง error context ไปที่ template"""
@@ -261,15 +270,20 @@ def profile_view(request):
         action = request.POST.get('action')
 
         if action == 'photo':
-                    # อัปเดตเฉพาะรูปโปรไฟล์ — ไม่แตะรหัสผ่านหรือข้อมูลอื่น
-                    if 'mb_img' in request.FILES:
-                        img = request.FILES['mb_img']
-                        ext = os.path.splitext(img.name)[1].lower() or '.jpg'
-                        img.name = f'member_img_id={member.pk}{ext}'
-                        member.mb_img = img
-                        member.save(update_fields=['mb_img'])
-                        messages.success(request, 'เปลี่ยนรูปโปรไฟล์เรียบร้อยแล้ว')
+            # อัปเดตเฉพาะรูปโปรไฟล์ — ไม่แตะรหัสผ่านหรือข้อมูลอื่น
+            if 'mb_img' in request.FILES:
+                img = request.FILES['mb_img']
+                try:
+                    validate_uploaded_image(img)
+                except ValidationError as error:
+                    messages.error(request, ' '.join(error.messages))
                     return redirect('accounts:profile')
+                ext = os.path.splitext(img.name)[1].lower()
+                img.name = f'member_img_id={member.pk}{ext}'
+                member.mb_img = img
+                member.save(update_fields=['mb_img'])
+                messages.success(request, 'เปลี่ยนรูปโปรไฟล์เรียบร้อยแล้ว')
+            return redirect('accounts:profile')
 
         elif action == 'password':
             # เปลี่ยนเฉพาะรหัสผ่าน — ไม่แตะรูปหรือข้อมูลอื่น

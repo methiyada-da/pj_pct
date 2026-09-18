@@ -1,13 +1,50 @@
-# Virtual environment
+# Secrets
+.env
+.env.*
+!.env.example
+
+# User uploads
+media/
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
 venv/
 .venv/
 
-# Python cache
-__pycache__/
-*.pyc
+# Database / Backup
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.dump
+*.bak
 
-# VS Code settings
+# Tests / Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE / OS
 .vscode/
+.idea/
+.vs/
+.DS_Store
+Thumbs.db
 
-# Django static build (optional)
+# Temporary / Build
+tmp/
+*.tmp
+build/
+dist/
 staticfiles/
+codex_context.md 

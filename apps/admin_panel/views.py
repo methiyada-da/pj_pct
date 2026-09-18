@@ -2,6 +2,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
+from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.core.paginator import Paginator
 from django.db.models import (
@@ -9,15 +10,20 @@ from django.db.models import (
     Q, Sum, Value, When,
 )
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.template.loader import render_to_string
 from django.urls import reverse
 
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 from django.utils.dateparse import parse_date
 
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+import os
+import shutil
+import subprocess
+import tempfile
 
 from .models import System
 from .forms  import SystemForm, AdminUserForm
@@ -40,6 +46,70 @@ def is_admin(user):
 
 def member_user_queryset():
     return Member.objects.filter(user__is_staff=False, user__is_superuser=False)
+
+
+def _find_chromium_browser():
+    """ค้นหาเบราว์เซอร์ Chromium ที่ใช้สร้าง PDF บน Windows"""
+    executable = shutil.which('msedge') or shutil.which('chrome')
+    if executable:
+        return executable
+
+    candidates = (
+        Path(os.environ.get('PROGRAMFILES(X86)', r'C:\Program Files (x86)'))
+        / 'Microsoft/Edge/Application/msedge.exe',
+        Path(os.environ.get('PROGRAMFILES', r'C:\Program Files'))
+        / 'Microsoft/Edge/Application/msedge.exe',
+        Path(os.environ.get('PROGRAMFILES', r'C:\Program Files'))
+        / 'Google/Chrome/Application/chrome.exe',
+        Path(os.environ.get('PROGRAMFILES(X86)', r'C:\Program Files (x86)'))
+        / 'Google/Chrome/Application/chrome.exe',
+    )
+    return next((str(path) for path in candidates if path.is_file()), None)
+
+
+def _html_to_pdf(html_string):
+    """สร้าง PDF โดยใช้ Chromium บน Windows และใช้ WeasyPrint บนระบบอื่น"""
+    if os.name != 'nt':
+        from weasyprint import HTML
+
+        return HTML(string=html_string).write_pdf()
+
+    browser = _find_chromium_browser()
+    if not browser:
+        raise RuntimeError(
+            'ไม่พบ Microsoft Edge หรือ Google Chrome สำหรับสร้างไฟล์ PDF'
+        )
+
+    # แยก user data ชั่วคราวเพื่อไม่ชนกับเบราว์เซอร์ที่ผู้ดูแลระบบเปิดอยู่
+    with tempfile.TemporaryDirectory(prefix='pct-report-') as temp_dir:
+        temp_path = Path(temp_dir)
+        html_path = temp_path / 'report.html'
+        pdf_path = temp_path / 'report.pdf'
+        profile_path = temp_path / 'browser-profile'
+        html_path.write_text(html_string, encoding='utf-8')
+
+        command = [
+            browser,
+            '--headless=new',
+            '--disable-gpu',
+            '--no-pdf-header-footer',
+            f'--user-data-dir={profile_path}',
+            f'--print-to-pdf={pdf_path}',
+            html_path.resolve().as_uri(),
+        ]
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            timeout=60,
+            check=False,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+        )
+        if completed.returncode != 0 or not pdf_path.is_file():
+            error_message = completed.stderr.decode('utf-8', errors='replace').strip()
+            raise RuntimeError(
+                f'ไม่สามารถสร้างไฟล์ PDF ได้: {error_message or "เบราว์เซอร์ไม่สร้างไฟล์ผลลัพธ์"}'
+            )
+        return pdf_path.read_bytes()
 
 
 # ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -945,9 +1015,7 @@ def report_center(request):
         logo_path = finders.find('images/report-logo.png')
         report_context['logo_uri'] = Path(logo_path).resolve().as_uri() if logo_path else ''
         html_string = render_to_string('admin_panel/report_pdf.html', report_context, request=request)
-        from weasyprint import HTML
-
-        pdf = HTML(string=html_string).write_pdf()
+        pdf = _html_to_pdf(html_string)
         response = HttpResponse(pdf, content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="{REPORT_FILE_NAMES[report_type]}"'
         return response
@@ -1594,6 +1662,11 @@ def admin_setup(request):
     if system and system.admin is not None:
         return redirect('home')
 
+    setup_token = request.POST.get('setup_token', '') or request.GET.get('token', '')
+    expected_token = settings.ADMIN_SETUP_TOKEN
+    if not expected_token or not setup_token or not constant_time_compare(setup_token, expected_token):
+        return HttpResponseForbidden('ไม่อนุญาตให้ตั้งค่าผู้ดูแลระบบ กรุณาตรวจสอบ setup token')
+
     form = AdminUserForm(request.POST or None)
 
     if request.method == 'POST':
@@ -1625,4 +1698,7 @@ def admin_setup(request):
             messages.success(request, f'สร้างบัญชีผู้ดูแลระบบ "{user.username}" เรียบร้อยแล้ว')
             return redirect('admin_panel:system_settings')
 
-    return render(request, 'admin_panel/admin_setup.html', {'form': form})
+    return render(request, 'admin_panel/admin_setup.html', {
+        'form': form,
+        'setup_token': setup_token,
+    })

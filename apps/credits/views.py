@@ -2,6 +2,7 @@
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse
@@ -17,6 +18,7 @@ from .models import Refill, Withdrawals
 from apps.accounts.models import Member
 from apps.admin_panel.models import System
 from apps.bookings.models import Booking, JobCompletion
+from config.validators import validate_uploaded_image
 
 # --- สำหรับอ่าน QR Code ---
 import cv2
@@ -27,6 +29,7 @@ from PIL import Image
 def _read_qr_from_slip(slip):
     """อ่าน QR จากไฟล์สลิปและคืนค่า payload พร้อมข้อความผิดพลาด"""
     try:
+        validate_uploaded_image(slip)
         image = Image.open(slip)
         if image.format not in ('PNG', 'JPEG'):
             return None, 'รองรับสลิปเฉพาะไฟล์ PNG หรือ JPG เท่านั้น'
@@ -45,6 +48,8 @@ def _read_qr_from_slip(slip):
         if not payload:
             return None, 'ไม่พบ QR Code กรุณาใช้รูปสลิปต้นฉบับจากแอปธนาคารที่เห็น QR Code ชัดเจน'
         return payload, None
+    except ValidationError as error:
+        return None, ' '.join(error.messages)
     except Exception:
         return None, 'เกิดข้อผิดพลาดในการตรวจสอบไฟล์รูปภาพ กรุณาลองใหม่อีกครั้ง'
     finally:

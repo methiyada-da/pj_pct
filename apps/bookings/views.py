@@ -8,12 +8,14 @@ from django.http import Http404
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import transaction
 
 from apps import bookings
 from apps.accounts.models import Member
 from apps.tutoring.models import TimeSlot
+from config.validators import validate_uploaded_image
 
 from .models import Booking, BookingReportStatement, TutoringActivity, JobCompletion, Review
 from .forms import TutoringActivityForm, ReviewForm
@@ -749,6 +751,18 @@ def tutoring_activity(request, bk_id):
         action = request.POST.get('action', 'save')
         desc   = request.POST.get('ta_desc', '').strip()
 
+        try:
+            for upload in request.FILES.values():
+                validate_uploaded_image(upload)
+        except ValidationError as error:
+            messages.error(request, ' '.join(error.messages))
+            form = TutoringActivityForm(instance=activity)
+            return render(request, 'bookings/tutoring_activity.html', {
+                'bk': bk,
+                'form': form,
+                'activity': activity,
+            })
+
         # บันทึกรูปที่อัปโหลดใหม่ลง DB ก่อนเสมอ
         with transaction.atomic():
             if activity is None:
@@ -870,6 +884,11 @@ def tutoring_activity_group(request, ts_id):
         ]
 
         errors = []
+        try:
+            for upload in uploads:
+                validate_uploaded_image(upload)
+        except ValidationError as error:
+            errors.extend(error.messages)
         if invalid:
             errors.append('กรุณาระบุการเข้าเรียนของผู้เรียนให้ครบทุกรายการ')
         if attended and not desc:

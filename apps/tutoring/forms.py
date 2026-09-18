@@ -1,5 +1,6 @@
 # tutoring/forms.py - forms สำหรับติวเตอร์
 from django import forms
+from config.validators import validate_uploaded_image
 from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 
 
@@ -19,8 +20,7 @@ class ExperienceImagesField(forms.ImageField):
             raise forms.ValidationError('อัปโหลดรูปประสบการณ์ได้ไม่เกิน 5 รูปต่อครั้ง')
         cleaned_images = []
         for image in images:
-            if image.size > 5 * 1024 * 1024:
-                raise forms.ValidationError('รูปประสบการณ์แต่ละรูปต้องมีขนาดไม่เกิน 5 MB')
+            validate_uploaded_image(image)
             cleaned_images.append(super().clean(image))
         return cleaned_images
 
@@ -30,6 +30,7 @@ class TutorRegisterForm(forms.Form):
     student_card = forms.ImageField(
         label='รูปบัตรนักศึกษา',
         required=False,
+        validators=[validate_uploaded_image],
         widget=forms.ClearableFileInput(attrs={'accept': 'image/*'}),
     )
     gpa = forms.DecimalField(
@@ -89,6 +90,11 @@ class TutorCourseForm(forms.ModelForm):
             'tutc_status' : 'สถานะการเปิดสอน',
             'crs_id'      : 'รายวิชา',
         }
+
+    def clean_tutc_img(self):
+        image = self.cleaned_data.get('tutc_img')
+        validate_uploaded_image(image)
+        return image
 
 
 class TutorRateForm(forms.ModelForm):

@@ -21,6 +21,7 @@ from apps.bookings.services import (
     has_active_course_bookings,
     process_time_based_bookings,
 )
+from config.validators import validate_uploaded_image
 from .forms import ExperienceImagesField, TutorRegisterForm
 from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 import re
@@ -576,7 +577,13 @@ def tutor_profile_edit(request):
 
         # อัปเดตรูปโปรไฟล์
         if 'mb_img' in request.FILES:
-            member.mb_img = request.FILES['mb_img']
+            profile_image = request.FILES['mb_img']
+            try:
+                validate_uploaded_image(profile_image)
+            except ValidationError as error:
+                messages.error(request, ' '.join(error.messages))
+                return redirect('tutoring:tutor_profile_edit')
+            member.mb_img = profile_image
             member.save(update_fields=['mb_img'])
 
         # อัปเดตข้อมูลติวเตอร์
@@ -968,6 +975,12 @@ def manage_course(request, tutc_id=None):
 
         # ── รวม error ──
         errors = []
+        course_image = request.FILES.get('tutc_img')
+        if course_image:
+            try:
+                validate_uploaded_image(course_image)
+            except ValidationError as error:
+                errors.extend(error.messages)
         if not tutc_name:
             errors.append('กรุณากรอกชื่อรายวิชา')
         if not tutc_meeting_detail:

@@ -1,5 +1,6 @@
 # messaging/forms.py - forms สำหรับส่งข้อความ
 from django import forms
+from config.validators import validate_uploaded_image
 from .models import Message
 
 
@@ -34,8 +35,5 @@ class MessageForm(forms.ModelForm):
 
     def clean_msg_img(self):
         img = self.cleaned_data.get('msg_img')
-        if img:
-            # จำกัดขนาด 5 MB
-            if img.size > 5 * 1024 * 1024:
-                raise forms.ValidationError('ขนาดรูปภาพต้องไม่เกิน 5 MB')
+        validate_uploaded_image(img)
         return img

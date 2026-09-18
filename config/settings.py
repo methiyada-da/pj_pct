@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+import secrets
+
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,20 +23,49 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _env_bool(name, default=False):
+    """อ่านค่า boolean จาก environment โดยรองรับค่าที่ใช้ทั่วไป"""
+    value = os.environ.get(name)
+    if value is None or value == '':
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _env_int(name, default=0):
+    """อ่านค่าจำนวนเต็มจาก environment และแจ้งชื่อค่าที่ตั้งผิด"""
+    value = os.environ.get(name)
+    if value is None or value == '':
+        return default
+    try:
+        return int(value)
+    except ValueError as error:
+        raise ImproperlyConfigured(f'{name} ต้องเป็นจำนวนเต็ม') from error
+
+
+def _env_list(name, default=''):
+    """อ่านรายการที่คั่นด้วย comma จาก environment"""
+    value = os.environ.get(name, default)
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '***REMOVED***'
+# โหมดพัฒนาจะใช้ค่าเริ่มต้นที่ปลอดภัยต่อเครื่อง local เท่านั้น
+DEBUG = _env_bool('DEBUG', True)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '').strip()
+if not SECRET_KEY:
+    if DEBUG:
+        # ใช้ชั่วคราวเพื่อให้คำสั่งพัฒนาเริ่มทำงานได้ แต่ session จะเปลี่ยนเมื่อ restart
+        SECRET_KEY = secrets.token_urlsafe(50)
+    else:
+        raise ImproperlyConfigured('ต้องกำหนด DJANGO_SECRET_KEY เมื่อ DEBUG=False')
 
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
-    "172.24.162.145",
-]
+ALLOWED_HOSTS = _env_list(
+    'ALLOWED_HOSTS',
+    '127.0.0.1,localhost' if DEBUG else '',
+)
 
 
 # Application definition
@@ -102,11 +134,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'pct_test',
-        'USER': '***REMOVED***',
-        'PASSWORD': '***REMOVED***',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': os.environ.get('DB_NAME', ''),
+        'USER': os.environ.get('DB_USER', ''),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
     }
 }
 
@@ -173,6 +205,12 @@ EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL  = os.environ.get('EMAIL_HOST_USER', 'noreply@rmuti.ac.th')
 
+# Secret สำหรับเปิดหน้าสร้างผู้ดูแลระบบครั้งแรก ใช้เพียงก่อนมี admin ในระบบ
+ADMIN_SETUP_TOKEN = os.environ.get('ADMIN_SETUP_TOKEN', '')
+
+# API key ที่ระบบภายนอกอาจใช้ในอนาคต ห้ามกำหนดค่าไว้ใน source code
+EASYSLIP_API_KEY = os.environ.get('EASYSLIP_API_KEY', '')
+
 # ── Message Storage ─────────────────────────────────────────
 from django.contrib.messages import constants as messages_constants
 MESSAGE_TAGS = {
@@ -183,9 +221,14 @@ MESSAGE_TAGS = {
     messages_constants.ERROR:   'danger',
 }
  
-# ── Dev Mode: ข้ามการยืนยันอีเมล ────────────────────────────
-# ตั้งเป็น False เมื่อ deploy จริง
-SKIP_EMAIL_VERIFICATION = True
+# ── Development / Production Security ───────────────────────
+SKIP_EMAIL_VERIFICATION = _env_bool('SKIP_EMAIL_VERIFICATION', DEBUG)
+SESSION_COOKIE_SECURE = _env_bool('SESSION_COOKIE_SECURE', not DEBUG)
+CSRF_COOKIE_SECURE = _env_bool('CSRF_COOKIE_SECURE', not DEBUG)
+SECURE_SSL_REDIRECT = _env_bool('SECURE_SSL_REDIRECT', not DEBUG)
+SECURE_HSTS_SECONDS = _env_int('SECURE_HSTS_SECONDS', 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
+SECURE_HSTS_PRELOAD = _env_bool('SECURE_HSTS_PRELOAD', False)
 
 # กำหนดเวลาของกระบวนการจองเรียน (หน่วย: ชั่วโมงก่อน/หลังเวลาเรียน)
 BOOKING_CLOSE_HOURS = 2

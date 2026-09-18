@@ -137,6 +137,7 @@
 
       <form method="post" novalidate>
         {% csrf_token %}
+        <input type="hidden" name="setup_token" value="{{ setup_token }}">
 
         <!-- username -->
         <div class="mb-3">
