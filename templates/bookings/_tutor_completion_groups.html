@@ -25,18 +25,18 @@
     <div class="row g-2 g-md-3 mt-2 pt-3 border-top">
       <div class="col-12 col-sm-6">
         <div class="h-100 rounded-3 px-3 py-3" style="background:#F8FAFC;">
-          <div class="small text-muted mb-1">วันที่เรียน</div>
+          <div class="small text-muted mb-1">ผู้เรียน</div>
           <div class="fw-bold text-dark" style="font-size:1.125rem;line-height:1.35;">
-            <i class="fas fa-calendar-day text-primary me-2"></i>{{ group.lesson_datetime|date:"d M Y" }}
+            <i class="fas fa-user text-primary me-2"></i>{% for bk in group.completion_items %}{{ bk.member.mb_full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
           </div>
         </div>
       </div>
       <div class="col-12 col-sm-6">
         <div class="h-100 rounded-3 px-3 py-3" style="background:#F8FAFC;">
-          <div class="small text-muted mb-1">เวลาเรียน</div>
-          <div class="fw-bold text-primary" style="font-size:1.125rem;line-height:1.35;">
-            <i class="fas fa-clock me-2"></i>
-            {% if group.slot %}{{ group.slot.ts_start_time|time:"H:i" }}–{{ group.slot.ts_end_time|time:"H:i" }} น.{% else %}{{ group.lesson_datetime|date:"H:i" }} น.{% endif %}
+          <div class="small text-muted mb-1">วันและเวลาเรียน</div>
+          <div class="fw-bold" style="font-size:1rem;line-height:1.55;">
+            <div class="d-flex flex-wrap gap-1"><span class="text-muted fw-normal">วันที่:</span><span class="text-dark">{{ group.lesson_datetime|date:"d M Y" }}</span></div>
+            <div class="d-flex flex-wrap gap-1"><span class="text-muted fw-normal">เวลา:</span><span class="text-primary">{% if group.slot %}{{ group.slot.ts_start_time|time:"H:i" }}–{{ group.slot.ts_end_time|time:"H:i" }} น.{% else %}{{ group.lesson_datetime|date:"H:i" }} น.{% endif %}</span></div>
           </div>
         </div>
       </div>
@@ -84,8 +84,8 @@
                 </div>
               </div>
               <div class="d-flex gap-2 flex-wrap">
-                {% if bk.tutor_can_escalate_after_start %}
-                <button type="button" class="btn btn-warning btn-sm" onclick="runAcceptedGroupAction('completionGroupModal{{ forloop.parentloop.counter }}', () => openEscalateCancelDispute({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}'))">รายงานปัญหา</button>
+                {% if bk.tutor_can_report_after_end %}
+                <button type="button" class="btn btn-warning btn-sm" onclick="runAcceptedGroupAction('completionGroupModal{{ forloop.parentloop.counter }}', () => openEscalateCancelDispute({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}'))">รายงานปัญหาอื่น</button>
                 {% endif %}
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="runAcceptedGroupAction('completionGroupModal{{ forloop.parentloop.counter }}', () => openDetail({{ bk.bk_id }}))">รายละเอียดการจอง</button>
               </div>
