@@ -309,8 +309,8 @@
 .pending-note { background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 9px; padding: .6rem .75rem; font-size: .78rem; color: #92400E; margin-top: .75rem; line-height: 1.6; }
 .pending-note i { color: #F59E0B; }
 
-.login-prompt { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: .85rem 1rem; text-align: center; font-size: .85rem; color: #2563EB; margin-top: .5rem; }
-.login-prompt a { font-weight: 700; color: #1D4ED8; }
+.login-book-link { display: block; text-align: center; text-decoration: none; }
+.login-book-link:hover { color: #fff; }
 
 /* credit card */
 .credit-card { background: #fff; border: 1px solid #BBF7D0; border-radius: 16px; overflow: hidden; margin-top: .75rem; box-shadow: 0 1px 4px rgba(0,0,0,.05); }

@@ -4,7 +4,7 @@
 {% block title %}{{ tc.tutc_name }} — Puean Chuay Tu{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/detail.css' %}">
+<link rel="stylesheet" href="{% static 'css/detail.css' %}?v=20260918-2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 {% endblock %}
@@ -294,10 +294,10 @@
 
 
           {% else %}
-          <div class="login-prompt">
-            <i class="fas fa-lock me-1"></i>
-            <a href="{% url 'accounts:login' %}?next={{ request.path }}">เข้าสู่ระบบ</a> เพื่อจองเรียน
-          </div>
+          <a class="btn-book login-book-link"
+             href="{% url 'accounts:login' %}?next={{ request.path }}">
+            <i class="fas fa-lock me-1"></i>เข้าสู่ระบบเพื่อจองเรียน
+          </a>
           {% endif %}
 
           <div class="pending-note">
