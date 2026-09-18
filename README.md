@@ -22,8 +22,8 @@
 
 ## User Roles
 
-- **ผู้เรียน:** ค้นหาและจองคอร์ส สนทนา เติมเครดิต ยืนยันการเรียน และรีวิว
-- **ติวเตอร์:** สมัครรับสิทธิ์ จัดการคอร์สและตาราง ตอบรับการจอง และส่งหลักฐานการสอน
+- **ผู้เรียน:** ค้นหาและจองคอร์ส สนทนา เติม/ถอนเครดิต ยืนยันการเรียน และรีวิว
+- **ติวเตอร์:** สมัครรับสิทธิ์ จัดการคอร์สและตาราง ตอบรับการจอง ส่งหลักฐานการสอน และเติม/ถอนเครดิต
 - **ผู้ดูแลระบบ:** อนุมัติติวเตอร์ ดูแลสมาชิก ธุรกรรม รายงาน และการตั้งค่าระบบ
 
 ## Tech Stack
@@ -52,21 +52,31 @@ static/             # CSS, JavaScript และ public assets
 
 ## Screenshots
 
-> ควรใช้เฉพาะภาพหน้าจอที่สร้างจากข้อมูลจำลองและตรวจแล้วว่าไม่มีข้อมูลส่วนบุคคล
+### Home
+![Home](static/images/demo/home.png)
 
-- Home — `[เพิ่มภาพภายหลัง]`
-- Tutor Search — `[เพิ่มภาพภายหลัง]`
-- Booking — `[เพิ่มภาพภายหลัง]`
-- Chat / Messaging — `[เพิ่มภาพภายหลัง]`
-- Credit / Payment Flow — `[เพิ่มภาพภายหลัง]`
-- Admin Dashboard — `[เพิ่มภาพภายหลัง]`
+### Tutor Search
+![Tutor Search](static/images/demo/tutor-search.png)
 
-แนะนำให้เก็บภาพสำหรับสาธิตไว้ใน `static/images/demo/` และห้ามนำไฟล์อัปโหลดจริงจาก `media/` มาใช้
+### Course  
+![Course Detail](static/images/demo/course-detail.png)
+
+### Booking
+![Booking](static/images/demo/booking.png)
+
+### Credit Wallet
+![Credit Wallet](static/images/demo/credit-wallet.png)
+
+### Messaging
+![Messaging](static/images/demo/chat.png)
+
+### Admin Dashboard
+![Admin Dashboard](static/images/demo/admin-dashboard.png)
 
 ## Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/methiyada-da/pj_pct.git
 cd pj_pct
 python -m venv venv
 ```
@@ -129,13 +139,19 @@ python manage.py test
 
 คำสั่งนี้จะสร้าง test database ตามการตั้งค่า Django จึงควรใช้บัญชีฐานข้อมูลสำหรับการทดสอบโดยเฉพาะ
 
-## My Responsibilities
+## My Responsibilities — Methiyada
 
-- `[ระบุส่วนที่ฉันรับผิดชอบ]`
+- พัฒนาระบบค้นหาติวเตอร์ รายละเอียดคอร์ส การจัดการคอร์ส และตารางเวลาเรียนด้วย Django Forms, Views และ Templates
+- พัฒนา booking lifecycle ตั้งแต่การจอง การรับหรือปฏิเสธคำขอ การบันทึกหลักฐานการสอน การยืนยันงาน การรีวิว การยกเลิก และการจัดการข้อพิพาท
+- พัฒนาระบบแชทและการแจ้งเตือนสำหรับเหตุการณ์สำคัญของการจอง ติวเตอร์ การเติมเครดิต และการถอนเครดิต
+- พัฒนาระบบรีวิวและการจัดอันดับคอร์ส รวมถึง Bayesian weighted rating
+- เขียนและดูแล automated tests สำหรับ booking และ tutoring workflows พร้อมปรับ configuration และ security สำหรับเผยแพร่ repository
 
 ## Contributors
 
-- `[ชื่อสมาชิกทีม — หน้าที่รับผิดชอบ]`
+- **Methiyada** — พัฒนาหลักในส่วน tutor search, course and schedule management, booking lifecycle, teaching evidence, reviews, messaging, notifications และ booking/tutoring tests
+- **Matcha** — พัฒนาหลักในส่วน profile และ email workflows, tutor approval, credit top-up/withdrawal, slip and QR processing, admin dashboard, member management, report export และ admin/credit tests
+- ทั้งสองคนร่วมพัฒนา authentication, tutor registration, booking-credit integration, database schema และ UI/UX ของระบบ
 
 ## Security / Privacy
 
