@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse
 from django.db import transaction
+from django.db.models import Sum
 from django.views.decorators.http import require_POST
 import base64, io
 from datetime import datetime
@@ -13,6 +14,7 @@ from pathlib import PurePath
 from uuid import uuid4
 
 from .models import Refill, Withdrawals
+from apps.accounts.models import Member
 from apps.admin_panel.models import System
 from apps.bookings.models import Booking, JobCompletion
 
@@ -93,6 +95,38 @@ def promptpay_qr(request):
 
 def _get_system():
     return System.objects.first()
+
+
+def _get_withdrawable_balances(member):
+    """คำนวณยอดถอนแยกประเภทจากคำขอที่ยังรอดำเนินการ โดยไม่เพิ่มฟิลด์ใน Member"""
+    pending = {
+        row['wd_type']: row['total'] or 0
+        for row in Withdrawals.objects.filter(
+            member=member,
+            wd_status=0,
+        ).values('wd_type').annotate(total=Sum('wd_credit'))
+    }
+    pending_deposit = pending.get(0, 0)
+    pending_income = pending.get(1, 0)
+
+    # mb_locked_crd รวมทั้งยอดจองเรียนและคำขอถอนที่รอจ่าย
+    pending_withdraw = pending_deposit + pending_income
+    booking_locked = max(0, member.mb_locked_crd - pending_withdraw)
+    booking_locked_deposit = min(member.mb_deposit_crd, booking_locked)
+    booking_locked_income = max(0, booking_locked - booking_locked_deposit)
+
+    return {
+        'deposit': max(
+            0,
+            member.mb_deposit_crd - booking_locked_deposit - pending_deposit,
+        ),
+        'income': max(
+            0,
+            member.mb_income_crd - booking_locked_income - pending_income,
+        ),
+        'pending_deposit': pending_deposit,
+        'pending_income': pending_income,
+    }
 
 
 def _promptpay_payload(target: str, amount: float = 0) -> str:
@@ -281,8 +315,12 @@ def cancel_withdraw_view(request, wd_id):
         wd.wd_cmt = 'ผู้ใช้ยกเลิกคำขอถอนเครดิต'
         wd.save(update_fields=['wd_status', 'wd_cmt'])
 
-        member.mb_locked_crd = max(0, member.mb_locked_crd - wd.wd_credit)
-        member.save(update_fields=['mb_locked_crd'])
+        locked_member = Member.objects.select_for_update().get(pk=member.pk)
+        locked_member.mb_locked_crd = max(
+            0,
+            locked_member.mb_locked_crd - wd.wd_credit,
+        )
+        locked_member.save(update_fields=['mb_locked_crd'])
 
     messages.success(request, f'ยกเลิกคำขอถอน WD{wd.wd_id:05d} แล้ว ระบบคืนเครดิต {wd.wd_credit} เครดิตให้เรียบร้อย')
     return redirect('credits:credit')
@@ -551,10 +589,9 @@ def withdraw_view(request):
     deposit_fee_pct = float(system.deposit_withdraw_fee_pct) if system else 0
     income_fee_pct  = float(system.income_withdraw_fee_pct)  if system else 0
 
-    available_deposit = member.mb_deposit_crd - member.mb_locked_crd
-    available_income  = member.mb_income_crd
-    if available_deposit < 0:
-        available_deposit = 0
+    balances = _get_withdrawable_balances(member)
+    available_deposit = balances['deposit']
+    available_income = balances['income']
 
     if request.method == 'POST':
         wd_type      = request.POST.get('wd_type', '0')
@@ -568,6 +605,8 @@ def withdraw_view(request):
         try:
             wd_type_i  = int(wd_type)
             wd_credit_i = int(wd_credit)
+            if wd_type_i not in (0, 1):
+                errors.append('ประเภทเครดิตที่ถอนไม่ถูกต้อง')
             if wd_credit_i <= 0:
                 errors.append('กรุณากรอกจำนวนเครดิตที่ต้องการถอน')
         except (ValueError, TypeError):
@@ -590,33 +629,50 @@ def withdraw_view(request):
             errors.append('หมายเลขพร้อมเพย์ต้องไม่เกิน 20 ตัวอักษร กรุณาตรวจสอบอีกครั้ง')
 
         if not errors:
-            avail = available_income if wd_type_i == 1 else available_deposit
-            if wd_credit_i > avail:
-                errors.append(f'เครดิตไม่เพียงพอ (มีอยู่ {avail} เครดิต)')
-
-        if not errors:
             fee_pct  = income_fee_pct if wd_type_i == 1 else deposit_fee_pct
             wd_cash  = round(wd_credit_i * crd_val, 2)
             wd_fee   = round(wd_cash * fee_pct / 100, 2)
             wd_net   = round(wd_cash - wd_fee, 2)
 
-            Withdrawals.objects.create(
-                wd_req_date     = timezone.now(),
-                wd_type         = wd_type_i,
-                wd_credit       = wd_credit_i,
-                wd_cash         = wd_cash,
-                wd_bank_name    = bank_name,
-                wd_acc_name     = acc_name,
-                wd_acc_no       = acc_no,
-                wd_promptpay_no = promptpay_no,
-                wd_fee          = wd_fee,
-                wd_net_cash     = wd_net,
-                wd_status       = 0,
-                member          = member,
-            )
-            # ล็อกเครดิต (ย้ายไป mb_locked_crd) เมื่อส่งคำขอ
-            member.mb_locked_crd += wd_credit_i
-            member.save(update_fields=['mb_locked_crd'])
+            with transaction.atomic():
+                locked_member = Member.objects.select_for_update().get(pk=member.pk)
+                balances = _get_withdrawable_balances(locked_member)
+                available = balances['income'] if wd_type_i == 1 else balances['deposit']
+                if wd_credit_i > available:
+                    errors.append(f'เครดิตไม่เพียงพอ (มีอยู่ {available} เครดิต)')
+                else:
+                    Withdrawals.objects.create(
+                        wd_req_date     = timezone.now(),
+                        wd_type         = wd_type_i,
+                        wd_credit       = wd_credit_i,
+                        wd_cash         = wd_cash,
+                        wd_bank_name    = bank_name,
+                        wd_acc_name     = acc_name,
+                        wd_acc_no       = acc_no,
+                        wd_promptpay_no = promptpay_no,
+                        wd_fee          = wd_fee,
+                        wd_net_cash     = wd_net,
+                        wd_status       = 0,
+                        member          = locked_member,
+                    )
+                    # ล็อกเครดิตรวมไว้ในฟิลด์เดิมเพื่อรองรับโครงสร้างปัจจุบัน
+                    locked_member.mb_locked_crd += wd_credit_i
+                    locked_member.save(update_fields=['mb_locked_crd'])
+
+            if errors:
+                for err in errors:
+                    messages.error(request, err)
+                return render(request, 'credits/withdraw.html', {
+                    'member'           : member,
+                    'system'           : system,
+                    'crd_val'          : crd_val,
+                    'bank_choices'     : BANK_CHOICES,
+                    'available_deposit': available_deposit,
+                    'available_income' : available_income,
+                    'deposit_fee_pct'  : deposit_fee_pct,
+                    'income_fee_pct'   : income_fee_pct,
+                    'prev'             : request.POST,
+                })
             
             messages.success(request, 'ส่งคำขอถอนเครดิตเรียบร้อยแล้ว ระบบจะดำเนินการภายใน 3-5 วันทำการ (เครดิตของคุณจะถูกล็อกไว้จนกว่าแอดมินจะอนุมัติ)')
             return redirect('credits:credit')
