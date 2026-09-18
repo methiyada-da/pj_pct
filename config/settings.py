@@ -208,9 +208,6 @@ DEFAULT_FROM_EMAIL  = os.environ.get('EMAIL_HOST_USER', 'noreply@rmuti.ac.th')
 # Secret สำหรับเปิดหน้าสร้างผู้ดูแลระบบครั้งแรก ใช้เพียงก่อนมี admin ในระบบ
 ADMIN_SETUP_TOKEN = os.environ.get('ADMIN_SETUP_TOKEN', '')
 
-# API key ที่ระบบภายนอกอาจใช้ในอนาคต ห้ามกำหนดค่าไว้ใน source code
-EASYSLIP_API_KEY = os.environ.get('EASYSLIP_API_KEY', '')
-
 # ── Message Storage ─────────────────────────────────────────
 from django.contrib.messages import constants as messages_constants
 MESSAGE_TAGS = {

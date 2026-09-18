@@ -14,7 +14,6 @@ git clone --mirror <private-repository-url> pj_pct-backup.git
 
 ยกเลิกและสร้างค่าใหม่สำหรับ:
 
-- EasySlip API key
 - SMTP/Gmail App Password
 - Database password
 - Django secret key
