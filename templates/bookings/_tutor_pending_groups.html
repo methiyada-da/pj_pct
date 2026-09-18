@@ -1,0 +1,181 @@
+{% if pending_groups %}
+<div class="d-flex align-items-start gap-3 rounded-3 border px-3 py-3 mb-3"
+     style="background:#FFF7ED;border-color:#FDBA74 !important;color:#9A3412;">
+  <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+       style="width:38px;height:38px;background:#FFEDD5;color:#EA580C;">
+    <i class="fas fa-clock" aria-hidden="true"></i>
+  </div>
+  <div>
+    <div class="fw-bold mb-1">โปรดตอบรับคำขอภายในเวลาที่กำหนด</div>
+    <div style="font-size:.9rem;line-height:1.6;">
+      หากเลยกำหนดตอบรับ ระบบจะยกเลิกคำขอจองที่ยังไม่ได้รับการยืนยันโดยอัตโนมัติ
+    </div>
+  </div>
+</div>
+{% for group in pending_groups %}
+<a href="#pendingGroupModal{{ forloop.counter }}" class="bk-card pending mb-3 overflow-hidden d-block text-decoration-none" style="border-left:4px solid #F59E0B;cursor:pointer;" data-bs-toggle="modal" data-bs-target="#pendingGroupModal{{ forloop.counter }}" aria-label="เปิดรายละเอียดรอบ {{ group.course.tutc_name }}">
+  <div class="p-3 p-md-4">
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge bg-warning text-dark px-2 py-2">รอยืนยัน</span>
+        <span class="fw-bold text-dark" style="font-size:1.1rem;">คอร์ส: {{ group.course.tutc_name }}</span>
+      </div>
+      <div class="d-flex align-items-center justify-content-end gap-2 flex-wrap ms-auto">
+        <span class="fw-semibold text-dark" style="font-size:1rem;"><i class="fas fa-users text-primary me-2"></i>จองแล้ว <strong>{{ group.reserved_seats }}/{{ group.capacity }} ที่นั่ง</strong></span>
+        <span class="rounded-pill border px-2 py-1" style="background:#FFFBEB;border-color:#FDE68A !important;color:#92400E;font-size:1rem;">รอยืนยัน <strong>{{ group.pending|length }} รายการ</strong></span>
+        <i class="fas fa-chevron-right text-muted ms-1" aria-hidden="true"></i>
+      </div>
+    </div>
+
+    <div class="row g-2 g-md-3 mt-2 pt-3 border-top">
+      <div class="col-12 col-sm-4">
+        <div class="h-100 rounded-3 px-3 py-3" style="background:#F8FAFC;">
+          <div class="small text-muted mb-1">วันที่เรียน</div>
+          <div class="fw-bold text-dark" style="font-size:1.125rem;line-height:1.35;"><i class="fas fa-calendar-day text-primary me-2"></i>{{ group.lesson_datetime|date:"d M Y" }}</div>
+        </div>
+      </div>
+      <div class="col-12 col-sm-4">
+        <div class="h-100 rounded-3 px-3 py-3" style="background:#F8FAFC;">
+          <div class="small text-muted mb-1">เวลาเรียน</div>
+          <div class="fw-bold text-primary" style="font-size:1.125rem;line-height:1.35;"><i class="fas fa-clock me-2"></i>{% if group.slot %}{{ group.slot.ts_start_time|time:"H:i" }}–{{ group.slot.ts_end_time|time:"H:i" }} น.{% else %}{{ group.lesson_datetime|date:"H:i" }} น.{% endif %}</div>
+        </div>
+      </div>
+      <div class="col-12 col-sm-4">
+        <div class="h-100 rounded-3 px-3 py-3" style="background:#FFF7ED;">
+          <div class="small text-muted mb-1">ต้องตอบรับภายใน</div>
+          <div class="fw-bold text-danger" style="font-size:1.125rem;line-height:1.35;">{% if group.response_deadline %}{{ group.response_deadline|date:"d M Y H:i" }} น.{% else %}—{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</a>
+{% endfor %}
+
+{% for group in pending_groups %}
+<div class="modal fade" id="pendingGroupModal{{ forloop.counter }}" tabindex="-1" aria-labelledby="pendingGroupTitle{{ forloop.counter }}" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 rounded-4 shadow">
+      <div class="modal-header border-bottom">
+        <div>
+          <h5 class="modal-title fw-bold" id="pendingGroupTitle{{ forloop.counter }}">{{ group.course.tutc_name }}</h5>
+          <div class="fw-semibold text-dark mt-2">
+            <i class="fas fa-calendar-alt text-primary me-1"></i>
+            {{ group.lesson_datetime|date:"d M Y" }}
+            {% if group.slot %}เวลา {{ group.slot.ts_start_time|time:"H:i" }}–{{ group.slot.ts_end_time|time:"H:i" }} น.{% else %}เวลา {{ group.lesson_datetime|date:"H:i" }} น.{% endif %}
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+      </div>
+
+      <div class="modal-body p-3 p-md-4">
+        <div class="border rounded-3 p-3 mb-4" style="background:#F8FAFC;">
+          <h6 class="fw-bold text-dark mb-3"><i class="fas fa-book-open text-primary me-2"></i>ข้อมูลรอบเรียน</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="fw-semibold text-dark mb-1">ชื่อคอร์ส</div>
+              <div class="text-dark">{{ group.course.tutc_name }}</div>
+            </div>
+            <div class="col-md-6">
+              <div class="fw-semibold text-dark mb-1">รายวิชา</div>
+              <div class="text-dark">{{ group.course.crs_id.crs_id }} — {{ group.course.crs_id.crs_name }}</div>
+            </div>
+            <div class="col-md-6">
+              <div class="fw-semibold text-dark mb-1">วันที่เรียน</div>
+              <div class="text-dark">{{ group.lesson_datetime|date:"d M Y" }}</div>
+            </div>
+            <div class="col-md-6">
+              <div class="fw-semibold text-dark mb-1">เวลาเรียน</div>
+              <div class="text-dark">
+                {% if group.slot %}{{ group.slot.ts_start_time|time:"H:i" }}–{{ group.slot.ts_end_time|time:"H:i" }} น.{% else %}{{ group.lesson_datetime|date:"H:i" }} น.{% endif %}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="fw-semibold text-dark mb-1">จำนวนรับสูงสุด</div>
+              <div class="text-dark">{{ group.capacity }} ที่นั่ง</div>
+            </div>
+            <div class="col-md-6">
+              <div class="fw-semibold text-dark mb-1">สถานะที่นั่ง</div>
+              <div class="text-dark">จองแล้ว {{ group.reserved_seats }} จาก {{ group.capacity }} ที่นั่ง</div>
+            </div>
+            {% if group.response_deadline %}
+            <div class="col-12">
+              <div class="fw-semibold text-danger mb-1">ต้องตอบรับภายใน</div>
+              <div class="fw-semibold text-danger">{{ group.response_deadline|date:"d M Y H:i" }} น.</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="row g-2 mb-4">
+          <div class="col-sm-4"><div class="border rounded-3 p-3 text-center h-100"><div class="fw-semibold text-dark">ที่นั่งในรอบ</div><div class="fw-bold text-primary mt-1">{{ group.reserved_seats }}/{{ group.capacity }} ที่นั่ง</div></div></div>
+          <div class="col-sm-4"><div class="border rounded-3 p-3 text-center h-100"><div class="fw-semibold text-dark">คำขอที่รอยืนยัน</div><div class="fw-bold text-dark mt-1">{{ group.pending|length }} รายการ</div></div></div>
+          <div class="col-sm-4"><div class="border rounded-3 p-3 text-center h-100"><div class="fw-semibold text-dark">รวมเครดิตรายการใหม่</div><div class="fw-bold text-success mt-1">{{ group.pending_credit }} เครดิต</div></div></div>
+        </div>
+
+        {% if group.slot %}
+        <div class="mb-4">
+          <label for="meeting-{{ group.slot.ts_id }}" class="form-label fw-bold">รายละเอียดนัดหมายที่ผู้เรียนจะได้รับ <span class="text-danger">*</span></label>
+          <div class="alert alert-danger py-2 mb-2">
+            <i class="fas fa-exclamation-circle me-1"></i>
+            <strong>ต้องระบุรายละเอียดนัดหมายให้ละเอียดครบถ้วน</strong>
+            เช่น สถานที่ อาคาร ห้อง จุดนัดพบ หรือแนบลิงก์สำหรับเข้าเรียน เพื่อให้ผู้เรียนเดินทางหรือเข้าเรียนได้ถูกต้อง
+          </div>
+          <textarea id="meeting-{{ group.slot.ts_id }}" class="form-control" rows="4" placeholder="ระบุสถานที่ ห้อง จุดนัดพบ หรือลิงก์เรียนให้ชัดเจน">{{ group.meeting_detail }}</textarea>
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="meeting-confirm-{{ group.slot.ts_id }}">
+            <label class="form-check-label small" for="meeting-confirm-{{ group.slot.ts_id }}">ฉันตรวจสอบแล้วว่ารายละเอียดนัดหมายชัดเจนและผู้เรียนใช้เดินทางหรือเข้าเรียนได้</label>
+          </div>
+          <form method="post" action="{% url 'bookings:booking_accept_all' group.slot.ts_id %}" id="form-accept-all-{{ group.slot.ts_id }}">
+            {% csrf_token %}<input type="hidden" name="meeting_detail"><input type="hidden" name="meeting_confirmed"><input type="hidden" name="close_slot" value="0">
+          </form>
+        </div>
+        {% endif %}
+
+        <div class="fw-bold mb-2"><i class="fas fa-users text-primary me-2"></i>รายการผู้จองเรียน</div>
+        <div class="border rounded-3 overflow-hidden">
+          {% for bk in group.pending %}
+          <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap p-3{% if not forloop.last %} border-bottom{% endif %}">
+            <div>
+              <div class="fw-semibold">BK{{ bk.bk_id|stringformat:"05d" }} · {{ bk.member.mb_full_name }}</div>
+              <div class="text-dark mt-1">
+                {% if bk.bk_stu_count > 1 %}รายการเดิม {{ bk.bk_stu_count }} ที่นั่ง{% else %}1 บัญชี · 1 ที่นั่ง{% endif %}
+                · {{ bk.bk_rate_per_person }} เครดิต/ที่นั่ง · รวม {{ bk.total_credit }} เครดิต
+              </div>
+              {% if bk.bk_desc %}<div class="small mt-1">ข้อความ: {{ bk.bk_desc }}</div>{% endif %}
+            </div>
+            <div class="d-flex gap-2">
+              <form method="post" action="{% url 'bookings:booking_accept' bk.bk_id %}" id="form-group-accept-{{ bk.bk_id }}">
+                {% csrf_token %}<input type="hidden" name="meeting_detail"><input type="hidden" name="meeting_confirmed">
+              </form>
+              {% if group.slot %}
+              <button type="button" class="btn btn-success btn-sm" onclick="submitMeetingAccept('form-group-accept-{{ bk.bk_id }}','meeting-{{ group.slot.ts_id }}','meeting-confirm-{{ group.slot.ts_id }}','รับการจอง BK{{ bk.bk_id|stringformat:"05d" }}?')">ยืนยันการจอง</button>
+              {% else %}
+              <button type="button" class="btn btn-success btn-sm" onclick="document.getElementById('form-group-accept-{{ bk.bk_id }}').submit()">รับรายการนี้</button>
+              {% endif %}
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="openReject({{ bk.bk_id }}, '{{ bk.member.mb_full_name|escapejs }}', '', this)">ปฏิเสธ</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="modal-footer border-top">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ปิด</button>
+        {% if group.slot %}
+        <button type="button" class="btn btn-primary fw-bold"
+                onclick="reviewGroupAcceptance('form-accept-all-{{ group.slot.ts_id }}','meeting-{{ group.slot.ts_id }}','meeting-confirm-{{ group.slot.ts_id }}','{{ group.course.tutc_name|escapejs }}','{{ group.lesson_datetime|date:"d M Y" }} เวลา {{ group.slot.ts_start_time|time:"H:i" }}–{{ group.slot.ts_end_time|time:"H:i" }} น.',{{ group.pending|length }},{{ group.pending_seats }},{{ group.pending_credit }})">
+          <i class="fas fa-clipboard-check me-1"></i>ยืนยันการจองทั้งหมด
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state text-center text-muted">
+  <div class="mb-3" style="font-size:3rem;opacity:.25;"><i class="fas fa-inbox"></i></div>
+  <div class="fw-semibold mb-1">ยังไม่มีคำขอจองที่รอยืนยัน</div>
+  <div class="small">เมื่อมีผู้เรียนส่งคำขอ ระบบจะจัดรายการตามรอบเรียนให้ที่นี่</div>
+</div>
+{% endif %}

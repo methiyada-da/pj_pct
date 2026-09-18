@@ -93,3 +93,18 @@ class Tutor(models.Model):
 
     def __str__(self):
         return f"Tutor: {self.tut_id}"
+
+
+class TutorExperienceImage(models.Model):
+    tutor = models.ForeignKey(
+        Tutor, on_delete=models.CASCADE, related_name='experience_images',
+        verbose_name="ติวเตอร์",
+    )
+    image = models.ImageField(
+        upload_to='tutoring/experience/', verbose_name="รูปประสบการณ์การสอน",
+    )
+
+    class Meta:
+        db_table = 'tutor_experience_image'
+        verbose_name = "รูปประสบการณ์การสอน"
+        verbose_name_plural = "รูปประสบการณ์การสอน"
