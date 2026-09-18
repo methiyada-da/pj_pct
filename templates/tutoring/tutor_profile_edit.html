@@ -168,8 +168,123 @@
                         placeholder="ช่วยเล่าเพิ่มเติมเกี่ยวกับประสบการณ์ของคุณในฐานะติวเตอร์...">{{ tutor.tut_exp_desc|default:'' }}</textarea>
               <label for="experience-images" class="form-label text-muted small mt-3">รูปผลงานหรือหลักฐานประสบการณ์</label>
               <input type="file" id="experience-images" name="experience_images" class="form-control"
-                     accept="image/*" multiple>
+                     accept="image/*" multiple onchange="handleExperienceImages(this)">
               <small class="text-muted">เพิ่มได้ครั้งละไม่เกิน 5 รูป รูปละไม่เกิน 5 MB</small>
+              <div id="experience-preview" class="mt-3" style="display:none;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="small fw-semibold">รูปที่เลือก</span>
+                  <span id="experience-image-count" class="badge rounded-pill bg-primary">0 / 5 รูป</span>
+                </div>
+                <div id="experience-preview-list" class="d-flex flex-wrap gap-3"></div>
+              </div>
+              <script>
+                /* แยกจากสคริปต์หลัก เพื่อให้ช่องอัปโหลดพร้อมใช้งานทันที */
+                var selectedExperienceImages = [];
+                var experiencePreviewUrls = [];
+
+                function syncExperienceInput() {
+                  var input = document.getElementById('experience-images');
+                  var transfer = new DataTransfer();
+                  selectedExperienceImages.forEach(function (file) {
+                    transfer.items.add(file);
+                  });
+                  input.files = transfer.files;
+                }
+
+                function renderExperiencePreviews() {
+                  var preview = document.getElementById('experience-preview');
+                  var list = document.getElementById('experience-preview-list');
+                  var count = document.getElementById('experience-image-count');
+
+                  experiencePreviewUrls.forEach(function (url) {
+                    URL.revokeObjectURL(url);
+                  });
+                  experiencePreviewUrls = [];
+                  list.innerHTML = '';
+
+                  selectedExperienceImages.forEach(function (file, index) {
+                    var imageUrl = URL.createObjectURL(file);
+                    experiencePreviewUrls.push(imageUrl);
+
+                    var card = document.createElement('div');
+                    card.className = 'border rounded-3 p-2 bg-white shadow-sm';
+                    card.style.width = '150px';
+
+                    var image = document.createElement('img');
+                    image.src = imageUrl;
+                    image.alt = 'ตัวอย่างรูปที่เลือก ' + (index + 1);
+                    image.className = 'rounded-2 border w-100';
+                    image.style.cssText = 'height:105px;object-fit:cover;';
+
+                    var fileName = document.createElement('div');
+                    fileName.className = 'small text-truncate mt-2';
+                    fileName.title = file.name;
+                    fileName.textContent = file.name;
+
+                    var actions = document.createElement('div');
+                    actions.className = 'd-flex gap-1 mt-2';
+                    actions.innerHTML =
+                      '<button type="button" class="btn btn-sm btn-outline-primary flex-fill" onclick="replaceExperienceImage(' + index + ')">' +
+                        '<i class="fas fa-sync-alt me-1"></i>เปลี่ยน' +
+                      '</button>' +
+                      '<button type="button" class="btn btn-sm btn-outline-danger flex-fill" onclick="removeExperienceImage(' + index + ')">' +
+                        '<i class="fas fa-trash-alt me-1"></i>ลบ' +
+                      '</button>';
+
+                    card.appendChild(image);
+                    card.appendChild(fileName);
+                    card.appendChild(actions);
+                    list.appendChild(card);
+                  });
+
+                  count.textContent = selectedExperienceImages.length + ' / 5 รูป';
+                  preview.style.display = selectedExperienceImages.length ? 'block' : 'none';
+                }
+
+                function handleExperienceImages(input) {
+                  var chosenImages = Array.prototype.slice.call(input.files);
+                  if (chosenImages.length > 5) {
+                    alert('เลือกได้ครั้งละไม่เกิน 5 รูป');
+                    selectedExperienceImages = [];
+                    syncExperienceInput();
+                    renderExperiencePreviews();
+                    return;
+                  }
+                  if (chosenImages.some(function (file) { return file.size > 5 * 1024 * 1024; })) {
+                    alert('รูปแต่ละรูปต้องมีขนาดไม่เกิน 5 MB');
+                    selectedExperienceImages = [];
+                    syncExperienceInput();
+                    renderExperiencePreviews();
+                    return;
+                  }
+                  selectedExperienceImages = chosenImages;
+                  renderExperiencePreviews();
+                }
+
+                function removeExperienceImage(index) {
+                  selectedExperienceImages.splice(index, 1);
+                  syncExperienceInput();
+                  renderExperiencePreviews();
+                }
+
+                function replaceExperienceImage(index) {
+                  var replacementInput = document.createElement('input');
+                  replacementInput.type = 'file';
+                  replacementInput.accept = 'image/*';
+                  replacementInput.onchange = function () {
+                    var replacement = replacementInput.files[0];
+                    if (!replacement) return;
+                    if (replacement.size > 5 * 1024 * 1024) {
+                      alert('รูปแต่ละรูปต้องมีขนาดไม่เกิน 5 MB');
+                      return;
+                    }
+                    selectedExperienceImages[index] = replacement;
+                    syncExperienceInput();
+                    renderExperiencePreviews();
+                  };
+                  replacementInput.click();
+                }
+              </script>
               {% if experience_images %}
               <div class="d-flex flex-wrap gap-2 mt-3">
                 {% for item in experience_images %}
@@ -289,6 +404,7 @@ function toggleExpDetail() {
   const yes = document.getElementById('expYes').checked;
   document.getElementById('expDetailBox').style.display = yes ? '' : 'none';
 }
+
 </script>
 
 {% endblock %}

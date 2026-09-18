@@ -1,5 +1,6 @@
 from datetime import time, timedelta
 import tempfile
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.conf import settings
@@ -14,7 +15,7 @@ from apps.courses.models import Course, CourseGroup
 from apps.notifications.models import Notification
 from apps.tutoring.models import ScheduleDate, TimeSlot, TutorCourse, TutorRate
 
-from .models import Booking
+from .models import Booking, BookingReportStatement
 from .services import BOOKING_CLOSED_AT_MARKER, get_booking_closed_at, get_remaining_seats
 
 
@@ -227,12 +228,131 @@ class GroupBookingFlowTests(TestCase):
         )
         self.assertEqual(get_remaining_seats(self.slot), 4)
 
+    def test_problem_report_is_available_only_after_lesson_end(self):
+        from .views import _can_report_problem
+
+        lesson_date = self.slot.sd_id.sd_date
+        lesson_start = timezone.make_aware(
+            timezone.datetime.combine(lesson_date, self.slot.ts_start_time),
+            timezone.get_current_timezone(),
+        )
+        booking = Booking.objects.create(
+            member=self.student,
+            tutc_id=self.tutor_course,
+            ts_id=self.slot,
+            bk_stu_datetime=lesson_start,
+            bk_stu_count=1,
+            bk_rate_per_person=10,
+            bk_date=timezone.now(),
+            bk_status=1,
+        )
+        during_lesson = timezone.make_aware(
+            timezone.datetime.combine(lesson_date, time(10, 30)),
+            timezone.get_current_timezone(),
+        )
+        lesson_ended = timezone.make_aware(
+            timezone.datetime.combine(lesson_date, self.slot.ts_end_time),
+            timezone.get_current_timezone(),
+        )
+
+        self.assertFalse(_can_report_problem(booking, during_lesson))
+        self.assertTrue(_can_report_problem(booking, lesson_ended))
+
+    def test_tutor_cannot_manually_report_student_absence(self):
+        lesson_date = timezone.localdate() - timedelta(days=1)
+        self.slot.sd_id.sd_date = lesson_date
+        self.slot.sd_id.save(update_fields=['sd_date'])
+        lesson_start = timezone.make_aware(
+            timezone.datetime.combine(lesson_date, self.slot.ts_start_time),
+            timezone.get_current_timezone(),
+        )
+        booking = Booking.objects.create(
+            member=self.student,
+            tutc_id=self.tutor_course,
+            ts_id=self.slot,
+            bk_stu_datetime=lesson_start,
+            bk_stu_count=1,
+            bk_rate_per_person=10,
+            bk_date=lesson_start - timedelta(days=1),
+            bk_status=1,
+        )
+        self.client.force_login(self.tutor_user)
+
+        response = self.client.post(
+            reverse('bookings:tutor_escalate_cancel_dispute', args=[booking.pk]),
+            {'rp_reason': '5', 'dispute_desc': 'ผู้เรียนไม่เข้าเรียน'},
+        )
+
+        booking.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNone(booking.bk_report_date)
+        self.assertIsNone(booking.bk_report_reason)
+
+    def test_report_other_button_is_disabled_before_lesson_end(self):
+        lesson_start = timezone.make_aware(
+            timezone.datetime.combine(
+                self.slot.sd_id.sd_date,
+                self.slot.ts_start_time,
+            ),
+            timezone.get_current_timezone(),
+        )
+        Booking.objects.create(
+            member=self.student,
+            tutc_id=self.tutor_course,
+            ts_id=self.slot,
+            bk_stu_datetime=lesson_start,
+            bk_stu_count=1,
+            bk_rate_per_person=10,
+            bk_date=timezone.now(),
+            bk_status=1,
+        )
+        self.client.force_login(self.tutor_user)
+
+        response = self.client.get(reverse('bookings:tutor_requests'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'disabled title="กดได้หลังสิ้นสุดเวลาเรียน"',
+        )
+
+    def test_tutor_can_report_other_problem_while_awaiting_activity(self):
+        lesson_date = timezone.localdate() - timedelta(days=1)
+        self.slot.sd_id.sd_date = lesson_date
+        self.slot.sd_id.save(update_fields=['sd_date'])
+        lesson_start = timezone.make_aware(
+            timezone.datetime.combine(lesson_date, self.slot.ts_start_time),
+            timezone.get_current_timezone(),
+        )
+        booking = Booking.objects.create(
+            member=self.student,
+            tutc_id=self.tutor_course,
+            ts_id=self.slot,
+            bk_stu_datetime=lesson_start,
+            bk_stu_count=1,
+            bk_rate_per_person=10,
+            bk_date=lesson_start - timedelta(days=1),
+            bk_status=2,
+        )
+        self.client.force_login(self.tutor_user)
+
+        response = self.client.post(
+            reverse('bookings:tutor_escalate_cancel_dispute', args=[booking.pk]),
+            {'rp_reason': '6', 'dispute_desc': 'ติดต่อผู้เรียนไม่ได้'},
+        )
+
+        booking.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(booking.bk_report_reason, '6')
+        self.assertIsNotNone(booking.bk_report_date)
+
     def test_student_cancels_accepted_booking_immediately_when_more_than_24_hours_remain(self):
         booking = self._create_accepted_booking(25)
         self.client.force_login(self.student_user)
 
         response = self.client.post(
-            reverse('bookings:student_request_cancel_booking', args=[booking.pk])
+            reverse('bookings:student_request_cancel_booking', args=[booking.pk]),
+            {'cancel_reason': 'ติดธุระสำคัญในวันนัดเรียน'},
         )
 
         booking.refresh_from_db()
@@ -241,23 +361,49 @@ class GroupBookingFlowTests(TestCase):
         self.assertEqual(booking.bk_status, 6)
         self.assertTrue(
             booking.bk_cmt.startswith(
-                'ผู้เรียนยกเลิกหลังรับงานล่วงหน้ามากกว่า 24 ชั่วโมง'
+                'ผู้เรียนยกเลิกการเรียน ก่อนถึงเวลาเริ่มเรียนมากกว่า 24 ชั่วโมง'
             )
         )
         self.assertIn(BOOKING_CLOSED_AT_MARKER, booking.bk_cmt)
+        self.assertIn('[เหตุผลการยกเลิกโดยผู้เรียน]', booking.bk_cmt)
+        self.assertIn('ติดธุระสำคัญในวันนัดเรียน', booking.bk_cmt)
         self.assertIsNotNone(get_booking_closed_at(booking.bk_cmt))
         self.assertEqual(self.student.mb_locked_crd, 0)
-        self.assertTrue(Notification.objects.filter(
+        notification = Notification.objects.get(
             recipient=self.tutor.tut_id,
             notif_type='booking_cancelled',
-        ).exists())
+        )
+        self.assertEqual(
+            notification.notif_text,
+            f'ผู้เรียนยกเลิกการจอง BK{booking.bk_id:05d} ของคุณ',
+        )
 
     def test_student_cannot_cancel_accepted_booking_within_24_hours(self):
         booking = self._create_accepted_booking(23)
         self.client.force_login(self.student_user)
 
         response = self.client.post(
-            reverse('bookings:student_request_cancel_booking', args=[booking.pk])
+            reverse('bookings:student_request_cancel_booking', args=[booking.pk]),
+            {'cancel_reason': 'ติดธุระสำคัญในวันนัดเรียน'},
+        )
+
+        booking.refresh_from_db()
+        self.student.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(booking.bk_status, 1)
+        self.assertEqual(self.student.mb_locked_crd, 10)
+        self.assertFalse(Notification.objects.filter(
+            recipient=self.tutor.tut_id,
+            notif_type='booking_cancelled',
+        ).exists())
+
+    def test_student_must_provide_reason_to_cancel_accepted_booking(self):
+        booking = self._create_accepted_booking(25)
+        self.client.force_login(self.student_user)
+
+        response = self.client.post(
+            reverse('bookings:student_request_cancel_booking', args=[booking.pk]),
+            {'cancel_reason': '   '},
         )
 
         booking.refresh_from_db()
@@ -470,24 +616,30 @@ class GroupBookingFlowTests(TestCase):
         self.assertContains(empty, 'การจบงาน')
         self.assertNotContains(empty, 'data-filter="all"')
 
-        now = timezone.now()
+        lesson_date = self.slot.sd_id.sd_date
+        lesson_start = timezone.make_aware(
+            timezone.datetime.combine(lesson_date, self.slot.ts_start_time),
+            timezone.get_current_timezone(),
+        )
+        before_start = lesson_start - timedelta(hours=1)
         booking = Booking.objects.create(
             member=self.student,
             tutc_id=self.tutor_course,
             ts_id=self.slot,
-            bk_stu_datetime=now + timedelta(hours=1),
+            bk_stu_datetime=lesson_start,
             bk_stu_count=1,
             bk_rate_per_person=10,
-            bk_date=now,
+            bk_date=before_start,
             bk_status=1,
         )
-        before = self.client.get(reverse('bookings:student_bookings'))
+        with patch('apps.bookings.views.timezone.now', return_value=before_start):
+            before = self.client.get(reverse('bookings:student_bookings'))
         self.assertEqual(before.status_code, 200)
         self.assertContains(before, 'data-lesson-phase="waiting"')
 
-        booking.bk_stu_datetime = now - timedelta(hours=1)
-        booking.save(update_fields=['bk_stu_datetime'])
-        after = self.client.get(reverse('bookings:student_bookings'))
+        during_lesson = lesson_start + timedelta(minutes=30)
+        with patch('apps.bookings.views.timezone.now', return_value=during_lesson):
+            after = self.client.get(reverse('bookings:student_bookings'))
         self.assertEqual(after.status_code, 200)
         self.assertContains(after, 'data-lesson-phase="studying"')
         booking.refresh_from_db()
@@ -629,3 +781,91 @@ class GroupBookingFlowTests(TestCase):
         self.assertEqual(absent_booking.bk_status, 1)
         self.assertEqual(absent_booking.bk_report_reason, '5')
         self.assertIsNotNone(absent_booking.bk_report_date)
+
+    def test_student_can_acknowledge_tutor_report_only_once(self):
+        now = timezone.now()
+        booking = Booking.objects.create(
+            member=self.student,
+            tutc_id=self.tutor_course,
+            ts_id=self.slot,
+            bk_stu_datetime=now,
+            bk_stu_count=1,
+            bk_rate_per_person=10,
+            bk_date=now,
+            bk_status=1,
+            bk_report_reason='6',
+            bk_report_desc='ติดต่อผู้เรียนไม่ได้',
+            bk_report_date=now,
+        )
+        BookingReportStatement.objects.create(
+            bk_id=booking,
+            member=self.tutor.tut_id,
+            brs_role='tutor',
+            brs_desc='ติดต่อผู้เรียนไม่ได้',
+            brs_date=now,
+        )
+        self.client.force_login(self.student_user)
+
+        response = self.client.post(
+            reverse('bookings:submit_report_statement', args=[booking.pk]),
+            {'response_action': 'acknowledge'},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        student_statement = booking.report_statements.get(brs_role='student')
+        self.assertEqual(
+            student_statement.brs_desc,
+            'รับทราบรายงาน ยอมรับผิด และไม่มีข้อโต้แย้ง',
+        )
+
+        duplicate_response = self.client.post(
+            reverse('bookings:submit_report_statement', args=[booking.pk]),
+            {
+                'response_action': 'dispute',
+                'statement_desc': 'ต้องการโต้แย้งภายหลัง',
+            },
+        )
+        self.assertEqual(duplicate_response.status_code, 302)
+        self.assertEqual(
+            booking.report_statements.filter(brs_role='student').count(),
+            1,
+        )
+
+    def test_tutor_can_add_dispute_to_student_report(self):
+        now = timezone.now()
+        booking = Booking.objects.create(
+            member=self.student,
+            tutc_id=self.tutor_course,
+            ts_id=self.slot,
+            bk_stu_datetime=now,
+            bk_stu_count=1,
+            bk_rate_per_person=10,
+            bk_date=now,
+            bk_status=1,
+            bk_report_reason='2',
+            bk_report_desc='ติวเตอร์ไม่เข้าสอน',
+            bk_report_date=now,
+        )
+        BookingReportStatement.objects.create(
+            bk_id=booking,
+            member=self.student,
+            brs_role='student',
+            brs_desc='ติวเตอร์ไม่เข้าสอน',
+            brs_date=now,
+        )
+        self.client.force_login(self.tutor_user)
+
+        response = self.client.post(
+            reverse('bookings:submit_report_statement', args=[booking.pk]),
+            {
+                'response_action': 'dispute',
+                'statement_desc': 'เข้าสอนตามเวลาและมีหลักฐานประกอบ',
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        tutor_statement = booking.report_statements.get(brs_role='tutor')
+        self.assertEqual(
+            tutor_statement.brs_desc,
+            'เข้าสอนตามเวลาและมีหลักฐานประกอบ',
+        )
