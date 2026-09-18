@@ -48,3 +48,6 @@ build/
 dist/
 staticfiles/
 codex_context.md 
+
+AGENTS.md
+GIT_HISTORY_CLEANUP_PLAN.md
