@@ -3,91 +3,288 @@
 
 {% block title %}บันทึกผลรอบเรียน — Puean Chuay Tu{% endblock %}
 
-{% block content %}
-<div class="bg-light min-vh-100 py-4 px-2 px-md-3">
-  <div class="container" style="max-width:850px;">
-    <nav aria-label="breadcrumb" class="mb-3">
-      <ol class="breadcrumb small">
-        <li class="breadcrumb-item"><a href="{% url 'bookings:tutor_requests' %}">การจอง</a></li>
-        <li class="breadcrumb-item active">บันทึกผลรอบเรียน</li>
-      </ol>
-    </nav>
+{% block extra_css %}
+<style>
+  .activity-page { background: #f6f8fc; }
+  .activity-shell { max-width: 960px; }
+  .activity-card { border: 1px solid #e3eaf3; border-radius: 18px; box-shadow: 0 8px 24px rgba(30, 55, 90, .05); }
+  .activity-hero { background: linear-gradient(125deg, #eff6ff, #fff 65%); border-color: #dbeafe; }
+  .activity-icon { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 11px; background: #e8f1ff; color: #0d6efd; flex: 0 0 auto; }
+  .activity-meta { background: #fff; border: 1px solid #e4eaf3; border-radius: 12px; padding: .8rem 1rem; height: 100%; }
+  .activity-meta-label { color: #64748b; font-size: .82rem; margin-bottom: .2rem; }
+  .activity-meta-value { color: #172b4d; font-weight: 700; }
+  .attendance-item { border: 1px solid #e2e8f0; border-radius: 13px; padding: 1rem; background: #fff; }
+  .attendance-item + .attendance-item { margin-top: .8rem; }
+  .attendance-item:has(input[value="attended"]:checked) { border-color: #86efac; background: #f6fef9; }
+  .attendance-item:has(input[value="absent"]:checked) { border-color: #fca5a5; background: #fff8f8; }
+  .upload-zone { border: 2px dashed #cbd5e1; border-radius: 14px; background: #f8fafc; height: 175px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer; transition: border-color .2s, background .2s; }
+  .upload-zone:hover, .upload-zone:focus-within { border-color: #2563eb; background: #eff6ff; }
+  .upload-zone.has-image { border-style: solid; border-color: #93c5fd; }
+  .upload-zone input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 3; }
+  .upload-preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .upload-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, .5); color: #fff; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 2; }
+  .upload-zone.has-image:hover .upload-overlay, .upload-zone.has-image:focus-within .upload-overlay { opacity: 1; }
+  .activity-note { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; color: #1e40af; }
+  .review-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: .9rem 1rem; }
+  .review-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  @media (max-width: 575.98px) {
+    .activity-card .card-body { padding: 1.25rem !important; }
+    .activity-actions > * { width: 100%; }
+  }
+</style>
+{% endblock %}
 
-    <div class="card border-0 rounded-4 shadow-sm mb-4">
+{% block content %}
+<div class="activity-page min-vh-100 py-4 px-2 px-md-3">
+  <div class="container activity-shell">
+
+    <div class="mb-4">
+      <h1 class="h3 fw-bold text-dark mb-1">บันทึกผลการสอน</h1>
+      <p class="text-muted mb-0">ตรวจสอบการเข้าเรียนและส่งหลักฐานการสอนให้ผู้เรียน</p>
+    </div>
+
+    <div class="card activity-card activity-hero mb-4">
       <div class="card-body p-4">
-        <span class="badge bg-primary mb-2">รอบเรียน</span>
-        <h4 class="fw-bold mb-2">{{ slot.sd_id.tutc_id.tutc_name }}</h4>
-        <div class="text-muted">
-          <i class="fas fa-calendar me-1"></i>{{ slot.sd_id.sd_date|date:"d M Y" }}
-          เวลา {{ slot.ts_start_time|time:"H:i" }}–{{ slot.ts_end_time|time:"H:i" }} น.
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="activity-icon"><i class="fas fa-book-open"></i></span>
+          <div>
+            <div class="small fw-semibold text-primary mb-1">ข้อมูลการจอง</div>
+            <h2 class="h5 fw-bold mb-0">{{ slot.sd_id.tutc_id.tutc_name }}</h2>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-sm-6"><div class="activity-meta"><div class="activity-meta-label">วันที่เรียน</div><div class="activity-meta-value"><i class="fas fa-calendar-day text-primary me-2"></i>{{ slot.sd_id.sd_date|date:"d M Y" }}</div></div></div>
+          <div class="col-sm-6"><div class="activity-meta"><div class="activity-meta-label">เวลาเรียน</div><div class="activity-meta-value"><i class="fas fa-clock text-primary me-2"></i>{{ slot.ts_start_time|time:"H:i" }}–{{ slot.ts_end_time|time:"H:i" }} น.</div></div></div>
         </div>
         {% if slot.ts_meeting_detail %}
-        <div class="alert alert-light border mt-3 mb-0">
-          <div class="small fw-semibold mb-1">รายละเอียดนัดหมาย</div>
+        <div class="activity-note p-3 mt-3">
+          <div class="fw-semibold mb-1"><i class="fas fa-map-marker-alt me-2"></i>รายละเอียดนัดหมาย</div>
           <div style="white-space:pre-line;">{{ slot.ts_meeting_detail }}</div>
         </div>
         {% endif %}
       </div>
     </div>
 
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" id="activityGroupForm" novalidate>
       {% csrf_token %}
+      <div id="activityValidation" class="alert alert-danger d-none mb-4" role="alert" aria-live="assertive"></div>
 
-      <div class="card border-0 rounded-4 shadow-sm mb-4">
+      <div class="card activity-card mb-4">
         <div class="card-body p-4">
-          <h5 class="fw-bold mb-1"><i class="fas fa-user-check text-primary me-2"></i>บันทึกการเข้าเรียน</h5>
-          <p class="small text-muted mb-3">เลือกรายการให้ครบทุกคน ผู้เรียนหนึ่งบัญชีอาจจองมากกว่าหนึ่งที่นั่ง</p>
+          <div class="d-flex align-items-center gap-2 mb-2"><span class="activity-icon"><i class="fas fa-user-check"></i></span><h2 class="h5 fw-bold mb-0">บันทึกการเข้าเรียน</h2></div>
+          <p class="text-muted mb-4">ระบุผลการเข้าเรียนของผู้เรียนแต่ละรายการให้ครบถ้วน</p>
           {% for bk in bookings %}
-          <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap py-3{% if not forloop.last %} border-bottom{% endif %}">
+          <div class="attendance-item d-flex justify-content-between align-items-center gap-3 flex-wrap" data-attendance-row data-booking-name="BK{{ bk.bk_id|stringformat:'05d' }} · {{ bk.member.mb_full_name }}">
             <div>
-              <div class="fw-semibold">BK{{ bk.bk_id|stringformat:"05d" }} · {{ bk.member.mb_full_name }}</div>
-              <div class="small text-muted">{{ bk.bk_stu_count }} ที่นั่ง · {{ bk.total_credit }} เครดิต</div>
+              <div class="fw-bold text-dark">BK{{ bk.bk_id|stringformat:"05d" }} · {{ bk.member.mb_full_name }}</div>
+              <div class="small text-muted mt-1">
+                {% if bk.bk_stu_count > 1 %}รายการเดิม {{ bk.bk_stu_count }} ที่นั่ง{% else %}1 บัญชี · 1 ที่นั่ง{% endif %}
+                · {{ bk.total_credit }} เครดิต
+              </div>
             </div>
-            <div class="btn-group" role="group" aria-label="สถานะเข้าเรียน">
+            <div class="btn-group" role="group" aria-label="สถานะเข้าเรียนของ {{ bk.member.mb_full_name }}">
               <input type="radio" class="btn-check" name="attendance_{{ bk.bk_id }}"
                      id="attended-{{ bk.bk_id }}" value="attended" required>
-              <label class="btn btn-outline-success" for="attended-{{ bk.bk_id }}">เข้าเรียน</label>
+              <label class="btn btn-outline-success" for="attended-{{ bk.bk_id }}"><i class="fas fa-check me-1"></i>เข้าเรียน</label>
               <input type="radio" class="btn-check" name="attendance_{{ bk.bk_id }}"
                      id="absent-{{ bk.bk_id }}" value="absent" required>
-              <label class="btn btn-outline-danger" for="absent-{{ bk.bk_id }}">ไม่เข้าเรียน</label>
+              <label class="btn btn-outline-danger" for="absent-{{ bk.bk_id }}"><i class="fas fa-times me-1"></i>ไม่เข้าเรียน</label>
             </div>
           </div>
           {% endfor %}
         </div>
       </div>
 
-      <div class="card border-0 rounded-4 shadow-sm mb-4">
+      <div class="card activity-card mb-4">
         <div class="card-body p-4">
-          <h5 class="fw-bold mb-1"><i class="fas fa-images text-primary me-2"></i>หลักฐานร่วมของรอบเรียน</h5>
-          <p class="small text-muted">ใช้รูปและสรุปชุดเดียวกันกับทุกรายการที่ระบุว่าเข้าเรียน</p>
-          <div class="row g-3 mb-3">
-            <div class="col-md-4"><input type="file" name="ta_img1" class="form-control" accept="image/*"></div>
-            <div class="col-md-4"><input type="file" name="ta_img2" class="form-control" accept="image/*"></div>
-            <div class="col-md-4"><input type="file" name="ta_img3" class="form-control" accept="image/*"></div>
+          <div class="d-flex align-items-center gap-2 mb-2"><span class="activity-icon"><i class="fas fa-images"></i></span><h2 class="h5 fw-bold mb-0">อัพโหลดกิจกรรมการติว</h2></div>
+          <p class="text-muted mb-4">รูปและสรุปการสอนชุดนี้จะใช้กับทุกรายการที่เลือก “เข้าเรียน” · อัปโหลดได้สูงสุด 3 รูป และต้องมีอย่างน้อย 1 รูปเมื่อมีผู้เข้าเรียน</p>
+          <div class="row g-3 mb-4">
+            {% for number in '123' %}
+            <div class="col-12 col-sm-4">
+              <div class="small fw-semibold text-dark mb-2">รูปภาพ {{ number }}</div>
+              <div class="upload-zone" id="uploadZone{{ number }}">
+                <div class="text-center p-3" id="uploadPlaceholder{{ number }}">
+                  <i class="fas fa-camera text-secondary" style="font-size:2rem;opacity:.55;"></i>
+                  <div class="fw-semibold text-secondary mt-2">เลือกรูปภาพ</div>
+                  <div class="small text-muted">คลิกเพื่อเพิ่มไฟล์</div>
+                </div>
+                <img id="uploadPreview{{ number }}" class="upload-preview d-none" alt="ตัวอย่างรูปภาพ {{ number }}">
+                <div class="upload-overlay"><span class="fw-semibold"><i class="fas fa-camera me-1"></i>เปลี่ยนรูป</span></div>
+                <input type="file" name="ta_img{{ number }}" accept="image/*" aria-label="เลือกรูปภาพกิจกรรม {{ number }}" data-upload-input="{{ number }}">
+              </div>
+            </div>
+            {% endfor %}
           </div>
           <label class="form-label fw-semibold" for="ta-desc">สรุปเนื้อหาการสอน</label>
           <textarea class="form-control" name="ta_desc" id="ta-desc" rows="5"
-                    maxlength="1000" placeholder="สรุปหัวข้อที่สอนในรอบนี้">{{ request.POST.ta_desc }}</textarea>
+                    maxlength="1000" placeholder="สรุปหัวข้อที่สอนและกิจกรรมในรอบนี้">{{ request.POST.ta_desc }}</textarea>
+          <div class="d-flex justify-content-between gap-2 mt-2 small text-muted"><span>จำเป็นเมื่อมีผู้เรียนเข้าเรียน</span><span id="descCounter">0 / 1000 ตัวอักษร</span></div>
         </div>
       </div>
 
-      <div class="card border-0 rounded-4 shadow-sm mb-4">
+      <div class="card activity-card mb-4">
         <div class="card-body p-4">
-          <h5 class="fw-bold mb-1"><i class="fas fa-user-times text-danger me-2"></i>กรณีไม่เข้าเรียน</h5>
-          <p class="small text-muted">ถ้ามีผู้เรียนไม่มา ให้ระบุข้อเท็จจริงที่ใช้ประกอบการพิจารณา เครดิตของรายการนั้นจะยังไม่ถูกคืนหรือโอนอัตโนมัติ</p>
-          <textarea class="form-control" name="absent_desc" rows="4"
+          <div class="d-flex align-items-center gap-2 mb-2"><span class="activity-icon" style="background:#fff1f2;color:#dc3545;"><i class="fas fa-user-times"></i></span><h2 class="h5 fw-bold mb-0">กรณีผู้เรียนไม่เข้าเรียน</h2></div>
+          <p class="text-muted mb-3">หากมีผู้เรียนไม่มา กรุณาระบุข้อเท็จจริงประกอบการพิจารณา เครดิตของรายการนั้นจะยังไม่คืนหรือโอนอัตโนมัติ</p>
+          <label class="form-label fw-semibold" for="absent-desc">รายละเอียดกรณีไม่เข้าเรียน</label>
+          <textarea class="form-control" name="absent_desc" id="absent-desc" rows="4"
                     placeholder="เช่น ช่องทางและเวลาที่พยายามติดต่อผู้เรียน">{{ request.POST.absent_desc }}</textarea>
+          <div class="form-text">จำเป็นเมื่อเลือก “ไม่เข้าเรียน” อย่างน้อยหนึ่งรายการ</div>
         </div>
       </div>
 
-      <div class="d-flex justify-content-between gap-3">
-        <a href="/bookings/tutor/?tab=accepted" class="btn btn-outline-secondary rounded-pill px-4">กลับ</a>
-        <button type="submit" class="btn btn-primary fw-bold rounded-pill px-5"
-                onclick="return confirm('ยืนยันผลการเข้าเรียนและส่งหลักฐานของรอบนี้?')">
-          <i class="fas fa-paper-plane me-1"></i>บันทึกและแจ้งจบงาน
+      <div class="d-flex justify-content-between gap-3 flex-wrap activity-actions pb-4">
+        <a href="/bookings/tutor/?tab=completion" class="btn btn-outline-secondary rounded-pill px-4">กลับ</a>
+        <button type="button" id="openActivityReview" class="btn btn-primary fw-bold rounded-pill px-4">
+          <i class="fas fa-clipboard-check me-2"></i>ตรวจสอบก่อนบันทึก
         </button>
       </div>
     </form>
   </div>
 </div>
+
+<div class="modal fade" id="activityReviewModal" tabindex="-1" aria-labelledby="activityReviewTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 rounded-4 shadow">
+      <div class="modal-header border-bottom p-3 p-md-4">
+        <div><div class="small fw-semibold text-primary mb-1">ตรวจสอบข้อมูลก่อนบันทึก</div><h2 class="modal-title h5 fw-bold mb-0" id="activityReviewTitle">สรุปผลการสอนรอบนี้</h2></div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+      </div>
+      <div class="modal-body p-3 p-md-4">
+        <div class="review-block mb-3"><div class="fw-bold text-dark">{{ slot.sd_id.tutc_id.tutc_name }}</div><div class="text-muted mt-1">{{ slot.sd_id.sd_date|date:"d M Y" }} · {{ slot.ts_start_time|time:"H:i" }}–{{ slot.ts_end_time|time:"H:i" }} น.</div></div>
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6"><div class="review-block h-100"><div class="fw-bold text-success mb-2">เข้าเรียน <span id="reviewAttendedCount">0</span> รายการ</div><ul class="mb-0 ps-3" id="reviewAttendedList"></ul></div></div>
+          <div class="col-sm-6"><div class="review-block h-100"><div class="fw-bold text-danger mb-2">ไม่เข้าเรียน <span id="reviewAbsentCount">0</span> รายการ</div><ul class="mb-0 ps-3" id="reviewAbsentList"></ul></div></div>
+        </div>
+        <div class="review-block mb-2"><div class="fw-semibold mb-1">รูปหลักฐาน <span id="reviewImageCount">0</span> รูป</div><div id="reviewImageNames" class="text-muted review-text"></div></div>
+        <div class="review-block mb-2"><div class="fw-semibold mb-1">สรุปเนื้อหาการสอน</div><div id="reviewTeachingDesc" class="review-text text-muted"></div></div>
+        <div class="review-block"><div class="fw-semibold mb-1">รายละเอียดกรณีไม่เข้าเรียน</div><div id="reviewAbsentDesc" class="review-text text-muted"></div></div>
+        <div class="activity-note p-3 mt-3 small"><i class="fas fa-info-circle me-1"></i>รายการที่เข้าเรียนจะเข้าสู่ขั้นตอนรอผู้เรียนยืนยัน ส่วนรายการไม่เข้าเรียนจะส่งเข้าสู่กระบวนการพิจารณา</div>
+      </div>
+      <div class="modal-footer border-top p-3 p-md-4">
+        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">กลับไปแก้ไข</button>
+        <button type="button" id="confirmActivitySubmit" class="btn btn-primary fw-bold rounded-pill px-4"><i class="fas fa-paper-plane me-1"></i>ยืนยันและแจ้งจบงาน</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const activityForm = document.getElementById('activityGroupForm');
+const activityReviewModal = new bootstrap.Modal(document.getElementById('activityReviewModal'));
+const validationBox = document.getElementById('activityValidation');
+let activitySubmitting = false;
+
+// แสดงตัวอย่างรูปที่เลือกในกรอบอัปโหลดแบบเดิม
+document.querySelectorAll('[data-upload-input]').forEach(input => {
+  input.addEventListener('change', () => {
+    const number = input.dataset.uploadInput;
+    const zone = document.getElementById(`uploadZone${number}`);
+    const preview = document.getElementById(`uploadPreview${number}`);
+    const placeholder = document.getElementById(`uploadPlaceholder${number}`);
+    const file = input.files[0];
+    if (!file) {
+      zone.classList.remove('has-image');
+      preview.classList.add('d-none');
+      placeholder.classList.remove('d-none');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = event => {
+      preview.src = event.target.result;
+      preview.classList.remove('d-none');
+      placeholder.classList.add('d-none');
+      zone.classList.add('has-image');
+    };
+    reader.readAsDataURL(file);
+  });
+});
+
+const teachingDesc = document.getElementById('ta-desc');
+const descCounter = document.getElementById('descCounter');
+function updateDescCounter() {
+  descCounter.textContent = `${teachingDesc.value.length} / 1000 ตัวอักษร`;
+}
+teachingDesc.addEventListener('input', updateDescCounter);
+updateDescCounter();
+
+function showActivityError(message, target) {
+  validationBox.textContent = message;
+  validationBox.classList.remove('d-none');
+  validationBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (target) target.focus({ preventScroll: true });
+}
+
+function fillReviewList(id, names) {
+  const list = document.getElementById(id);
+  list.replaceChildren();
+  if (!names.length) {
+    const item = document.createElement('li');
+    item.textContent = 'ไม่มี';
+    list.appendChild(item);
+    return;
+  }
+  names.forEach(name => {
+    const item = document.createElement('li');
+    item.textContent = name;
+    list.appendChild(item);
+  });
+}
+
+document.getElementById('openActivityReview').addEventListener('click', () => {
+  validationBox.classList.add('d-none');
+  const rows = [...activityForm.querySelectorAll('[data-attendance-row]')];
+  const missing = rows.find(row => !row.querySelector('input[type="radio"]:checked'));
+  if (missing) {
+    showActivityError('กรุณาระบุการเข้าเรียนให้ครบทุกรายการ', missing.querySelector('input[type="radio"]'));
+    return;
+  }
+
+  const attended = rows.filter(row => row.querySelector('input[value="attended"]:checked')).map(row => row.dataset.bookingName);
+  const absent = rows.filter(row => row.querySelector('input[value="absent"]:checked')).map(row => row.dataset.bookingName);
+  const files = [...activityForm.querySelectorAll('[data-upload-input]')].flatMap(input => [...input.files]);
+  const desc = teachingDesc.value.trim();
+  const absentDesc = document.getElementById('absent-desc').value.trim();
+
+  if (attended.length && !files.length) {
+    showActivityError('กรุณาอัปโหลดหลักฐานการสอนอย่างน้อย 1 รูปเมื่อมีผู้เข้าเรียน', activityForm.querySelector('[data-upload-input]'));
+    return;
+  }
+  if (attended.length && !desc) {
+    showActivityError('กรุณากรอกสรุปเนื้อหาการสอน', teachingDesc);
+    return;
+  }
+  if (absent.length && !absentDesc) {
+    showActivityError('กรุณาระบุรายละเอียดกรณีผู้เรียนไม่เข้าเรียน', document.getElementById('absent-desc'));
+    return;
+  }
+
+  document.getElementById('reviewAttendedCount').textContent = attended.length;
+  document.getElementById('reviewAbsentCount').textContent = absent.length;
+  fillReviewList('reviewAttendedList', attended);
+  fillReviewList('reviewAbsentList', absent);
+  document.getElementById('reviewImageCount').textContent = attended.length ? files.length : 0;
+  document.getElementById('reviewImageNames').textContent = attended.length ? files.map(file => file.name).join(' · ') : 'ไม่ใช้รูปหลักฐานเมื่อไม่มีผู้เข้าเรียน';
+  document.getElementById('reviewTeachingDesc').textContent = attended.length ? desc : 'ไม่เกี่ยวข้อง';
+  document.getElementById('reviewAbsentDesc').textContent = absent.length ? absentDesc : 'ไม่เกี่ยวข้อง';
+  activityReviewModal.show();
+});
+
+// ป้องกันการส่งฟอร์มโดยไม่ผ่านหน้าสรุป
+activityForm.addEventListener('submit', event => {
+  if (activitySubmitting) return;
+  event.preventDefault();
+  document.getElementById('openActivityReview').click();
+});
+
+document.getElementById('confirmActivitySubmit').addEventListener('click', event => {
+  if (activitySubmitting) return;
+  activitySubmitting = true;
+  event.currentTarget.disabled = true;
+  activityForm.submit();
+});
+</script>
 {% endblock %}

@@ -298,8 +298,6 @@
                     '{% if bk.tutoringactivity.ta_img2 %}{{ bk.tutoringactivity.ta_img2.url }}{% endif %}',
                     '{% if bk.tutoringactivity.ta_img3 %}{{ bk.tutoringactivity.ta_img3.url }}{% endif %}',
                     '{{ bk.tutoringactivity.ta_desc|default:""|escapejs }}',
-                    '{{ bk.cancel_request_reason|default:""|escapejs }}',
-                    '{{ bk.cancel_reject_reason|default:""|escapejs }}',
                     {% if bk.bk_report_resolved_date %}true{% else %}false{% endif %})"
                   title="ดูรายละเอียด">
             <i class="bi bi-eye"></i><span>ดูรายละเอียด</span>
@@ -360,20 +358,6 @@
         <div class="mb-3">
           <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">รายละเอียดปัญหา</div>
           <div id="d-desc" class="p-3 rounded" style="background:#FEF2F2;font-size:14px;line-height:1.7;color:#374151;"></div>
-        </div>
-
-        <div id="d-cancel-history" class="mb-3 d-none">
-          <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">ประวัติคำขอยกเลิกก่อนเกิดปัญหา</div>
-          <div class="p-3 rounded" style="background:#F8FAFC;border:1px solid #E5E7EB;font-size:13px;line-height:1.7;color:#374151;">
-            <div id="d-cancel-student-wrap" class="mb-2 d-none">
-              <span class="fw-semibold">เหตุผลที่ผู้เรียนขอยกเลิก:</span>
-              <div id="d-cancel-student" class="text-muted"></div>
-            </div>
-            <div id="d-cancel-tutor-wrap" class="d-none">
-              <span class="fw-semibold">เหตุผลที่ติวเตอร์ไม่อนุมัติ:</span>
-              <div id="d-cancel-tutor" class="text-muted"></div>
-            </div>
-          </div>
         </div>
 
         <div id="d-statements-wrap" class="mb-3 d-none">
@@ -541,7 +525,7 @@ function renderReportStatements(pk) {
   wrap.classList.remove('d-none');
 }
 
-function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tutorPk, reason, img1, img2, img3, taDesc, cancelStudentReason, cancelTutorReason, resolved) {
+function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tutorPk, reason, img1, img2, img3, taDesc, resolved) {
   document.getElementById('d-bkid').textContent    = bkId;
   document.getElementById('d-student').textContent = student;
   document.getElementById('d-tutor').textContent   = tutor;
@@ -551,14 +535,6 @@ function openDetail(pk, bkId, student, tutor, course, desc, date, studentPk, tut
   document.getElementById('d-note').value          = '';
   document.getElementById('d-reason').textContent  = REASON_MAP[reason] || reason || '—';
   document.getElementById('note-error').classList.add('d-none');
-  const cancelHistory = document.getElementById('d-cancel-history');
-  const cancelStudentWrap = document.getElementById('d-cancel-student-wrap');
-  const cancelTutorWrap = document.getElementById('d-cancel-tutor-wrap');
-  cancelHistory.classList.toggle('d-none', !cancelStudentReason && !cancelTutorReason);
-  cancelStudentWrap.classList.toggle('d-none', !cancelStudentReason);
-  cancelTutorWrap.classList.toggle('d-none', !cancelTutorReason);
-  document.getElementById('d-cancel-student').textContent = cancelStudentReason || '';
-  document.getElementById('d-cancel-tutor').textContent = cancelTutorReason || '';
   renderReportStatements(pk);
   // set bk_id ในทุก form
   document.querySelectorAll('.modal-bk-id').forEach(el => el.value = pk);

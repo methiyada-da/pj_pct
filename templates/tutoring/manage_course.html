@@ -15,6 +15,42 @@
     width: 100%;
     margin-bottom: 0 !important;
   }
+  @media (min-width: 992px) {
+    .course-layout {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5rem;
+      margin: 0;
+    }
+    .course-layout > .course-column { display: contents; }
+    .course-layout > .course-column:first-child > .card:first-child {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .course-layout > .course-column:first-child > .card:nth-child(2) {
+      grid-column: 1;
+      grid-row: 2;
+      align-self: start;
+    }
+    .course-layout > .course-column:last-child > .row {
+      display: grid;
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      gap: 1rem;
+      grid-column: 2;
+      grid-row: 1;
+      margin: 0;
+    }
+    .course-layout > .course-column:last-child > .row > [class*="col-"] {
+      width: auto;
+      min-width: 0;
+      padding: 0;
+      margin: 0;
+    }
+    .course-layout > .course-column:last-child > .card {
+      grid-column: 2;
+      grid-row: 2;
+    }
+  }
   .schedule-card-body { container-type: inline-size; }
   .slot-row.slot-row-error {
     border-color: #dc3545 !important;
@@ -94,11 +130,13 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    align-items: center;
     justify-content: center;
     align-self: stretch;
     min-height: 115px;
     border-bottom: 1px solid #e5eaf1;
     padding: 1.8rem 0;
+    text-align: center;
   }
   .schedule-weekday {
     display: block;
@@ -117,9 +155,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 0;
+    margin-top: .75rem;
   }
-  .schedule-date-actions .delete-date-btn { width: 100%; }
   .schedule-new-badge {
     position: absolute;
     top: 0;
@@ -169,7 +206,17 @@
   .time-input {
     width: 100%;
     min-width: 0;
-    padding-left: 1.9rem;
+    padding-left: .5rem;
+    height: 40px;
+    line-height: 1.25;
+    font-size: 1rem;
+  }
+  .time-input::-webkit-datetime-edit,
+  .time-input::-webkit-datetime-edit-fields-wrapper {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0;
   }
   .slot-delete-btn {
     display: inline-flex;
@@ -187,23 +234,23 @@
     align-items: center;
     justify-content: center;
     gap: .35rem;
-    padding: .5rem .75rem;
-    border: 1px solid #f59e0b;
-    border-radius: .5rem;
-    background: #fef3c7;
-    color: #92400e;
+    padding: .3rem .55rem;
+    border: 1px solid #d6dbe3;
+    border-radius: .375rem;
+    background: #f3f4f6;
+    color: #5f6b7a;
     font-family: inherit;
-    font-size: .75rem;
-    font-weight: 600;
+    font-size: .72rem;
+    font-weight: 500;
     line-height: 1.5;
     white-space: nowrap;
     cursor: pointer;
   }
   .delete-date-btn:hover,
   .delete-date-btn:focus {
-    border-color: #f59e0b;
-    background: #fde68a;
-    color: #78350f;
+    border-color: #b9c1cc;
+    background: #e9edf2;
+    color: #374151;
   }
   .add-time-btn {
     width: 322px;
@@ -238,11 +285,6 @@
       padding: 1.8rem 1rem 1.8rem 0;
     }
     .schedule-slots-list { width: 362px; }
-    .schedule-date-actions {
-      grid-column: 2;
-      justify-content: flex-start;
-    }
-    .schedule-date-actions .delete-date-btn { width: auto; }
   }
 
   @media (max-width: 767.98px) {
@@ -254,11 +296,6 @@
       padding: 1.8rem 0;
     }
     .schedule-slots-list { width: 100%; }
-    .schedule-date-actions {
-      grid-column: auto;
-      justify-content: stretch;
-    }
-    .schedule-date-actions .delete-date-btn { width: 100%; }
     .slot-row { width: 100%; gap: .45rem; }
     .time-range {
       flex: 1 1 auto;
@@ -285,7 +322,7 @@
   @media (max-width: 420px) {
     .slot-row { gap: .35rem; }
     .time-range { gap: .35rem; }
-    .time-input-wrap { flex: 1 1 82px; min-width: 78px; }
+    .time-input-wrap { flex: 1 1 115px; min-width: 105px; }
     .slot-delete-btn { width: 28px; height: 28px; flex-basis: 28px; }
     .repeat-slot-row { flex-wrap: wrap; }
   }
@@ -322,7 +359,7 @@
 <form method="POST" enctype="multipart/form-data" id="courseForm">
 {% csrf_token %}
 
-<div class="row g-4">
+<div class="row g-4 course-layout">
 <div class="col-lg-6 course-column">
 
   <!-- ① ข้อมูลทางวิชาการ -->
@@ -422,7 +459,7 @@
         <textarea name="tutc_meeting_detail" class="form-control" rows="4"
                   placeholder="เช่น เรียนแบบOnline/Onsite เรียนภายในมหาวิทยาลัย/สถานที่อื่นๆ เบื้องต้น ส่วนรายละเอียดอื่นๆ เช่น ห้องเรียนจะแจ้งตอนตอบรับการจอง"
                   required>{{ tutc.tutc_meeting_detail|default:'' }}</textarea>
-        <div class="form-text text-danger">กรุณากรอกรายละเอียดนัดหมายเริ่มต้น</div>
+        <div id="meetingDetailWarning" class="form-text text-danger d-none">กรุณากรอกรายละเอียดนัดหมายเริ่มต้น</div>
       </div>
       <!-- Image Upload -->
       <div class="mb-1">
@@ -449,21 +486,22 @@
 
 <div class="col-lg-6 course-column">
 
+  <div class="row g-3">
   <!-- ③ ราคาเดียวต่อที่นั่ง -->
-  <div class="card border rounded-4 shadow-sm">
+  <div class="col-12 col-xl-7">
+  <div class="card border rounded-4 shadow-sm h-100">
     <div class="card-header bg-white border-bottom rounded-top-4 d-flex align-items-center gap-2 py-3 px-4">
       <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-success bg-opacity-10 text-success"
            style="width:36px; height:36px; flex-shrink:0;">
         <i class="fas fa-coins"></i>
       </div>
-      <h2 class="h6 fw-bold mb-0">รายละเอียดราคา</h2>
+      <h2 class="h6 fw-bold mb-0">กำหนดอัตราค่าติว</h2>
     </div>
-    <div class="card-body p-4">
-      <p class="text-muted small mb-1">กำหนดราคาเดียวต่อหนึ่งที่นั่ง</p>
-      <p class="text-muted small mb-1"><i class="fas fa-coins text-warning me-1"></i> 1 เครดิต = 10 บาท</p>
-      <p class="text-muted small mb-3"><i class="fas fa-info-circle text-primary me-1"></i> ราคา 0 เครดิตหมายถึงเปิดสอนฟรี</p>
+    <div class="card-body p-3">
+      <p class="text-muted large mb-2">อัตราค่าติวต่อหนึ่งที่นั่ง</p>
+      <p class="text-muted large mb-2"><i class="fas fa-coins text-warning me-1"></i> 1 เครดิต = 10 บาท</p>
       <div id="rateContainer">
-        <label class="form-label fw-semibold small">ราคาต่อที่นั่ง <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold large mb-2">อัตรา/ที่นั่ง <span class="text-danger">*</span></label>
         <div class="input-group">
           <input type="number" name="rate_per_person" class="form-control rate-price"
                  min="0" step="1" value="{{ fixed_rate.tut_rate_per_person|default:'' }}"
@@ -474,17 +512,27 @@
       <div class="invalid-feedback d-block mt-1" id="err_rate" style="display:none!important;"></div>
     </div>
   </div>
+  </div>
 
   <!-- ④ เคล็ดลับราคา -->
-  <div class="card border rounded-4 shadow-sm">
-    <div class="card-body p-3">
-      <p class="fw-bold small mb-2"><i class="fas fa-lightbulb text-warning me-1"></i> เคล็ดลับราคา</p>
-      <ul class="mb-0 ps-3 text-muted" style="font-size:.78rem; line-height:1.8;">
-        <li>ผู้เรียนชำระตามราคาต่อที่นั่งคูณจำนวนที่จอง</li>
-        <li>ราคา 0 เครดิตหมายถึงเปิดสอนฟรี</li>
-        <li>ราคาและจำนวนรับแก้ไม่ได้ขณะมีรายการรอตอบรับหรือรอเรียน</li>
+  <div class="col-12 col-xl-5">
+  <div class="card border rounded-4 shadow-sm h-100">
+    <div class="card-header bg-white border-bottom rounded-top-4 d-flex align-items-center gap-2 py-3 px-4">
+      <div class="d-inline-flex align-items-center justify-content-center rounded-3 bg-warning bg-opacity-10 text-warning"
+           style="width:36px; height:36px; flex-shrink:0;">
+        <i class="fas fa-lightbulb"></i>
+      </div>
+      <h2 class="h6 fw-bold mb-0">เคล็ดลับราคา</h2>
+    </div>
+    <div class="card-body p-4">
+      <ul class="mb-0 ps-3 text-muted" style="font-size:.85rem; line-height:1.7;">
+        <li>หนึ่งบัญชีจองได้ 1 ที่นั่งต่อรอบเรียน และชำระตามราคาต่อที่นั่ง</li>
+        <li>กำหนด 0 เครดิตหมายถึงเปิดสอน "ฟรี"</li>
+        <li>อัตราและจำนวนรับแก้ไม่ได้ขณะมีรายการรอตอบรับหรือรอเรียน</li>
       </ul>
     </div>
+  </div>
+  </div>
   </div>
 
   <!-- ⑤ ตารางเวลา -->
@@ -542,7 +590,7 @@
           <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
             <span class="text-muted small">ตั้งแต่</span>
             <input type="date" id="repeatStart" class="form-control form-control-sm" style="width:160px;"
-                   onchange="document.getElementById('repeatEnd').min = this.value || todayStr;">
+                   onchange="document.getElementById('repeatEnd').min = this.value || formatDateLocal(new Date());">
             <span class="text-muted small">ถึง</span>
             <input type="date" id="repeatEnd" class="form-control form-control-sm" style="width:160px;">
           </div>
@@ -600,23 +648,27 @@
                     <i class="fas fa-lock me-1"></i>จองแล้ว {{ sd.booked_slot_count }} ช่วง
                   </span>
                   {% endif %}
+                  <div class="schedule-date-actions">
+                    <button type="button" class="delete-date-btn"
+                            onclick="removeSingleDay(this)" title="ลบวันที่นี้พร้อมช่วงเวลาทั้งหมด">
+                      <i class="fas fa-trash-alt"></i><span>ลบวันที่</span>
+                    </button>
+                  </div>
                 </div>
                 <div class="schedule-slots-list">
                   {% for ts in sd.available_slots %}
                   <div class="slot-row mb-2">
                     <div class="time-range">
                       <span class="time-input-wrap">
-                        <i class="far fa-clock"></i>
-                        <input type="text" name="ts_start_{{ sd.sd_id }}[]"
+                        <input type="time" name="ts_start_{{ sd.sd_id }}[]"
                                class="form-control form-control-sm time-input" value="{{ ts.ts_start_time|time:'H:i' }}"
-                               placeholder="09:00" maxlength="5" inputmode="numeric" aria-label="เวลาเริ่มต้น">
+                               step="60" aria-label="เวลาเริ่มต้น">
                       </span>
                       <span class="text-muted small" aria-hidden="true">—</span>
                       <span class="time-input-wrap">
-                        <i class="far fa-clock"></i>
-                        <input type="text" name="ts_end_{{ sd.sd_id }}[]"
+                        <input type="time" name="ts_end_{{ sd.sd_id }}[]"
                                class="form-control form-control-sm time-input" value="{{ ts.ts_end_time|time:'H:i' }}"
-                               placeholder="10:00" maxlength="5" inputmode="numeric" aria-label="เวลาสิ้นสุด">
+                               step="60" aria-label="เวลาสิ้นสุด">
                       </span>
                     </div>
                     <button type="button" class="btn btn-link p-0 slot-delete-btn"
@@ -628,12 +680,6 @@
                   <button type="button" class="btn btn-outline-secondary btn-sm add-time-btn"
                           onclick="addSlot({{ sd.sd_id }}, this)">
                     <i class="fas fa-plus me-1"></i> เพิ่มช่วงเวลา
-                  </button>
-                </div>
-                <div class="schedule-date-actions">
-                  <button type="button" class="delete-date-btn"
-                          onclick="removeSingleDay(this)" title="ลบวันที่นี้พร้อมช่วงเวลาทั้งหมด">
-                    <i class="fas fa-trash-alt"></i><span>ลบวันที่</span>
                   </button>
                 </div>
               </div>
@@ -673,6 +719,7 @@
 
 {% block extra_js %}
 <script>
+const bookingCloseHours = Number('{{ booking_close_hours|default:2 }}');
 // ── helpers ──
 function showErr(id, msg) {
   const el = document.getElementById(id);
@@ -698,6 +745,23 @@ document.getElementById('cgSelect').addEventListener('change', () => clearField(
 document.getElementById('crsSelect').addEventListener('change', () => clearField(document.getElementById('crsSelect'), 'err_crs'));
 document.querySelector('[name=tutc_max_stu]').addEventListener('input', () => clearField(document.querySelector('[name=tutc_max_stu]'), 'err_max_stu'));
 document.querySelector('[name=tutc_name]').addEventListener('input', () => clearField(document.querySelector('[name=tutc_name]'), 'err_name'));
+const meetingDetailInput = document.querySelector('[name=tutc_meeting_detail]');
+const meetingDetailWarning = document.getElementById('meetingDetailWarning');
+let meetingDetailTouched = false;
+function updateMeetingDetailWarning() {
+  const isEmpty = !meetingDetailInput.value.trim();
+  const showWarning = meetingDetailTouched && isEmpty;
+  meetingDetailWarning.classList.toggle('d-none', !showWarning);
+  meetingDetailInput.classList.toggle('is-invalid', showWarning);
+}
+meetingDetailInput.addEventListener('input', () => {
+  meetingDetailTouched = true;
+  updateMeetingDetailWarning();
+});
+meetingDetailInput.addEventListener('invalid', () => {
+  meetingDetailTouched = true;
+  updateMeetingDetailWarning();
+});
 
 // ── Form Validation ──
 document.getElementById('courseForm').addEventListener('submit', function(e) {
@@ -723,6 +787,11 @@ document.getElementById('courseForm').addEventListener('submit', function(e) {
   if (!nameEl.value.trim()) { markField(nameEl, 'err_name', 'กรุณากรอกชื่อรายวิชา'); valid = false; }
   else clearField(nameEl, 'err_name');
 
+  // รายละเอียดนัดหมายต้องมีข้อความจริง ไม่ใช่ช่องว่างอย่างเดียว
+  meetingDetailTouched = true;
+  updateMeetingDetailWarning();
+  if (!meetingDetailInput.value.trim()) valid = false;
+
   // 5. วันที่ + time slots
   const dayGroups = document.querySelectorAll('#slotContainer .slot-day-group');
   if (dayGroups.length === 0) {
@@ -738,6 +807,12 @@ document.getElementById('courseForm').addEventListener('submit', function(e) {
     dayGroups.forEach(group => {
       const slots = group.querySelectorAll('.slot-row');
       let groupErr = '';
+      const minStart = minimumStartForDate(group.dataset.date);
+
+      if (minStart === null) {
+        groupErr = `ต้องกำหนดเวลาเริ่มเรียนล่วงหน้าอย่างน้อย ${bookingCloseHours} ชั่วโมง`;
+        valid = false;
+      }
 
       if (slots.length === 0) {
         groupErr = 'แต่ละวันต้องมีช่วงเวลาอย่างน้อย 1 ช่วง';
@@ -749,7 +824,7 @@ document.getElementById('courseForm').addEventListener('submit', function(e) {
       // เก็บ element ทั้ง slot-row ด้วย เพื่อ highlight กรอบ
       const parsedSlots = [];
       slots.forEach(slot => {
-        const inputs = slot.querySelectorAll('input[type=text]');
+        const inputs = slot.querySelectorAll('.time-input');
         let slotHasErr = false;
         inputs.forEach(inp => {
           if (!inp.value.trim()) {
@@ -767,9 +842,13 @@ document.getElementById('courseForm').addEventListener('submit', function(e) {
           }
         });
         // ตรวจ end > start
-        const inps = slot.querySelectorAll('input[type=text]');
+        const inps = slot.querySelectorAll('.time-input');
         if (inps.length === 2 && inps[0].value && inps[1].value) {
-          if (inps[1].value <= inps[0].value) {
+          if (minStart === null || inps[0].value < minStart) {
+            slot.classList.add('slot-row-error');
+            groupErr = groupErr || `ต้องกำหนดเวลาเริ่มเรียนล่วงหน้าอย่างน้อย ${bookingCloseHours} ชั่วโมง`;
+            valid = false;
+          } else if (inps[1].value <= inps[0].value) {
             slot.classList.add('slot-row-error');
             groupErr = groupErr || 'เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น';
             valid = false;
@@ -870,15 +949,13 @@ function createTimeSlotRow(sdId, startValue = '', endValue = '') {
   row.innerHTML = `
     <div class="time-range">
       <span class="time-input-wrap">
-        <i class="far fa-clock"></i>
-        <input type="text" name="ts_start_${sdId}[]" class="form-control form-control-sm time-input"
-               value="${startValue}" placeholder="09:00" maxlength="5" inputmode="numeric" aria-label="เวลาเริ่มต้น">
+        <input type="time" name="ts_start_${sdId}[]" class="form-control form-control-sm time-input"
+               value="${startValue}" step="60" aria-label="เวลาเริ่มต้น">
       </span>
       <span class="text-muted small" aria-hidden="true">—</span>
       <span class="time-input-wrap">
-        <i class="far fa-clock"></i>
-        <input type="text" name="ts_end_${sdId}[]" class="form-control form-control-sm time-input"
-               value="${endValue}" placeholder="10:00" maxlength="5" inputmode="numeric" aria-label="เวลาสิ้นสุด">
+        <input type="time" name="ts_end_${sdId}[]" class="form-control form-control-sm time-input"
+               value="${endValue}" step="60" aria-label="เวลาสิ้นสุด">
       </span>
     </div>
     <button type="button" class="btn btn-link p-0 slot-delete-btn"
@@ -897,6 +974,7 @@ function addSlot(sdId, btn) {
     // เรียง slot ใหม่ทุกครั้งที่ blur (หลังกรอกเวลาเสร็จ)
     inp.addEventListener('blur', () => sortSlotsInGroup(group, btn));
   });
+  updateTimeLimitsForGroup(group);
   updateScheduleSummary();
 }
 
@@ -912,8 +990,8 @@ function sortSlotsInGroup(group, addBtn) {
 
   // เรียงตาม start time (ว่างหรือ invalid ให้ไปท้าย)
   rows.sort((a, b) => {
-    const aVal = a.querySelectorAll('input[type="text"]')[0]?.value.trim() || '99:99';
-    const bVal = b.querySelectorAll('input[type="text"]')[0]?.value.trim() || '99:99';
+    const aVal = a.querySelectorAll('.time-input')[0]?.value.trim() || '99:99';
+    const bVal = b.querySelectorAll('.time-input')[0]?.value.trim() || '99:99';
     const aOk = /^([01]\d|2[0-3]):[0-5]\d$/.test(aVal);
     const bOk = /^([01]\d|2[0-3]):[0-5]\d$/.test(bVal);
     if (!aOk && !bOk) return 0;
@@ -1027,17 +1105,17 @@ function createDayGroup(sdId, dateStr, pyDay, isNew) {
         ${newBadge}
         <div class="schedule-weekday">${DAY_TH_FULL[pyDay]}</div>
         <div class="schedule-date-label" data-thai-date>${formatThaiDate(dateStr)}</div>
+        <div class="schedule-date-actions">
+          <button type="button" class="delete-date-btn"
+                  onclick="removeSingleDay(this)" title="ลบวันที่นี้พร้อมช่วงเวลาทั้งหมด">
+            <i class="fas fa-trash-alt"></i><span>ลบวันที่</span>
+          </button>
+        </div>
       </div>
       <div class="schedule-slots-list">
         <button type="button" class="btn btn-outline-secondary btn-sm add-time-btn"
                 onclick="addSlot('${sdId}', this)">
           <i class="fas fa-plus me-1"></i> เพิ่มช่วงเวลา
-        </button>
-      </div>
-      <div class="schedule-date-actions">
-        <button type="button" class="delete-date-btn"
-                onclick="removeSingleDay(this)" title="ลบวันที่นี้พร้อมช่วงเวลาทั้งหมด">
-          <i class="fas fa-trash-alt"></i><span>ลบวันที่</span>
         </button>
       </div>
     </div>
@@ -1118,36 +1196,82 @@ function removeSingleDay(btn) {
   updateScheduleSummary();
 }
 
-// ── 24-Hour Time Input Auto-Format ──
+// ── จำกัดตัวเลือกเวลาให้ตรงกับวันที่ของแต่ละรอบ ──
+function nextMinuteTime(value) {
+  const [hour, minute] = value.split(':').map(Number);
+  const total = hour * 60 + minute + 1;
+  if (total >= 24 * 60) return '23:59';
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function earliestBookableDateTime() {
+  const earliest = new Date(Date.now() + bookingCloseHours * 60 * 60 * 1000);
+  if (earliest.getSeconds() || earliest.getMilliseconds()) {
+    earliest.setMinutes(earliest.getMinutes() + 1);
+  }
+  earliest.setSeconds(0, 0);
+  return earliest;
+}
+
+function minimumStartForDate(dateStr) {
+  const earliest = earliestBookableDateTime();
+  const earliestDate = formatDateLocal(earliest);
+  if (dateStr < earliestDate) return null;
+  if (dateStr > earliestDate) return '00:00';
+  return `${String(earliest.getHours()).padStart(2, '0')}:${String(earliest.getMinutes()).padStart(2, '0')}`;
+}
+
+function updateTimeLimitsForGroup(group) {
+  const minStart = minimumStartForDate(group.dataset.date);
+  group.querySelectorAll('.slot-row').forEach(row => {
+    const [start, end] = row.querySelectorAll('.time-input');
+    if (!start || !end) return;
+    start.min = minStart || '23:59';
+    start.max = minStart === null ? '00:00' : '23:58';
+    end.min = start.value ? nextMinuteTime(start.value) : (minStart || '23:59');
+    end.max = '23:59';
+  });
+}
+
+function updateRepeatTimeLimits() {
+  const repeatStart = document.getElementById('repeatStart').value;
+  const repeatEnd = document.getElementById('repeatEnd').value;
+  const onlyOneDate = repeatStart && repeatStart === repeatEnd;
+  const minStart = onlyOneDate ? minimumStartForDate(repeatStart) : '00:00';
+  document.querySelectorAll('#repeatSlotList .repeat-slot-row').forEach(row => {
+    const start = row.querySelector('.repeat-slot-start');
+    const end = row.querySelector('.repeat-slot-end');
+    start.min = minStart || '23:59';
+    start.max = minStart === null ? '00:00' : '23:58';
+    end.min = start.value ? nextMinuteTime(start.value) : (minStart || '23:59');
+    end.max = '23:59';
+  });
+}
+
+function refreshScheduleTimeLimits() {
+  const earliestDate = formatDateLocal(earliestBookableDateTime());
+  document.getElementById('newDateInput').min = earliestDate;
+  document.getElementById('repeatStart').min = earliestDate;
+  const repeatStart = document.getElementById('repeatStart').value;
+  document.getElementById('repeatEnd').min = repeatStart > earliestDate ? repeatStart : earliestDate;
+  document.querySelectorAll('#slotContainer .slot-day-group').forEach(updateTimeLimitsForGroup);
+  updateRepeatTimeLimits();
+}
+
 function initTimeInput(input) {
   if (input.dataset.timeInitialized === 'true') return;
   input.dataset.timeInitialized = 'true';
   input.addEventListener('input', function () {
-    let digits = this.value.replace(/\D/g, '');
-    if (digits.length > 4) digits = digits.slice(0, 4);
-    if (digits.length >= 3) {
-      this.value = digits.slice(0, 2) + ':' + digits.slice(2);
-    } else {
-      this.value = digits;
-    }
+    const group = this.closest('.slot-day-group');
+    if (group) updateTimeLimitsForGroup(group);
+    else updateRepeatTimeLimits();
   });
   input.addEventListener('blur', function () {
-    const parts = this.value.split(':');
-    if (parts.length === 2) {
-      const h = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10);
-      if (!isNaN(h) && !isNaN(m) && h >= 0 && h <= 23 && m >= 0 && m <= 59) {
-        this.value = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-        this.classList.remove('is-invalid');
-      } else {
-        this.classList.add('is-invalid');
-      }
-    } else if (this.value !== '') {
-      this.classList.add('is-invalid');
-    }
-    // ── เรียก real-time validate ทุกครั้งหลังกรอกเวลา ──
     const group = this.closest('.slot-day-group');
-    if (group) validateSlotsInGroupRealtime(group);
+    if (group) {
+      updateTimeLimitsForGroup(group);
+      validateSlotsInGroupRealtime(group);
+    }
   });
 }
 
@@ -1164,7 +1288,7 @@ function validateSlotsInGroupRealtime(group) {
   const parsed = [];
 
   rows.forEach(row => {
-    const inps = row.querySelectorAll('input[type="text"]');
+    const inps = row.querySelectorAll('.time-input');
     if (inps.length < 2) return;
     const sv = inps[0].value.trim();
     const ev = inps[1].value.trim();
@@ -1172,8 +1296,10 @@ function validateSlotsInGroupRealtime(group) {
 
     let rowErr = '';
 
-    // end ต้องมากกว่า start
-    if (ev <= sv) {
+    const minStart = minimumStartForDate(group.dataset.date);
+    if (minStart === null || sv < minStart) {
+      rowErr = `ต้องกำหนดเวลาเริ่มเรียนล่วงหน้าอย่างน้อย ${bookingCloseHours} ชั่วโมง`;
+    } else if (ev <= sv) {
       rowErr = `เวลาสิ้นสุด (${ev}) ต้องมากกว่าเวลาเริ่มต้น (${sv})`;
     } else {
       // ตรวจซ้ำและทับซ้อนกับ slot ก่อนหน้า
@@ -1233,7 +1359,7 @@ document.querySelectorAll('.time-input').forEach(initTimeInput);
     } else if (dateStr === todayDateStr) {
       // วันนี้ → ลบเฉพาะสล็อตที่เวลาเริ่มต้นผ่านไปแล้ว
       group.querySelectorAll('.slot-row').forEach(row => {
-        const startInput = row.querySelectorAll('input[type="text"]')[0];
+        const startInput = row.querySelectorAll('.time-input')[0];
         if (!startInput) return;
         const parts = startInput.value.split(':');
         if (parts.length === 2) {
@@ -1258,6 +1384,8 @@ const _timeObserver = new MutationObserver(mutations => {
     if (node.nodeType === 1) {
       node.querySelectorAll && node.querySelectorAll('.time-input').forEach(initTimeInput);
       if (node.classList && node.classList.contains('time-input')) initTimeInput(node);
+      const group = node.matches?.('.slot-day-group') ? node : node.closest?.('.slot-day-group');
+      if (group) updateTimeLimitsForGroup(group);
     }
   }));
   updateScheduleSummary();
@@ -1301,23 +1429,22 @@ function addRepeatSlot(startVal = '', endVal = '') {
   row.dataset.rid = id;
   row.innerHTML = `
     <span class="time-input-wrap">
-      <i class="far fa-clock"></i>
-      <input type="text" class="form-control form-control-sm time-input repeat-slot-start"
-             placeholder="09:00" maxlength="5" inputmode="numeric" value="${startVal}" aria-label="เวลาเริ่มต้น">
+      <input type="time" class="form-control form-control-sm time-input repeat-slot-start"
+             step="60" value="${startVal}" aria-label="เวลาเริ่มต้น">
     </span>
     <span class="text-muted small" aria-hidden="true">—</span>
     <span class="time-input-wrap">
-      <i class="far fa-clock"></i>
-      <input type="text" class="form-control form-control-sm time-input repeat-slot-end"
-             placeholder="10:00" maxlength="5" inputmode="numeric" value="${endVal}" aria-label="เวลาสิ้นสุด">
+      <input type="time" class="form-control form-control-sm time-input repeat-slot-end"
+             step="60" value="${endVal}" aria-label="เวลาสิ้นสุด">
     </span>
     <button type="button" class="btn btn-link p-0 slot-delete-btn"
             onclick="this.closest('.repeat-slot-row').remove()" title="ลบช่วงเวลานี้" aria-label="ลบช่วงเวลานี้">
       <i class="fas fa-trash-alt"></i>
     </button>`;
   document.getElementById('repeatSlotList').appendChild(row);
+  updateRepeatTimeLimits();
 
-  // ── ผูก initTimeInput (auto-format HH:MM) และ event ล้าง error ──
+  // ── ผูกการตรวจตัวเลือกเวลาและ event ล้าง error ──
   row.querySelectorAll('.time-input').forEach(inp => {
     initTimeInput(inp);
     inp.addEventListener('input', function () {
@@ -1351,6 +1478,7 @@ function doRepeatGenerate() {
   // validate
   if (!weekdays.length)     { showRepeatError('กรุณาเลือกอย่างน้อย 1 วันในสัปดาห์'); return; }
   if (!startStr || !endStr) { showRepeatError('กรุณาระบุช่วงวันที่'); return; }
+  if (startStr < formatDateLocal(new Date())) { showRepeatError('วันเริ่มต้นต้องไม่อยู่ในอดีต'); return; }
   if (startStr > endStr)    { showRepeatError('วันเริ่มต้นต้องไม่เกินวันสิ้นสุด'); return; }
   if (!slots.length)        { showRepeatError('กรุณาเพิ่มช่วงเวลาอย่างน้อย 1 ช่วง'); return; }
 
@@ -1371,6 +1499,11 @@ function doRepeatGenerate() {
     if (sl.end <= sl.start) {
       showRepeatError(`เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น (${sl.start} - ${sl.end})`); return;
     }
+  }
+  const singleDateMinStart = startStr === endStr ? minimumStartForDate(startStr) : '00:00';
+  if (singleDateMinStart === null
+      || (startStr === endStr && slots.some(sl => sl.start < singleDateMinStart))) {
+    showRepeatError(`ต้องกำหนดเวลาเริ่มเรียนล่วงหน้าอย่างน้อย ${bookingCloseHours} ชั่วโมง`); return;
   }
 
   // ── เช็ค overlap ระหว่าง repeat slots ──
@@ -1433,13 +1566,22 @@ const jsWeekdays = weekdays.map(d => d === 6 ? 0 : d + 1);
   const empty = document.getElementById('emptySlotMsg');
   if (empty) empty.remove();
 
-  let totalCreated = 0, totalUpdated = 0, totalSkipped = 0;
+  let totalCreated = 0, totalUpdated = 0, totalSkipped = 0, totalPastSlotsSkipped = 0;
+  const changedGroups = new Set();
 
   weekdays.forEach(pyDay => {
     const dates = byDay.get(pyDay);
     if (dates.length === 0) return;
 
     dates.forEach(dateStr => {
+      // ข้ามช่วงเวลาที่เหลือเวลารับจองไม่ครบ แต่ยังใช้เวลาเดียวกันกับวันถัดไปได้
+      const minStart = minimumStartForDate(dateStr);
+      const validSlots = minStart === null
+        ? []
+        : slots.filter(sl => sl.start >= minStart);
+      totalPastSlotsSkipped += slots.length - validSlots.length;
+      if (!validSlots.length) return;
+
       if (isDateExists(dateStr)) {
         // ── วันมีอยู่แล้ว: เพิ่ม slot เข้าไปใน group เดิม ──
         const existingGroup = [...document.querySelectorAll('#slotContainer .slot-day-group')]
@@ -1451,13 +1593,13 @@ const jsWeekdays = weekdays.map(d => d === 6 ? 0 : d + 1);
           // ดึง slot ที่มีอยู่แล้วใน group นี้ (start-end pairs)
           const existingSlots = new Set(
             [...existingGroup.querySelectorAll('.slot-row')].map(row => {
-              const inputs = row.querySelectorAll('input[type="text"]');
+              const inputs = row.querySelectorAll('.time-input');
               return inputs[0]?.value.trim() + '-' + inputs[1]?.value.trim();
             })
           );
 
           let addedCount = 0;
-          slots.forEach(sl => {
+          validSlots.forEach(sl => {
             const key = sl.start + '-' + sl.end;
             if (existingSlots.has(key)) return; // ซ้ำ → ข้าม
             const row = createTimeSlotRow(sdId, sl.start, sl.end);
@@ -1468,6 +1610,7 @@ const jsWeekdays = weekdays.map(d => d === 6 ? 0 : d + 1);
           if (addedCount > 0) {
             sortSlotsInGroup(existingGroup, addSlotBtn);
             validateSlotsInGroupRealtime(existingGroup);
+            changedGroups.add(existingGroup);
             totalUpdated++;
           } else {
             // ซ้ำทั้งหมด → นับ skipped
@@ -1478,9 +1621,9 @@ const jsWeekdays = weekdays.map(d => d === 6 ? 0 : d + 1);
         // ── วันใหม่: สร้าง group ใหม่ ──
         newDateCounter++;
         const sdId = `new_${newDateCounter}`;
-        const group = createDayGroup(sdId, dateStr, pyDay, true);
+        const group = createDayGroup(sdId, dateStr, pyDay, false);
         const addSlotBtn = group.querySelector('button[onclick*="addSlot"]');
-        slots.forEach(sl => {
+        validSlots.forEach(sl => {
           const row = createTimeSlotRow(sdId, sl.start, sl.end);
           addSlotBtn.parentElement.insertBefore(row, addSlotBtn);
           row.querySelectorAll('.time-input').forEach(initTimeInput);
@@ -1488,20 +1631,35 @@ const jsWeekdays = weekdays.map(d => d === 6 ? 0 : d + 1);
         sortSlotsInGroup(group, addSlotBtn); // เรียงก่อน insert เข้า DOM
         insertDayChronologically(group);
         validateSlotsInGroupRealtime(group); // เช็ค overlap หลัง insert
+        changedGroups.add(group);
         totalCreated++;
       }
     });
   });
+
+  // ป้ายใหม่แสดงเฉพาะวันที่มีช่วงเวลาเพิ่มจากการสร้างเซ็ตล่าสุด
+  if (changedGroups.size > 0) {
+    document.querySelectorAll('#slotContainer .schedule-new-badge').forEach(badge => badge.remove());
+    changedGroups.forEach(group => {
+      const dateBlock = group.querySelector('.schedule-date-block');
+      if (!dateBlock) return;
+      const badge = document.createElement('span');
+      badge.className = 'badge schedule-new-badge';
+      badge.textContent = 'ใหม่';
+      dateBlock.prepend(badge);
+    });
+  }
 
   let summary = [];
   if (totalCreated > 0)     summary.push(`✓ สร้างใหม่ ${totalCreated} วัน`);
   if (totalUpdated > 0)     summary.push(`+ เพิ่มสล็อตใน ${totalUpdated} วันเดิม`);
   if (totalSkipped > 0)     summary.push(`⚠ ${totalSkipped} วันมีช่วงเวลานี้อยู่แล้ว`);
   if (totalPastSkipped > 0) summary.push(`✕ ข้าม ${totalPastSkipped} วันที่ผ่านมาแล้ว`);
+  if (totalPastSlotsSkipped > 0) summary.push(`✕ ข้าม ${totalPastSlotsSkipped} ช่วงเวลาที่เปิดรับจองไม่ทัน`);
   summaryEl.textContent = summary.length ? summary.join('  ') : 'ไม่มีการเปลี่ยนแปลง';
 
   // ── ล้าง repeat form หลังสร้างเสร็จ ──
-  if (totalCreated > 0 || totalUpdated > 0 || totalSkipped > 0 || totalPastSkipped > 0) {
+  if (totalCreated > 0 || totalUpdated > 0 || totalSkipped > 0 || totalPastSkipped > 0 || totalPastSlotsSkipped > 0) {
     // ล้างวันที่เลือกในสัปดาห์
     document.querySelectorAll('.weekday-pill.btn-primary').forEach(btn => {
       btn.classList.remove('btn-primary');
@@ -1524,11 +1682,11 @@ function showRepeatError(msg) {
   document.getElementById('repeatSummary').textContent = '';
 }
 
-// ── set min date = วันนี้ ──
-const todayStr = formatDateLocal(new Date());
-document.getElementById('repeatStart').min = todayStr;
-document.getElementById('repeatEnd').min   = todayStr;
-document.getElementById('newDateInput').min = todayStr;
+// ── อัปเดตวันและเวลาขั้นต่ำ แม้เปิดหน้านี้ค้างไว้ ──
+refreshScheduleTimeLimits();
+document.getElementById('repeatStart').addEventListener('change', refreshScheduleTimeLimits);
+document.getElementById('repeatEnd').addEventListener('change', refreshScheduleTimeLimits);
+window.setInterval(refreshScheduleTimeLimits, 30000);
 
 // เริ่มต้น: เพิ่ม slot template ว่าง 1 ช่วง (ว่างเปล่า พร้อมกรอก)
 addRepeatSlot();

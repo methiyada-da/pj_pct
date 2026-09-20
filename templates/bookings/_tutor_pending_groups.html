@@ -1,29 +1,54 @@
 {% if pending_groups %}
-{% for group in pending_groups %}
-<div class="bk-card pending mb-3 overflow-hidden" style="border-left:4px solid #F59E0B;">
-  <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap px-3 px-md-4 py-3">
-    <div class="flex-grow-1">
-      <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
-        <span class="badge bg-warning text-dark">รอยืนยัน</span>
-        <span class="fw-bold">{{ group.course.tutc_name }}</span>
-      </div>
-      <div class="small text-muted">
-        <i class="fas fa-calendar me-1"></i>{{ group.lesson_datetime|date:"d M Y" }}
-        {% if group.slot %}เวลา {{ group.slot.ts_start_time|time:"H:i" }}–{{ group.slot.ts_end_time|time:"H:i" }} น.{% else %}เวลา {{ group.lesson_datetime|date:"H:i" }} น.{% endif %}
-      </div>
-    </div>
-    <div class="d-flex align-items-center gap-3 flex-wrap">
-      <div class="text-end small">
-        <div class="fw-bold text-primary">{{ group.reserved_seats }}/{{ group.capacity }} ที่นั่ง</div>
-        <div class="text-muted">รอยืนยัน {{ group.pending|length }} รายการ</div>
-        {% if group.response_deadline %}<div class="text-danger">ภายใน {{ group.response_deadline|date:"d M H:i" }} น.</div>{% endif %}
-      </div>
-      <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#pendingGroupModal{{ forloop.counter }}">
-        <i class="fas fa-eye me-1"></i>ดูรายละเอียดรอบ
-      </button>
+<div class="d-flex align-items-start gap-3 rounded-3 border px-3 py-3 mb-3"
+     style="background:#FFF7ED;border-color:#FDBA74 !important;color:#9A3412;">
+  <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+       style="width:38px;height:38px;background:#FFEDD5;color:#EA580C;">
+    <i class="fas fa-clock" aria-hidden="true"></i>
+  </div>
+  <div>
+    <div class="fw-bold mb-1">โปรดตอบรับคำขอภายในเวลาที่กำหนด</div>
+    <div style="font-size:.9rem;line-height:1.6;">
+      หากเลยกำหนดตอบรับ ระบบจะยกเลิกคำขอจองที่ยังไม่ได้รับการยืนยันโดยอัตโนมัติ
     </div>
   </div>
 </div>
+{% for group in pending_groups %}
+<a href="#pendingGroupModal{{ forloop.counter }}" class="bk-card pending mb-3 overflow-hidden d-block text-decoration-none" style="border-left:4px solid #F59E0B;cursor:pointer;" data-bs-toggle="modal" data-bs-target="#pendingGroupModal{{ forloop.counter }}" aria-label="เปิดรายละเอียดรอบ {{ group.course.tutc_name }}">
+  <div class="p-3 p-md-4">
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-2">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge bg-warning text-dark px-2 py-2">รอยืนยัน</span>
+        <span class="fw-bold text-dark" style="font-size:1.1rem;">คอร์ส: {{ group.course.tutc_name }}</span>
+      </div>
+      <div class="d-flex align-items-center justify-content-end gap-2 flex-wrap ms-auto">
+        <span class="fw-semibold text-dark" style="font-size:1rem;"><i class="fas fa-users text-primary me-2"></i>จองแล้ว <strong>{{ group.reserved_seats }}/{{ group.capacity }} ที่นั่ง</strong></span>
+        <span class="rounded-pill border px-2 py-1" style="background:#FFFBEB;border-color:#FDE68A !important;color:#92400E;font-size:1rem;">รอยืนยัน <strong>{{ group.pending|length }} รายการ</strong></span>
+        <i class="fas fa-chevron-right text-muted ms-1" aria-hidden="true"></i>
+      </div>
+    </div>
+
+    <div class="row g-2 g-md-3 mt-2 pt-3 border-top">
+      <div class="col-12 col-sm-4">
+        <div class="h-100 rounded-3 px-3 py-3" style="background:#F8FAFC;">
+          <div class="small text-muted mb-1">วันที่เรียน</div>
+          <div class="fw-bold text-dark" style="font-size:1.125rem;line-height:1.35;"><i class="fas fa-calendar-day text-primary me-2"></i>{{ group.lesson_datetime|date:"d M Y" }}</div>
+        </div>
+      </div>
+      <div class="col-12 col-sm-4">
+        <div class="h-100 rounded-3 px-3 py-3" style="background:#F8FAFC;">
+          <div class="small text-muted mb-1">เวลาเรียน</div>
+          <div class="fw-bold text-primary" style="font-size:1.125rem;line-height:1.35;"><i class="fas fa-clock me-2"></i>{% if group.slot %}{{ group.slot.ts_start_time|time:"H:i" }}–{{ group.slot.ts_end_time|time:"H:i" }} น.{% else %}{{ group.lesson_datetime|date:"H:i" }} น.{% endif %}</div>
+        </div>
+      </div>
+      <div class="col-12 col-sm-4">
+        <div class="h-100 rounded-3 px-3 py-3" style="background:#FFF7ED;">
+          <div class="small text-muted mb-1">ต้องตอบรับภายใน</div>
+          <div class="fw-bold text-danger" style="font-size:1.125rem;line-height:1.35;">{% if group.response_deadline %}{{ group.response_deadline|date:"d M Y H:i" }} น.{% else %}—{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</a>
 {% endfor %}
 
 {% for group in pending_groups %}
@@ -106,13 +131,16 @@
         </div>
         {% endif %}
 
-        <div class="fw-bold mb-2"><i class="fas fa-users text-primary me-2"></i>รายการผู้จอง</div>
+        <div class="fw-bold mb-2"><i class="fas fa-users text-primary me-2"></i>รายการผู้จองเรียน</div>
         <div class="border rounded-3 overflow-hidden">
           {% for bk in group.pending %}
           <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap p-3{% if not forloop.last %} border-bottom{% endif %}">
             <div>
               <div class="fw-semibold">BK{{ bk.bk_id|stringformat:"05d" }} · {{ bk.member.mb_full_name }}</div>
-              <div class="text-dark mt-1">{{ bk.bk_stu_count }} ที่นั่ง · {{ bk.bk_rate_per_person }} เครดิต/ที่นั่ง · รวม {{ bk.total_credit }} เครดิต</div>
+              <div class="text-dark mt-1">
+                {% if bk.bk_stu_count > 1 %}รายการเดิม {{ bk.bk_stu_count }} ที่นั่ง{% else %}1 บัญชี · 1 ที่นั่ง{% endif %}
+                · {{ bk.bk_rate_per_person }} เครดิต/ที่นั่ง · รวม {{ bk.total_credit }} เครดิต
+              </div>
               {% if bk.bk_desc %}<div class="small mt-1">ข้อความ: {{ bk.bk_desc }}</div>{% endif %}
             </div>
             <div class="d-flex gap-2">
