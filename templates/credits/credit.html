@@ -578,7 +578,7 @@
           <span class="fw-semibold small" id="bkRate"></span>
         </div>
         <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
-          <span class="text-muted small">จำนวนผู้เรียน</span>
+          <span class="text-muted small">สิทธิ์การจอง</span>
           <span class="fw-semibold small" id="bkStuCount"></span>
         </div>
         <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
@@ -727,8 +727,10 @@ function openBookingDetail(bkId, crsName, tutorName, studentName, rate, stuCount
   document.getElementById('bkModalTitle').textContent = isPay ? 'รายละเอียดการจ่ายค่าเรียน' : 'รายละเอียดรายได้จากการสอน';
   document.getElementById('bkId').textContent = bkId;
   document.getElementById('bkCrsName').textContent = crsName;
-  document.getElementById('bkRate').textContent = rate + ' เครดิต / คน';
-  document.getElementById('bkStuCount').textContent = stuCount + ' คน';
+  document.getElementById('bkRate').textContent = rate + ' เครดิต / ที่นั่ง';
+  document.getElementById('bkStuCount').textContent = stuCount > 1
+    ? 'รายการเดิม ' + stuCount + ' ที่นั่ง'
+    : '1 บัญชี · 1 ที่นั่ง';
   document.getElementById('bkDate').textContent = date;
 
   const totalEl = document.getElementById('bkTotal');

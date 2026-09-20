@@ -3,6 +3,28 @@ from django import forms
 from .models import TutorCourse, TutorRate, ScheduleDate, TimeSlot
 
 
+class MultipleImageInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class ExperienceImagesField(forms.ImageField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('required', False)
+        kwargs.setdefault('widget', MultipleImageInput(attrs={'accept': 'image/*'}))
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        images = data if isinstance(data, (list, tuple)) else ([data] if data else [])
+        if len(images) > 5:
+            raise forms.ValidationError('อัปโหลดรูปประสบการณ์ได้ไม่เกิน 5 รูปต่อครั้ง')
+        cleaned_images = []
+        for image in images:
+            if image.size > 5 * 1024 * 1024:
+                raise forms.ValidationError('รูปประสบการณ์แต่ละรูปต้องมีขนาดไม่เกิน 5 MB')
+            cleaned_images.append(super().clean(image))
+        return cleaned_images
+
+
 class TutorRegisterForm(forms.Form):
     """ฟอร์มขั้นตอนที่ 2 — ข้อมูลวิชาการและประสบการณ์"""
     student_card = forms.ImageField(
@@ -29,6 +51,7 @@ class TutorRegisterForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={'rows': 4, 'placeholder': 'ช่วยเล่าเพิ่มเติมเกี่ยวกับประสบการณ์ของคุณในฐานะติวเตอร์หน่อย...'}),
     )
+    experience_images = ExperienceImagesField(label='รูปประสบการณ์การสอน')
 
 
 class TutorCourseForm(forms.ModelForm):
@@ -42,7 +65,6 @@ class TutorCourseForm(forms.ModelForm):
             'placeholder': 'เช่น เรียนภายในมหาวิทยาลัย รายละเอียดห้องเรียนจะแจ้งตอนตอบรับการจอง',
         }),
     )
-
     class Meta:
         model = TutorCourse
         # tutc_id และ tut_id กำหนดจาก view

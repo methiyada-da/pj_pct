@@ -166,6 +166,20 @@
               <label class="form-label text-muted small">รายละเอียดประสบการณ์</label>
               <textarea name="tut_exp_desc" class="form-control" rows="4"
                         placeholder="ช่วยเล่าเพิ่มเติมเกี่ยวกับประสบการณ์ของคุณในฐานะติวเตอร์...">{{ tutor.tut_exp_desc|default:'' }}</textarea>
+              <label for="experience-images" class="form-label text-muted small mt-3">รูปผลงานหรือหลักฐานประสบการณ์</label>
+              <input type="file" id="experience-images" name="experience_images" class="form-control"
+                     accept="image/*" multiple>
+              <small class="text-muted">เพิ่มได้ครั้งละไม่เกิน 5 รูป รูปละไม่เกิน 5 MB</small>
+              {% if experience_images %}
+              <div class="d-flex flex-wrap gap-2 mt-3">
+                {% for item in experience_images %}
+                <a href="{{ item.image.url }}" target="_blank" rel="noopener noreferrer" aria-label="ดูรูปประสบการณ์การสอน">
+                  <img src="{{ item.image.url }}" alt="รูปประสบการณ์การสอน {{ forloop.counter }}"
+                       class="rounded border" style="width:90px;height:90px;object-fit:cover;">
+                </a>
+                {% endfor %}
+              </div>
+              {% endif %}
             </div>
           </div>
         </div>

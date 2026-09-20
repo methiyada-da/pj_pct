@@ -87,18 +87,15 @@
         <!-- อัตราค่าบริการ ใต้โปรไฟล์ติวเตอร์ -->
         {% if fixed_rate %}
         <div class="rates-card mt-2">
-          <p class="rates-card-title"><i class="fas fa-coins me-1"></i> ราคาเดียวต่อที่นั่ง</p>
-          <p class="rates-card-note">คิดตามจำนวนที่นั่งที่จองในแต่ละรายการ</p>
-          <div class="rate-row rate-row-only">
-            <span class="rate-count">
-              <i class="fas fa-user me-1"></i>ต่อ 1 ที่นั่ง
-            </span>
-            <span class="rate-price-val">{{ fixed_rate.tut_rate_per_person }} <span class="rate-unit">เครดิต</span></span>
+          <p class="rates-card-title"><i class="fas fa-coins me-1"></i> อัตราค่าติว</p>
+          <div class="rate-highlight">
+            <span class="rate-highlight-value">{{ fixed_rate.tut_rate_per_person }}</span>
+            <span class="rate-highlight-unit">เครดิต/ที่นั่ง</span>
           </div>
-          <p class="rates-card-example">
-            <i class="fas fa-info-circle me-1"></i>
-            ยอดรวมคำนวณจากราคาต่อที่นั่งคูณจำนวนที่จอง
-          </p>
+        </div>
+        <div class="booking-rule-card mt-2">
+          <i class="fas fa-circle-info" aria-hidden="true"></i>
+          <p class="mb-0">การจองเรียนต่อช่วงเวลา จำกัด 1 บัญชีต่อ 1 ที่นั่ง หากเรียนพร้อมเพื่อน เพื่อนต้องจองด้วยบัญชีของตนเอง</p>
         </div>
         {% else %}
         <div class="alert alert-warning mt-2 small mb-0">
@@ -134,8 +131,8 @@
                 <span class="course-meta-value">{{ tc.crs_id.cg_id.cg_name }}</span>
               </div>
               <div class="course-meta-item">
-                <span class="course-meta-label">รับสูงสุด</span>
-                <span class="course-meta-value"><strong>{{ tc.tutc_max_stu }}</strong> คน/ครั้ง</span>
+                <span class="course-meta-label">จำนวนรับสูงสุด</span>
+                <span class="course-meta-value"><strong>{{ tc.tutc_max_stu }}</strong> คน/ช่วงเวลา</span>
               </div>
               <div class="course-meta-item">
                 <span class="course-meta-label" title="คะแนนคำนวณโดยพิจารณาทั้งคะแนนรีวิวและจำนวนผู้รีวิว">
@@ -212,23 +209,12 @@
               {% for sd in available_dates %}
               "{{ sd.sd_id }}": [
                 {% for slot in sd.available_slots %}
-                  {ts_id: {{ slot.ts_id }}, start: "{{ slot.ts_start_time|time:'H:i' }}", end: "{{ slot.ts_end_time|time:'H:i' }}", remaining: {{ slot.remaining_seats }}, capacity: {{ tc.tutc_max_stu }}},
+                  {ts_id: {{ slot.ts_id }}, start: "{{ slot.ts_start_time|time:'H:i' }}", end: "{{ slot.ts_end_time|time:'H:i' }}", closeAt: "{{ slot.booking_close_at|date:'c' }}", remaining: {{ slot.remaining_seats }}, capacity: {{ tc.tutc_max_stu }}},
                 {% endfor %}
               ],
               {% endfor %}
             };
             </script>
-
-            <!-- จำนวนผู้เรียน -->
-            <div class="booking-section-block">
-              <p class="booking-section-title"><i class="fas fa-users me-1"></i>จำนวนผู้เรียน</p>
-              <div class="stu-count-wrap">
-                <input type="number" name="stu_count" id="stu_count"
-                       class="stu-count-input" value="1" min="1" max="{{ tc.tutc_max_stu }}"
-                       oninput="updateSummary()">
-                <span class="stu-max-hint" id="stu-max-hint">เลือกช่วงเวลาเพื่อดูที่นั่งคงเหลือ</span>
-              </div>
-            </div>
 
             <!-- รายละเอียดเพิ่มเติม -->
             <div class="booking-section-block booking-section-last">
@@ -285,10 +271,6 @@
             <span class="value" id="sum-duration">—</span>
           </div>
           <div class="summary-row">
-            <span class="label">จำนวนผู้เรียน</span>
-            <span class="value" id="sum-count">1 คน</span>
-          </div>
-          <div class="summary-row">
             <span class="label">อัตรา</span>
             <span class="value" id="sum-rate">—</span>
           </div>
@@ -296,9 +278,8 @@
           <hr class="summary-divider">
 
           <div class="summary-total-row">
-            <span class="summary-total-label">ทั้งหมด</span>
+            <span class="summary-total-label">เครดิตที่ต้องใช้</span>
             <div style="display:flex; align-items:baseline; gap:.4rem; justify-content:flex-end;">
-              <span class="summary-total-formula" id="sum-formula"></span>
               <span class="summary-total-value" id="sum-total">—</span>
             </div>
           </div>
@@ -320,9 +301,11 @@
           {% endif %}
 
           <div class="pending-note">
-            <i class="fas fa-clock me-1"></i>
-            ปิดรับการจองก่อนเรียน 4 ชั่วโมง และติวเตอร์ต้องตอบรับภายใน 3 ชั่วโมงก่อนเรียน
-            เครดิตจะถูกล็อกไว้และตัดจริงเมื่อจบการเรียนแล้ว
+            <ul class="mb-0 ps-3">
+              <li>จองล่วงหน้าอย่างน้อย 2 ชม. ก่อนถึงเวลาเรียน</li>
+              <li>ผู้สอนจะยืนยันการจองก่อนเรียนอย่างน้อย 1 ชม. หากเลยกำหนดตอบรับ ระบบจะทำการยกเลิกการจองอัตโนมัติ</li>
+              <li>เครดิตจะถูกล็อกไว้เมื่อจอง และถูกตัดเครดิตหลังการเรียนเสร็จสิ้น  </li>
+            </ul>
           </div><!-- /pending-note -->
           </div><!-- /summary-body -->
         </div>
@@ -356,7 +339,7 @@
 {% if user.is_authenticated and available_dates and fixed_rate %}
 <div class="mobile-book-bar d-lg-none">
   <div>
-    <div class="mobile-book-label">ทั้งหมด</div>
+    <div class="mobile-book-label">เครดิตที่ต้องใช้</div>
     <div class="mobile-book-total" id="sum-total-mobile">— เครดิต</div>
   </div>
   <button type="button" class="btn-book btn-book-sm" id="btn-book-mobile" disabled
@@ -375,6 +358,11 @@
   const fixedRate = {% if fixed_rate %}{{ fixed_rate.tut_rate_per_person }}{% else %}null{% endif %};
   let selectedDate = null;
   let selectedSlot = null;
+
+  function isSlotAvailable(slot) {
+    const closeAt = Date.parse(slot.closeAt);
+    return slot.remaining >= 1 && Number.isFinite(closeAt) && Date.now() <= closeAt;
+  }
 
   // ── เลือกวันที่ ──
   window.selectDate = function(btn) {
@@ -395,6 +383,7 @@
     const _seen = new Set();
     const slots = (slotData[sdId] || []).filter(s => {
       if (!s || !s.ts_id || !s.start || !s.end) return false;
+      if (!isSlotAvailable(s)) return false;
       const key = s.start + '-' + s.end;
       if (_seen.has(key)) return false;
       _seen.add(key);
@@ -428,35 +417,19 @@
     btn.classList.add('active');
     selectedSlot = slot;
     document.getElementById('ts_id_input').value = slot.ts_id;
-    const countInput = document.getElementById('stu_count');
-    if (countInput) {
-      countInput.max = slot.remaining;
-      if (parseInt(countInput.value) > slot.remaining) countInput.value = slot.remaining;
-    }
-    setText('stu-max-hint', 'เหลือ ' + slot.remaining + ' จาก ' + slot.capacity + ' ที่นั่ง');
     updateSummary();
   };
 
   // ── อัปเดต summary ──
   window.updateSummary = function() {
-    const raw = parseInt(document.getElementById('stu_count')?.value) || 1;
-    const currentMax = selectedSlot ? selectedSlot.remaining : {{ tc.tutc_max_stu }};
-    const stu = Math.min(Math.max(raw, 1), currentMax);
-    const total = fixedRate !== null ? fixedRate * stu : null;
-    const ready = selectedDate && selectedSlot && fixedRate !== null && stu <= selectedSlot.remaining;
+    const total = fixedRate;
+    const ready = selectedDate && selectedSlot && selectedSlot.remaining >= 1 && fixedRate !== null;
 
     setText('sum-date',     selectedDate ? selectedDate.display : '—');
     setText('sum-time',     selectedSlot ? selectedSlot.start + ' - ' + selectedSlot.end + ' น.' : '—');
-    setText('sum-count',    stu + ' คน');
     setText('sum-rate',     fixedRate !== null ? fixedRate + ' เครดิต/ที่นั่ง' : '—');
     setText('sum-total',    total !== null ? total + ' เครดิต' : '—');
     setText('sum-total-mobile', total !== null ? total + ' เครดิต' : '— เครดิต');
-
-    // แสดงสูตรคำนวณ เช่น 2 × 6
-    const formulaEl = document.getElementById('sum-formula');
-    if (formulaEl) {
-      formulaEl.textContent = (total !== null && stu > 0) ? stu + ' × ' + fixedRate + ' =' : '';
-    }
 
     if (selectedSlot) {
       const [sh, sm] = selectedSlot.start.split(':').map(Number);
@@ -482,7 +455,27 @@
     if (el) el.disabled = val;
   }
 
-  document.getElementById('stu_count')?.addEventListener('input', updateSummary);
+  // ปิดรอบบนหน้าที่เปิดค้างไว้ภายในไม่เกิน 15 วินาทีหลังเข้าเขต 2 ชั่วโมง
+  function refreshSlotAvailability() {
+    document.querySelectorAll('.date-btn').forEach(btn => {
+      const hasAvailableSlot = (slotData[btn.dataset.sdId] || []).some(isSlotAvailable);
+      btn.classList.toggle('d-none', !hasAvailableSlot);
+    });
+
+    if (!selectedDate) return;
+    if (selectedSlot && !isSlotAvailable(selectedSlot)) {
+      selectedSlot = null;
+      document.getElementById('ts_id_input').value = '';
+    }
+    renderSlots(selectedDate.sdId);
+    updateSummary();
+  }
+
+  window.setInterval(refreshSlotAvailability, 15000);
+  window.addEventListener('focus', refreshSlotAvailability);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshSlotAvailability();
+  });
 
   // ── SweetAlert2 ยืนยันการจอง ──
   window.openBookingConfirm = function() {
@@ -491,7 +484,6 @@
     const date     = document.getElementById('sum-date')?.textContent || '—';
     const time     = document.getElementById('sum-time')?.textContent || '—';
     const duration = document.getElementById('sum-duration')?.textContent || '—';
-    const count    = document.getElementById('sum-count')?.textContent || '—';
     const rate     = document.getElementById('sum-rate')?.textContent || '—';
     const total    = document.getElementById('sum-total')?.textContent || '—';
 
@@ -514,14 +506,8 @@
           <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
             <span style="color:#6B7280;">ระยะเวลา</span><span>${duration}</span>
           </div>
-          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
-            <span style="color:#6B7280;">จำนวนผู้เรียน</span><span>${count}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #F1F5F9;padding:4px 0;">
-            <span style="color:#6B7280;">อัตราค่าเรียน</span><span>${rate}</span>
-          </div>
           <div style="display:flex;justify-content:space-between;padding:6px 0;">
-            <span style="color:#6B7280;font-weight:600;">รวมเครดิตที่ถูกล็อก</span>
+            <span style="color:#6B7280;font-weight:600;">ยอดเครดิตที่หัก</span>
             <span style="font-weight:700;color:#2563EB;font-size:16px;">${total}</span>
           </div>
         </div>

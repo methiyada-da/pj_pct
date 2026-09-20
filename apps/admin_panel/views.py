@@ -15,6 +15,7 @@ from .forms  import SystemForm, AdminUserForm
 from apps.accounts.models import Tutor, Member
 from apps.credits.models  import Refill, Withdrawals
 from apps.courses.models  import Faculty, Major
+from apps.bookings.services import append_booking_closed_comment
 
 # นำเข้าฟังก์ชันสร้าง QR Code จากแอป credits
 from apps.credits.views import _generate_promptpay_qr
@@ -74,7 +75,7 @@ def dashboard(request):
     chart_range = request.GET.get('chart_range', '6m')
     metric_config = {
         'members': ('สมาชิกใหม่', Member, 'user__date_joined', 'count'),
-        'bookings': ('การสมัครเรียน', Booking, 'bk_date', 'count'),
+        'bookings': ('การจองเรียน', Booking, 'bk_date', 'count'),
         'topups': ('ยอดเติมเครดิต', Refill, 'rf_date', 'sum'),
         'reviews': ('รีวิวที่ได้รับ', Review, 'rv_date', 'count'),
     }
@@ -205,7 +206,7 @@ def report_center(request):
 
     report_titles = {
         'members': 'รายงานสมาชิก', 'tutors': 'รายงานติวเตอร์',
-        'courses': 'รายงานรายวิชา', 'bookings': 'รายงานการสมัครเรียน',
+        'courses': 'รายงานรายวิชา', 'bookings': 'รายงานการจองเรียน',
         'tutor_income': 'รายงานรายได้ติวเตอร์', 'refills': 'รายงานการเติมเครดิต',
         'summary': 'รายงานสรุปภาพรวมระบบ',
     }
@@ -232,8 +233,8 @@ def report_center(request):
             'date_label': '', 'status_label': '', 'status_options': [],
         },
         'bookings': {
-            'date_label': 'วันที่สมัครเรียน',
-            'status_label': 'สถานะการสมัครเรียน',
+            'date_label': 'วันที่จองเรียน',
+            'status_label': 'สถานะการจองเรียน',
             'status_options': [('all', 'ทั้งหมด'), ('0', 'จอง'), ('1', 'รับงานแล้ว'), ('2', 'เรียนแล้ว'), ('3', 'แจ้งจบงาน'), ('4', 'ยืนยันการจบงาน'), ('5', 'รีวิวแล้ว'), ('6', 'ปฏิเสธ')],
         },
         'tutor_income': {
@@ -304,11 +305,11 @@ def report_center(request):
             queryset = queryset.filter(bk_status=int(status))
         queryset = queryset.order_by('bk_date' if order == 'oldest' else '-bk_date')
         if report_type == 'bookings':
-            headers = ['รหัสการจอง', 'ผู้เรียน', 'ติวเตอร์', 'รายวิชา', 'วันที่สมัครเรียน', 'สถานะ']
+            headers = ['รหัสการจอง', 'ผู้เรียน', 'ติวเตอร์', 'รายวิชา', 'วันที่จองเรียน', 'สถานะ']
             rows = [[f'BK{b.bk_id:05d}', b.member.mb_full_name, b.tutc_id.tut_id.tut_id.mb_full_name, b.tutc_id.tutc_name, b.bk_date, b.get_bk_status_display()] for b in queryset]
-            summary_items = [('การสมัครเรียนทั้งหมด', len(rows)), ('เรียนสำเร็จ', sum(1 for row in rows if row[5] in {'ยืนยันการจบงาน', 'รีวิวแล้ว'}))]
+            summary_items = [('การการจองเรียนทั้งหมด', len(rows)), ('เรียนสำเร็จ', sum(1 for row in rows if row[5] in {'ยืนยันการจบงาน', 'รีวิวแล้ว'}))]
         else:
-            headers = ['ติวเตอร์', 'รหัสการจอง', 'รายวิชา', 'เครดิตที่ได้รับ', 'สถานะ', 'วันที่สมัครเรียน']
+            headers = ['ติวเตอร์', 'รหัสการจอง', 'รายวิชา', 'เครดิตที่ได้รับ', 'สถานะ', 'วันที่จองเรียน']
             rows = [[b.tutc_id.tut_id.tut_id.mb_full_name, f'BK{b.bk_id:05d}', b.tutc_id.tutc_name, b.total_credit, b.get_bk_status_display(), b.bk_date] for b in queryset]
             summary_items = [('งานที่รับทั้งหมด', len(rows)), ('เครดิตค่าติวรวม', sum(row[3] for row in rows))]
     elif report_type == 'refills':
@@ -324,7 +325,7 @@ def report_center(request):
         total_credit = members.aggregate(total=Sum('mb_deposit_crd') + Sum('mb_income_crd'))['total'] or 0
         average_rating = Review.objects.aggregate(avg=Avg('rv_satisfaction'))['avg'] or 0
         system = System.objects.first()
-        headers = ['จำนวนสมาชิก', 'ผู้เรียน', 'ติวเตอร์', 'รายวิชา', 'การสมัครเรียน', 'รายได้ระบบ', 'เครดิตคงเหลือ', 'คะแนนรีวิวเฉลี่ย']
+        headers = ['จำนวนสมาชิก', 'ผู้เรียน', 'ติวเตอร์', 'รายวิชา', 'การจองเรียน', 'รายได้ระบบ', 'เครดิตคงเหลือ', 'คะแนนรีวิวเฉลี่ย']
         rows = [[members.count(), members.exclude(tutor__isnull=False).count(), Tutor.objects.filter(tut_status=1).count(), Course.objects.count(), Booking.objects.count(), system.total_accumulated_fee if system else 0, total_credit, average_rating]]
         summary_items = list(zip(headers, rows[0]))
 
@@ -812,13 +813,7 @@ def report_mgmt(request):
                     from apps.bookings.models import JobCompletion
                     JobCompletion.objects.filter(bk_id=bk).update(jc_confirm_date=timezone.now())
                     bk.bk_status                = 4
-                    admin_decision = f'[แอดมิน] พิจารณาไม่คืนเครดิต: {note}'
-                    cancel_history = (bk.bk_cmt or '').strip()
-                    bk.bk_cmt = (
-                        f'{cancel_history}\n{admin_decision}'
-                        if cancel_history.startswith('[ไม่อนุมัติการยกเลิก]')
-                        else admin_decision
-                    )
+                    bk.bk_cmt = f'[แอดมิน] พิจารณาไม่คืนเครดิต: {note}'
                     bk.bk_report_resolved_date  = timezone.now()
                     bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
                     from apps.notifications.signals import _notif_member
@@ -855,13 +850,10 @@ def report_mgmt(request):
                     student.save(update_fields=['mb_locked_crd'])
                     tutor_member_id = bk.tutc_id.tut_id.tut_id_id
                     tutor_member = Member.objects.select_for_update().get(pk=tutor_member_id)
-                    bk.bk_status                = 6
-                    admin_decision = f'[แอดมิน] พิจารณาให้คืนเครดิต: {note}'
-                    cancel_history = (bk.bk_cmt or '').strip()
-                    bk.bk_cmt = (
-                        f'{cancel_history}\n{admin_decision}'
-                        if cancel_history.startswith('[ไม่อนุมัติการยกเลิก]')
-                        else admin_decision
+                    bk.bk_status = 6
+                    bk.bk_cmt = append_booking_closed_comment(
+                        bk.bk_cmt,
+                        f'[แอดมิน] พิจารณาให้คืนเครดิต: {note}',
                     )
                     bk.bk_report_resolved_date  = timezone.now()
                     bk.save(update_fields=['bk_status', 'bk_cmt', 'bk_report_resolved_date'])
@@ -906,13 +898,6 @@ def report_mgmt(request):
 
     paginator = Paginator(qs, 15)
     page      = paginator.get_page(page_number)
-
-    # แยกเหตุผลการขอยกเลิกเพื่อแสดงเป็นประวัติประกอบการพิจารณา
-    from apps.bookings.views import _parse_cancel_history
-    for booking in page.object_list:
-        booking.cancel_request_reason, booking.cancel_reject_reason = (
-            _parse_cancel_history(booking.bk_cmt)
-        )
 
     # Template เรียก previous_page_number/next_page_number แม้ปุ่ม disabled
     # จึงกันไม่ให้หน้าแรกสร้างเลข 0 หรือหน้าสุดท้ายสร้างเลขเกินจำนวนหน้า

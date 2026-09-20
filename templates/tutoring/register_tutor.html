@@ -127,6 +127,14 @@
           {% endif %}
 
           <!-- Validation alert -->
+          {% if form.errors %}
+          <div class="alert alert-danger mb-3" role="alert">
+            {% for field in form %}
+              {% for error in field.errors %}<div>{{ field.label }}: {{ error }}</div>{% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+          </div>
+          {% endif %}
           <div id="validation-alert" class="alert alert-danger d-none d-flex gap-2 align-items-start mb-3">
             <i class="fas fa-exclamation-triangle mt-1 flex-shrink-0"></i>
             <div>
@@ -286,6 +294,21 @@
                       class="form-control {% if is_view_only %}bg-light{% endif %}"
                       placeholder="ช่วยเล่าเพิ่มเติมเกี่ยวกับประสบการณ์ของคุณในฐานะติวเตอร์..."
                       {% if is_view_only %}readonly{% endif %}>{{ form.experience_detail.value|default:'' }}</textarea>
+            <label for="experience-images" class="form-label fw-semibold small mt-3">รูปผลงานหรือหลักฐานประสบการณ์</label>
+            <input type="file" id="experience-images" name="experience_images"
+                   class="form-control" accept="image/*" multiple
+                   {% if is_view_only %}disabled{% endif %}>
+            <small class="text-muted">เพิ่มได้ครั้งละไม่เกิน 5 รูป รูปละไม่เกิน 5 MB เช่น ผลงานสอนหรือใบรับรอง</small>
+            {% if experience_images %}
+            <div class="d-flex flex-wrap gap-2 mt-3">
+              {% for item in experience_images %}
+              <a href="{{ item.image.url }}" target="_blank" rel="noopener noreferrer" aria-label="ดูรูปประสบการณ์การสอน">
+                <img src="{{ item.image.url }}" alt="รูปประสบการณ์การสอน {{ forloop.counter }}"
+                     class="rounded border" style="width:90px;height:90px;object-fit:cover;">
+              </a>
+              {% endfor %}
+            </div>
+            {% endif %}
           </div>
 
           <!-- Info alert -->

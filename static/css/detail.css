@@ -86,6 +86,38 @@
 .rate-price-val { font-weight: 700; color: #D97706; font-size: .9rem; }
 .rate-unit { font-weight: 400; color: #94A3B8; font-size: .74rem; }
 .rates-card-example { font-size: .74rem; color: #64748B; padding: .5rem 1rem .65rem; border-top: 1px solid #F1F5F9; line-height: 1.5; margin: 0; }
+.rate-highlight {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: .4rem;
+  padding: 1.1rem 1rem 1.2rem;
+}
+.rate-highlight-value {
+  color: #D97706;
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.rate-highlight-unit {
+  color: #92400E;
+  font-size: .88rem;
+  font-weight: 700;
+}
+.booking-rule-card {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  padding: .85rem 1rem;
+  border: 1px solid #BFDBFE;
+  border-radius: 14px;
+  background: #EFF6FF;
+  color: #1E3A8A;
+  font-size: .78rem;
+  line-height: 1.65;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+}
+.booking-rule-card > i { color: #2563EB; margin-top: .2rem; flex: 0 0 auto; }
 
 /* ════ MIDDLE ════ */
 
@@ -334,10 +366,12 @@
   .course-info-card { order: 1; margin: 0; }
   .tutor-card { order: 2; }
   .rates-card { order: 3; }
-  .booking-card { order: 4; margin: 0; }
+  .booking-rule-card { order: 4; }
+  .booking-card { order: 5; margin: 0; }
 
   .tutor-card,
   .rates-card,
+  .booking-rule-card,
   .summary-card {
     position: static;
     margin: 0 !important;

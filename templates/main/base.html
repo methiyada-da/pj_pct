@@ -63,6 +63,10 @@
 <script>
   fetchNotifications();
   setInterval(fetchNotifications, 30000);
+  window.addEventListener('focus', fetchNotifications);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) fetchNotifications();
+  });
 </script>
 {% endif %}
 </body>

@@ -262,8 +262,8 @@
     </div>
     {% endif %}
 
-    <!-- ── ประสบการณ์สอน (แยกการ์ด) 
-    {% if tutor.tut_has_exp or tutor.tut_exp_desc %}
+    <!-- ── ประสบการณ์สอน ── -->
+    {% if tutor.tut_has_exp %}
     <div class="tp-card tp-fu4" style="padding:1.25rem;">
       <h2 style="font-size:.92rem;font-weight:700;margin:0 0 .75rem;display:flex;align-items:center;gap:.45rem;color:var(--ons);">
         <i class="fas fa-briefcase" style="color:var(--pr);font-size:.85rem;"></i> ประสบการณ์การสอน
@@ -279,8 +279,18 @@
       {% if tutor.tut_exp_desc %}
         <p style="color:var(--onsv);line-height:1.75;font-size:.85rem;margin:0;white-space:pre-wrap;">{{ tutor.tut_exp_desc }}</p>
       {% endif %}
+      {% if experience_images %}
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        {% for item in experience_images %}
+        <a href="{{ item.image.url }}" target="_blank" rel="noopener noreferrer" aria-label="ดูรูปประสบการณ์การสอน">
+          <img src="{{ item.image.url }}" alt="รูปประสบการณ์การสอน {{ forloop.counter }}"
+               class="rounded border" style="width:140px;height:140px;object-fit:cover;">
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
-    {% endif %}── -->
+    {% endif %}
 
     <!-- ── ความเชี่ยวชาญและทักษะ ── -->
     {% if skills %}
